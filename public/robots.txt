@@ -1,0 +1,17 @@
+# Aunties Tykes
+#
+# The site is currently a preview build with placeholder business information,
+# so crawlers are kept out entirely. AT LAUNCH: delete the two lines under
+# "User-agent: *" below and uncomment the allow rules.
+
+User-agent: *
+Disallow: /
+
+# ---- Launch configuration (uncomment, and delete the Disallow above) --------
+# User-agent: *
+# Allow: /
+# Disallow: /admin/
+# Disallow: /parent/
+# Disallow: /login
+#
+# Sitemap: https://auntiestykes.com/sitemap.xml

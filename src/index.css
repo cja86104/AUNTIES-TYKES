@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --at-primary: #4f77d9;
+  --at-secondary: #f5b942;
+  --at-accent: #5dc4a6;
+  --at-ink: #2b2f3a;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--at-ink);
+  background-color: #fbfaf7;
+}
+
+h1, h2, h3, h4, h5, .font-display {
+  font-family: 'Nunito', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: rgba(79, 119, 217, 0.2);
+}
+
+/* Scrollbars */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #d8d5cd;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #b9b5ab;
+  background-clip: content-box;
+}
+
+/* Soft ambient blobs */
+.at-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+  animation: at-float 14s ease-in-out infinite;
+}
+@keyframes at-float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(0, -22px, 0) scale(1.06); }
+}
+
+.at-grid-dots {
+  background-image: radial-gradient(rgba(79, 119, 217, 0.16) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.at-skeleton {
+  background: linear-gradient(90deg, #eeece7 25%, #f7f6f3 37%, #eeece7 63%);
+  background-size: 400% 100%;
+  animation: at-shimmer 1.4s ease infinite;
+}
+@keyframes at-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* Markdown */
+.md > * + * { margin-top: 0.75rem; }
+.md h1, .md h2, .md h3 {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  color: #2b2f3a;
+  margin-top: 1.25rem;
+}
+.md h2 { font-size: 1.125rem; }
+.md h3 { font-size: 1rem; }
+.md p { line-height: 1.7; color: #4b5060; }
+.md ul { list-style: disc; padding-left: 1.15rem; color: #4b5060; }
+.md ol { list-style: decimal; padding-left: 1.15rem; color: #4b5060; }
+.md li { margin-top: 0.3rem; line-height: 1.65; }
+.md strong { color: #2b2f3a; font-weight: 700; }
+.md a { color: var(--at-primary); text-decoration: underline; }
+.md blockquote {
+  border-left: 3px solid var(--at-secondary);
+  padding-left: 0.9rem;
+  color: #6b7080;
+  font-style: italic;
+}
+
+input, textarea, select, button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--at-primary);
+  outline-offset: 2px;
+}
