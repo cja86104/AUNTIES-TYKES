@@ -8,6 +8,7 @@ import { ArrowLeft, LogIn, ShieldCheck, AlertTriangle, Sparkles, KeyRound } from
 import { Button, Card, Field, Input, Badge } from '../../components/ui'
 import type { Tone } from '../../components/ui'
 import { useStore } from '../../store/useStore'
+import { DEMO_MODE } from '../../lib/config'
 import type { Role } from '../../types'
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -46,6 +47,7 @@ export default function Login() {
   const user = useStore((s) => s.user)
   const login = useStore((s) => s.login)
   const pushToast = useStore((s) => s.pushToast)
+  const settings = useStore((s) => s.settings)
   const navigate = useNavigate()
   const location = useLocation()
   const [formError, setFormError] = useState('')
@@ -137,7 +139,9 @@ export default function Login() {
               </div>
               <div className="flex items-center gap-2.5 px-5 py-4 text-xs font-semibold text-slate-500">
                 <ShieldCheck size={15} className="text-[#5DC4A6]" />
-                Demo build — data lives only in this browser.
+                {DEMO_MODE
+                  ? 'Demo build — data lives only in this browser.'
+                  : 'Your family portal — daily reports, invoices, and documents.'}
               </div>
             </div>
           </motion.div>
@@ -145,7 +149,11 @@ export default function Login() {
           <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
             <Card className="p-7 sm:p-9">
               <h2 className="font-display text-2xl font-extrabold text-slate-900">Sign in</h2>
-              <p className="mt-1.5 text-sm text-slate-500">Use your family email, or try a demo account below.</p>
+              <p className="mt-1.5 text-sm text-slate-500">
+                {DEMO_MODE
+                  ? 'Use your family email, or try a demo account below.'
+                  : 'Use the email and password Aunties Tykes gave you.'}
+              </p>
 
               <form
                 onSubmit={(e) => {
@@ -189,6 +197,7 @@ export default function Login() {
                 </Button>
               </form>
 
+              {DEMO_MODE ? (
               <div className="mt-8 border-t border-slate-200 pt-6">
                 <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
                   <Sparkles size={14} className="text-[#F5B942]" /> Demo logins
@@ -214,6 +223,16 @@ export default function Login() {
                   ))}
                 </div>
               </div>
+              ) : (
+                <p className="mt-8 border-t border-slate-200 pt-6 text-xs leading-relaxed text-slate-500">
+                  Accounts are created by Aunties Tykes — there is no sign-up. If you need a login or have forgotten your
+                  password, call us at{' '}
+                  <a href={`tel:${settings.phone}`} className="font-semibold text-[#4F77D9] hover:underline">
+                    {settings.phone}
+                  </a>
+                  .
+                </p>
+              )}
             </Card>
           </motion.div>
         </div>

@@ -1,16 +1,12 @@
 /**
  * Site-wide SEO configuration and the per-route metadata map.
  *
- * ── BEFORE LAUNCH ──────────────────────────────────────────────────────────
- * 1. Set `SITE.url` to the live domain.
- * 2. Set `SITE.indexable` to true.
- * 3. Remove the `<meta name="robots" content="noindex, nofollow" />` line from
- *    index.html, and switch public/robots.txt to the allow rules noted there.
- * Until all three happen the site stays out of search results on purpose —
- * the demo content is placeholder business information, and indexing it would
- * put a fake license number and address into Google under this domain.
- * ───────────────────────────────────────────────────────────────────────────
+ * Indexability follows DEMO_MODE in src/lib/config.ts — see the launch
+ * checklist there. While the site shows placeholder business information,
+ * indexing it would put a fake license number and address into Google under
+ * this domain, so it stays out of search results on purpose.
  */
+import { DEMO_MODE } from './config'
 
 export const SITE = {
   name: 'Aunties Tykes',
@@ -19,8 +15,8 @@ export const SITE = {
   locale: 'en_US',
   ogImage: '/og-image.png',
   twitterCard: 'summary_large_image',
-  /** Keep false while the site shows demo content. See the note above. */
-  indexable: false,
+  /** Driven by DEMO_MODE — never set this directly. */
+  indexable: !DEMO_MODE,
 } as const
 
 export interface PageSeo {

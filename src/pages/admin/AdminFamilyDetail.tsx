@@ -13,10 +13,13 @@ import {
   ShieldAlert,
   StickyNote,
   Pencil,
+  KeyRound,
+  UserCheck,
 } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import { Card, Button, Badge, Avatar, EmptyState, PageHeader, statusTone, Modal } from '../../components/ui'
 import FamilyForm, { validateFamilyForm } from '../../components/FamilyForm'
+import ParentAccountDialog from '../../components/ParentAccountDialog'
 import type { FamilyFormValue } from '../../components/FamilyForm'
 import { useStore } from '../../store/useStore'
 import { money, fmtDate, ageLabel, invoiceBalance, invoiceStatus, sum } from '../../lib/helpers'
@@ -29,6 +32,8 @@ export default function AdminFamilyDetail() {
   const updateFamily = useStore((s) => s.updateFamily)
   const pushToast = useStore((s) => s.pushToast)
 
+  const users = useStore((s) => s.users)
+  const [acctOpen, setAcctOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [draft, setDraft] = useState<FamilyFormValue | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -43,6 +48,11 @@ export default function AdminFamilyDetail() {
   )
   const famThreads = useMemo(() => threads.filter((t) => t.familyId === id), [threads, id])
   const balance = useMemo(() => sum(famInvoices, (i) => invoiceBalance(i)), [famInvoices])
+
+  const parentAccounts = useMemo(
+    () => users.filter((u) => u.role === 'parent' && u.familyId === id),
+    [users, id],
+  )
 
   const openEdit = () => {
     if (!family) return
@@ -255,6 +265,39 @@ export default function AdminFamilyDetail() {
           </Card>
 
           <Card className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="font-display text-lg font-bold text-slate-900">Portal access</h2>
+              <Button size="sm" variant="outline" onClick={() => setAcctOpen(true)}>
+                <KeyRound size={14} /> Add account
+              </Button>
+            </div>
+
+            {parentAccounts.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-dashed border-slate-300 p-4">
+                <p className="text-sm font-semibold text-slate-700">No login yet</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  This family cannot sign in. Create an account and share the password with them.
+                </p>
+              </div>
+            ) : (
+              <ul className="mt-4 space-y-2.5">
+                {parentAccounts.map((u) => (
+                  <li key={u.id} className="flex items-start gap-3 rounded-xl bg-slate-50 p-3">
+                    <UserCheck size={16} className="mt-0.5 shrink-0 text-[#2E8C72]" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-900">{u.name}</p>
+                      <p className="truncate text-xs text-slate-500">{u.email}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-xs text-slate-500">
+              Families cannot sign themselves up — every account is one you created.
+            </p>
+          </Card>
+
+          <Card className="p-5">
             <h2 className="font-display text-lg font-bold text-slate-900">Emergency contacts</h2>
             <ul className="mt-4 space-y-3">
               {(family.emergency || []).map((e) => (
@@ -282,6 +325,8 @@ export default function AdminFamilyDetail() {
           </Card>
         </div>
       </div>
+
+      <ParentAccountDialog open={acctOpen} onClose={() => setAcctOpen(false)} fixedFamilyId={family.id} />
 
       <Modal
         open={editOpen}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Edit(src/pages/admin/**)",
+      "Write(src/pages/admin/**)",
+      "Edit(src/pages/parent/**)",
+      "Write(src/pages/parent/**)",
+      "Edit(src/pages/auth/**)",
+      "Write(src/pages/auth/**)",
+      "Edit(src/layouts/AdminLayout.tsx)",
+      "Write(src/layouts/AdminLayout.tsx)",
+      "Edit(src/layouts/ParentLayout.tsx)",
+      "Write(src/layouts/ParentLayout.tsx)",
+      "Edit(src/store/**)",
+      "Write(src/store/**)",
+      "Edit(src/types.ts)",
+      "Write(src/types.ts)",
+      "Edit(src/lib/useFamilyScope.ts)",
+      "Write(src/lib/useFamilyScope.ts)",
+      "Edit(src/components/ProtectedRoute.tsx)",
+      "Write(src/components/ProtectedRoute.tsx)",
+      "Edit(src/components/InvoiceView.tsx)",
+      "Write(src/components/InvoiceView.tsx)",
+      "Edit(src/components/DailyLogCard.tsx)",
+      "Write(src/components/DailyLogCard.tsx)",
+      "Edit(src/components/FamilyForm.tsx)",
+      "Write(src/components/FamilyForm.tsx)",
+      "Edit(src/components/ChildForm.tsx)",
+      "Write(src/components/ChildForm.tsx)",
+      "Edit(src/components/ParentAccountDialog.tsx)",
+      "Write(src/components/ParentAccountDialog.tsx)",
+      "Edit(src/components/FileUploader.tsx)",
+      "Write(src/components/FileUploader.tsx)"
+    ],
+    "ask": [
+      "Edit(src/components/ui.tsx)",
+      "Write(src/components/ui.tsx)",
+      "Edit(src/index.css)",
+      "Write(src/index.css)",
+      "Edit(tailwind.config.js)",
+      "Write(tailwind.config.js)",
+      "Edit(src/lib/helpers.ts)",
+      "Write(src/lib/helpers.ts)",
+      "Edit(src/App.tsx)",
+      "Write(src/App.tsx)",
+      "Edit(package.json)",
+      "Write(package.json)"
+    ]
+  }
+}

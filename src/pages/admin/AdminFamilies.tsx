@@ -19,6 +19,7 @@ import {
 import FamilyForm, { emptyFamilyForm, validateFamilyForm } from '../../components/FamilyForm'
 import type { FamilyFormValue } from '../../components/FamilyForm'
 import ChildForm, { emptyChildForm, formToChild, validateChildForm } from '../../components/ChildForm'
+import ParentAccountDialog from '../../components/ParentAccountDialog'
 import type { ChildFormValue } from '../../components/ChildForm'
 import { todayISO } from '../../lib/helpers'
 import type { PortalCredentials } from '../../types'
@@ -40,6 +41,8 @@ export default function AdminFamilies() {
   const createParentLogin = useStore((s) => s.createParentLogin)
 
   const [addOpen, setAddOpen] = useState(false)
+  const [acctOpen, setAcctOpen] = useState(false)
+  const [newFamilyPassword, setNewFamilyPassword] = useState('')
   const [famDraft, setFamDraft] = useState<FamilyFormValue>(emptyFamilyForm())
   const [kidDraft, setKidDraft] = useState<ChildFormValue>(emptyChildForm())
   const [withChild, setWithChild] = useState(true)
@@ -53,6 +56,7 @@ export default function AdminFamilies() {
     setKidDraft(emptyChildForm())
     setWithChild(true)
     setMakeLogin(true)
+    setNewFamilyPassword('')
     setFamErrors({})
     setKidErrors({})
     setAddOpen(true)
@@ -69,7 +73,12 @@ export default function AdminFamilies() {
     const familyId = addFamily({ ...famDraft, joinedAt: todayISO() })
     if (withChild) addChild(formToChild({ ...kidDraft, familyId }))
     const credentials = makeLogin
-      ? createParentLogin(familyId, famDraft.primaryContact.trim(), famDraft.email)
+      ? createParentLogin(
+          familyId,
+          famDraft.primaryContact.trim(),
+          famDraft.email,
+          newFamilyPassword.trim() || undefined,
+        )
       : null
 
     setAddOpen(false)
@@ -154,6 +163,9 @@ export default function AdminFamilies() {
                 aria-label="Search families"
               />
             </div>
+            <Button variant="outline" onClick={() => setAcctOpen(true)}>
+              <KeyRound size={16} /> Add parent account
+            </Button>
             <Button onClick={openAdd}>
               <UserPlus size={16} /> Add family
             </Button>
@@ -341,15 +353,28 @@ export default function AdminFamilies() {
               onChange={(e) => setMakeLogin(e.target.checked)}
               className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#4F77D9]"
             />
-            <span>
+            <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold text-slate-800">Create a parent portal login</span>
               <span className="block text-xs text-slate-500">
-                Uses the email above. You will get a temporary password to pass along.
+                Uses the email above. The password is shown once after you save.
               </span>
+              {makeLogin && (
+                <span className="mt-3 block">
+                  <Input
+                    value={newFamilyPassword}
+                    onChange={(e) => setNewFamilyPassword(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="Leave blank to generate a password"
+                    aria-label="Password for the new parent account"
+                  />
+                </span>
+              )}
             </span>
           </label>
         </div>
       </Modal>
+
+      <ParentAccountDialog open={acctOpen} onClose={() => setAcctOpen(false)} />
 
       <Modal
         open={Boolean(newLogin)}

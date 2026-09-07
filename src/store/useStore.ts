@@ -62,9 +62,18 @@ function pickHue(index: number): string {
   return CHILD_HUES[index % CHILD_HUES.length] ?? CHILD_HUES[0]
 }
 
-/** Short, readable temporary password the owner can read out over the phone. */
-function makeTempPassword(): string {
-  return `tykes-${String(Math.floor(1000 + Math.random() * 9000))}`
+const PASSWORD_WORDS = [
+  'Willow', 'Meadow', 'Sunny', 'Maple', 'Cedar',
+  'Robin', 'Harbor', 'Lantern', 'Poppy', 'Juniper',
+] as const
+
+/**
+ * A temporary password the owner can read out over the phone without spelling
+ * anything twice — no ambiguous characters, no case traps.
+ */
+export function makeTempPassword(): string {
+  const word = PASSWORD_WORDS[Math.floor(Math.random() * PASSWORD_WORDS.length)] ?? 'Willow'
+  return `Tykes-${word}-${String(Math.floor(1000 + Math.random() * 9000))}`
 }
 
 /** "peanuts, eggs" -> ["peanuts", "eggs"] */
@@ -138,7 +147,16 @@ export interface StoreState extends DataSlice {
   submitEnrollment: (submission: NewEnrollmentSubmission) => string
   approveEnrollment: (id: string) => ApprovalResult | null
   declineEnrollment: (id: string) => void
-  createParentLogin: (familyId: string, name: string, email: string) => PortalCredentials | null
+  /**
+   * Creates a parent portal account. Pass `password` to set one, or omit it to
+   * generate a temporary one. Returns null when the email is already in use.
+   */
+  createParentLogin: (
+    familyId: string,
+    name: string,
+    email: string,
+    password?: string,
+  ) => PortalCredentials | null
 
   addLead: (lead: NewLead) => void
   updateLead: (id: string, patch: Partial<Lead>) => void
@@ -409,11 +427,12 @@ export const useStore = create<StoreState>()((set, get) => {
     updateChild: (id, patch) =>
       commit((s) => ({ children: s.children.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
 
-    createParentLogin: (familyId, name, email) => {
+    createParentLogin: (familyId, name, email, password) => {
       const clean = email.trim()
       if (!clean) return null
       if (get().users.some((u) => u.email.toLowerCase() === clean.toLowerCase())) return null
-      const credentials: PortalCredentials = { email: clean, password: makeTempPassword() }
+      const chosen = password?.trim()
+      const credentials: PortalCredentials = { email: clean, password: chosen || makeTempPassword() }
       commit((s) => ({
         users: [
           ...s.users,
