@@ -6,28 +6,24 @@ import {
   ShieldCheck,
   Clock,
   ArrowRight,
-  Star,
   Quote,
-  Camera,
   Sun,
-  Sparkles,
 } from 'lucide-react'
 import PageTransition, { Reveal } from '../../components/PageTransition'
 import { Button, Card, SectionHeading, Badge } from '../../components/ui'
-import { useStore } from '../../store/useStore'
 import { programs, testimonials } from '../../data/mockData'
 
 const highlights = [
   {
     icon: HeartHandshake,
     title: 'Experienced, licensed care',
-    body: '19 years of early childhood experience, a Level III NC credential, and a home that has never had a licensing violation.',
+    body: 'A small, licensed Pennsylvania home — background-checked, CPR certified, and run by someone who knows every child by name.',
     tone: 'from-[#EAF0FC] to-white text-[#4F77D9]',
   },
   {
     icon: Blocks,
     title: 'Play-based learning',
-    body: 'Real projects, real dirt, real questions. Kindergarten readiness that still looks and feels like childhood.',
+    body: 'Real projects, real dirt, real questions — the kind of hands-on play that builds real skills without ever feeling like school.',
     tone: 'from-[#E6F6F0] to-white text-[#2E8C72]',
   },
   {
@@ -45,29 +41,18 @@ const highlights = [
 ]
 
 const dayInLife = [
-  { slot: 2, src: 'https://placehold.co/560x700/EAF0FC/3960BE?text=Morning+Circle', label: '7:00 — Slow, warm arrivals' },
-  { slot: 3, src: 'https://placehold.co/560x700/E6F6F0/2E8C72?text=Garden+Time', label: '10:15 — Outside, rain or shine' },
-  { slot: 4, src: 'https://placehold.co/560x700/FDF1DC/C98A18?text=Family+Lunch', label: '12:00 — Family-style lunch' },
+  { slot: 2, src: 'https://images.unsplash.com/photo-1587616211892-f743fcca64f9?auto=format&fit=crop&w=800&q=80', label: '7:00 — Slow, warm arrivals' },
+  { slot: 3, src: 'https://images.unsplash.com/photo-1690843857685-15c9a042d37b?auto=format&fit=crop&w=800&q=80', label: '10:15 — Outside, rain or shine' },
+  { slot: 4, src: 'https://images.unsplash.com/photo-1576867757603-05b134ebc379?auto=format&fit=crop&w=800&q=80', label: '12:00 — Family-style lunch' },
 ]
 
 export default function Home() {
-  const settings = useStore((s) => s.settings)
-
   return (
     <PageTransition>
       {/* Hero */}
       <section className="relative px-5 pb-16 pt-10 lg:px-8 lg:pb-24 lg:pt-16">
         <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1.05fr_1fr]">
           <div>
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 rounded-full border border-[#5DC4A6]/40 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#25705c] backdrop-blur"
-            >
-              <Sparkles size={14} /> 2 preschool spots open for spring
-            </motion.div>
-
             <motion.h1
               initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
@@ -88,7 +73,7 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.14 }}
               className="mt-7 max-w-xl text-lg leading-relaxed text-slate-600"
             >
-              Aunties Tykes is a licensed 12-child family daycare in Durham, NC for babies through pre-K. Small groups,
+              Aunties Tykes is a licensed 12-child family daycare in Camp Hill, PA for babies through pre-K. Small groups,
               a real daily rhythm, and photo updates before you finish your first coffee.
             </motion.p>
 
@@ -98,31 +83,10 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mt-9 flex flex-wrap items-center gap-3"
             >
-              <Button as={Link} to="/contact" size="lg">
-                Schedule a tour <ArrowRight size={18} />
-              </Button>
-              <Button as={Link} to="/programs" size="lg" variant="outline">
+              <Button as={Link} to="/programs" size="lg">
                 Explore our programs
               </Button>
             </motion.div>
-
-            <motion.dl
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.34, duration: 0.6 }}
-              className="mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-slate-200 pt-7"
-            >
-              {[
-                ['12', 'children max'],
-                ['19 yrs', 'experience'],
-                ['1:4', 'toddler ratio'],
-              ].map(([v, l]) => (
-                <div key={l}>
-                  <dt className="font-display text-2xl font-extrabold text-slate-900">{v}</dt>
-                  <dd className="text-xs font-semibold uppercase tracking-wider text-slate-500">{l}</dd>
-                </div>
-              ))}
-            </motion.dl>
           </div>
 
           <motion.div
@@ -141,35 +105,6 @@ export default function Home() {
                 />
               </div>
             </div>
-
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-              className="absolute -bottom-6 -left-4 w-60 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur sm:-left-8"
-            >
-              <div className="flex items-center gap-2 text-[#F5B942]">
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <Star key={i} size={14} fill="currentColor" />
-                ))}
-              </div>
-              <p className="mt-2 text-sm font-semibold leading-snug text-slate-800">
-                “The only place where the toddlers ran to greet us at the door.”
-              </p>
-              <p className="mt-1.5 text-xs text-slate-500">Maya · parent of two</p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.62 }}
-              className="absolute -right-3 top-8 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl backdrop-blur"
-            >
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                <Camera size={16} className="text-[#4F77D9]" /> Daily photo updates
-              </div>
-              <p className="mt-0.5 text-xs text-slate-500">Posted to your parent portal</p>
-            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -181,7 +116,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="Why families stay"
               title="Big-center standards. Small-house warmth."
-              description="You get a licensed program with real curriculum and real documentation — from someone who knows your child's favorite book by heart."
+              description="You get real structure and real documentation, from someone who actually knows your child's favorite book by heart — not a stranger following a manual."
               align="center"
             />
           </Reveal>
@@ -322,21 +257,11 @@ export default function Home() {
                 Ready to see Aunties Tykes in person?
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/85">
-                Tours run Tuesdays and Thursdays at 10:00 AM, while the children are busy with projects — so you can see
-                the real thing, not a staged room.
+                Reach out and we will set up a time that works for you — you will see the real daily rhythm, not a staged room.
               </p>
               <div className="mt-9 flex flex-wrap justify-center gap-3">
                 <Button as={Link} to="/contact" size="lg" variant="dark">
-                  Book a tour <ArrowRight size={18} />
-                </Button>
-                <Button
-                  as="a"
-                  href={`tel:${settings.phone.replace(/[^0-9]/g, '')}`}
-                  size="lg"
-                  variant="outline"
-                  className="border-white/60 bg-white/10 text-white hover:border-white hover:text-white"
-                >
-                  Call {settings.phone}
+                  Get in touch <ArrowRight size={18} />
                 </Button>
               </div>
             </div>

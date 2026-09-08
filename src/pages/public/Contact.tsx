@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion } from 'framer-motion'
-import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, CalendarCheck, ArrowRight, ShieldCheck } from 'lucide-react'
+import { MapPin, Mail, Clock, Send, CheckCircle2, CalendarCheck, ArrowRight, ShieldCheck } from 'lucide-react'
 import PageTransition, { Reveal } from '../../components/PageTransition'
 import { Button, Card, Field, Input, Textarea, Select, Badge } from '../../components/ui'
 import { useStore } from '../../store/useStore'
@@ -62,13 +62,13 @@ export default function Contact() {
       reset()
       pushToast({
         title: 'Inquiry sent',
-        description: 'Auntie Roz will reply within one business day.',
+        description: 'Mellissa will reply within one business day.',
       })
     } catch {
       pushToast({
         tone: 'error',
         title: 'That did not go through',
-        description: 'Please try again, or call us at ' + settings.phone + '.',
+        description: 'Please try again, or email us at ' + settings.email + '.',
       })
     }
   }
@@ -78,14 +78,14 @@ export default function Contact() {
       <section className="px-5 pb-8 pt-10 lg:px-8 lg:pt-16">
         <div className="mx-auto max-w-4xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-[#5DC4A6]/40 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#25705c] backdrop-blur">
-            <CalendarCheck size={14} /> Tours Tuesdays & Thursdays
+            <CalendarCheck size={14} /> Now welcoming new families
           </span>
           <h1 className="mt-6 font-display text-4xl font-black leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
             Let's find your child a spot.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-            Tell us a little about your family. We will reply with real availability, honest waitlist position, and a
-            tour time that works around naps.
+            Tell us a little about your family. We will reply with real availability and an honest waitlist
+            position — usually within one business day.
           </p>
         </div>
       </section>
@@ -106,7 +106,7 @@ export default function Contact() {
                   <h2 className="mt-5 font-display text-2xl font-extrabold text-slate-900">Thank you — it's in.</h2>
                   <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-600">
                     Your inquiry landed in our admin inbox. You will hear from {settings.director.split(' ')[0]} within
-                    one business day. If it is urgent, call or text {settings.phone}.
+                    one business day. If it is urgent, email {settings.email} and we will get back to you as soon as we can.
                   </p>
                   <div className="mt-7 flex flex-wrap justify-center gap-3">
                     <Button variant="outline" onClick={() => setSent(false)}>
@@ -121,8 +121,8 @@ export default function Contact() {
                 <>
                   <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#5DC4A6]/40 bg-[#E6F6F0]/50 p-4">
                   <p className="text-sm text-slate-700">
-                    <strong className="font-semibold text-slate-900">Already toured with us?</strong> Skip ahead and fill
-                    out the enrollment form.
+                    <strong className="font-semibold text-slate-900">Already spoken with Mellissa?</strong> Skip ahead and
+                    fill out the enrollment form.
                   </p>
                   <Button as={Link} to="/enroll" size="sm" variant="accent">
                     Start enrollment <ArrowRight size={14} />
@@ -135,7 +135,7 @@ export default function Contact() {
                   }}
                   noValidate
                 >
-                  <h2 className="font-display text-xl font-extrabold text-slate-900">Request a tour or waitlist spot</h2>
+                  <h2 className="font-display text-xl font-extrabold text-slate-900">Send an inquiry</h2>
                   <p className="mt-1.5 text-sm text-slate-500">
                     Fields marked with an asterisk are required. We never share your information.
                   </p>
@@ -148,7 +148,7 @@ export default function Contact() {
                       <Input type="email" placeholder="you@example.com" invalid={!!errors.email} {...register('email')} />
                     </Field>
                     <Field label="Phone *" error={errors.phone?.message}>
-                      <Input placeholder="(919) 555-0134" invalid={!!errors.phone} {...register('phone')} />
+                      <Input placeholder="(717) 555-0148" invalid={!!errors.phone} {...register('phone')} />
                     </Field>
                     <Field label="Child's age(s) *" error={errors.childAges?.message}>
                       <Input placeholder="18 months and 4 years" invalid={!!errors.childAges} {...register('childAges')} />
@@ -194,8 +194,8 @@ export default function Contact() {
                 <div className="h-52 w-full overflow-hidden bg-slate-100">
                   <img
                     data-aiwp-slot="4"
-                    src="https://placehold.co/900x520/E9F3FA/2F6E92?text=Chestnut+Row%2C+Durham"
-                    alt="Map of the Aunties Tykes neighborhood in Durham"
+                    src="https://images.unsplash.com/photo-1761061079517-2ff8192b2f02?auto=format&fit=crop&w=1200&q=80"
+                    alt="A residential street near Aunties Tykes in Camp Hill, Pennsylvania"
                     className="h-full w-full object-cover"
                     loading="lazy"
                   />
@@ -206,12 +206,6 @@ export default function Contact() {
                     <li className="flex gap-2.5">
                       <MapPin size={17} className="mt-0.5 shrink-0 text-[#4F77D9]" />
                       {settings.address}
-                    </li>
-                    <li className="flex gap-2.5">
-                      <Phone size={17} className="mt-0.5 shrink-0 text-[#4F77D9]" />
-                      <a className="transition hover:text-[#4F77D9]" href={`tel:${settings.phone.replace(/[^0-9]/g, '')}`}>
-                        {settings.phone}
-                      </a>
                     </li>
                     <li className="flex gap-2.5">
                       <Mail size={17} className="mt-0.5 shrink-0 text-[#4F77D9]" />

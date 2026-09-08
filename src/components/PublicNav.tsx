@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, LogIn, LayoutDashboard, Phone } from 'lucide-react'
+import { Menu, X, LogIn, LayoutDashboard } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { Button } from './ui'
 import { cx } from '../lib/helpers'
@@ -20,7 +20,6 @@ export default function PublicNav() {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const user = useStore((s) => s.user)
-  const settings = useStore((s) => s.settings)
   const location = useLocation()
 
   useEffect(() => setOpen(false), [location.pathname])
@@ -82,12 +81,6 @@ export default function PublicNav() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a
-            href={`tel:${settings.phone.replace(/[^0-9]/g, '')}`}
-            className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-slate-900 lg:inline-flex"
-          >
-            <Phone size={15} /> {settings.phone}
-          </a>
           <Button as={Link} to={portalHref} size="sm" className="hidden sm:inline-flex">
             {user ? <LayoutDashboard size={15} /> : <LogIn size={15} />}
             {user ? 'My Portal' : 'Parent Login'}

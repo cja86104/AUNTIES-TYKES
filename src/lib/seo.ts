@@ -28,17 +28,17 @@ export interface PageSeo {
 export const PRIVATE_PREFIXES = ['/admin', '/parent', '/login', '/enroll'] as const
 
 export const DEFAULT_SEO: PageSeo = {
-  title: 'Aunties Tykes — Licensed Home Daycare in Durham, NC',
+  title: 'Aunties Tykes — Licensed Home Daycare in Camp Hill, PA',
   description:
-    'A small, licensed home daycare in Durham, NC. Play-based learning, infant to preschool, tiny group sizes, and a daily photo report for every family.',
+    'A small, licensed home daycare in Camp Hill, PA. Play-based learning, infant to preschool, tiny group sizes, and a daily photo report for every family.',
 }
 
 export const PAGE_SEO: Record<string, PageSeo> = {
   '/': DEFAULT_SEO,
   '/about': {
-    title: 'About Auntie Roz | Aunties Tykes Daycare, Durham NC',
+    title: 'Meet Mellissa Allen | Aunties Tykes Daycare, Camp Hill PA',
     description:
-      'Meet Rosalind “Auntie Roz” Hayes and the team. Nineteen years in early childhood education, licensed and CPR certified, caring for twelve children at a time.',
+      'Meet Mellissa Allen, owner of Aunties Tykes. A small, licensed home daycare caring for up to twelve children at a time in Camp Hill, Pennsylvania.',
   },
   '/programs': {
     title: 'Infant, Toddler & Preschool Programs | Aunties Tykes',
@@ -46,12 +46,12 @@ export const PAGE_SEO: Record<string, PageSeo> = {
       'Three age groups with their own rhythm and ratios — infants 1:3, toddlers 1:4, preschool 1:6. See the daily routine for each room and what a day really looks like.',
   },
   '/tuition-policies': {
-    title: 'Tuition & Policies | Aunties Tykes Daycare, Durham NC',
+    title: 'Tuition & Policies | Aunties Tykes Daycare, Camp Hill PA',
     description:
       'Full-time, part-time, and drop-in rates with a live cost estimator, plus our sick policy, late pickup rules, holiday closures, and potty learning approach.',
   },
   '/gallery': {
-    title: 'Photo Gallery | Aunties Tykes Daycare, Durham NC',
+    title: 'Photo Gallery | Aunties Tykes Daycare, Camp Hill PA',
     description:
       'Look inside our home daycare — the reading loft, morning circle rug, garden beds, mud kitchen, and the messy art days families hear about at pickup.',
   },
@@ -61,14 +61,14 @@ export const PAGE_SEO: Record<string, PageSeo> = {
       'Hours, what to pack, meals, nap schedules, potty training, sick policy, licensing, and how the waitlist works — the questions parents ask us most.',
   },
   '/contact': {
-    title: 'Schedule a Tour | Contact Aunties Tykes, Durham NC',
+    title: 'Contact Us | Aunties Tykes, Camp Hill PA',
     description:
-      'Book a tour or join the waitlist at Aunties Tykes in Durham, NC. Tell us your child’s age and when you need care, and we will tell you honestly where you stand.',
+      'Get in touch with Aunties Tykes in Camp Hill, PA. Tell us your child’s age and when you need care, and we will tell you honestly where you stand.',
   },
   '/enroll': {
     title: 'Enrollment Form | Aunties Tykes Daycare',
     description:
-      'Enroll your child at Aunties Tykes in Durham, NC. Tell us about your family, your children, and their care schedule.',
+      'Enroll your child at Aunties Tykes in Camp Hill, PA. Tell us about your family, your children, and their care schedule.',
   },
   '/login': {
     title: 'Parent Login | Aunties Tykes',

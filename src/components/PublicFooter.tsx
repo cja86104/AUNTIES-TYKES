@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { MapPin, Phone, Mail, Clock, ShieldCheck } from 'lucide-react'
+import { MapPin, Mail, Clock, ShieldCheck } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 export default function PublicFooter() {
@@ -18,7 +18,7 @@ export default function PublicFooter() {
           <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-600">{settings.tagline}</p>
           <div className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#5DC4A6]/10 px-3 py-2 text-xs font-semibold text-[#25705c]">
             <ShieldCheck size={15} />
-            NC Licensed Family Child Care Home · {settings.licenseNumber}
+            PA Licensed Family Child Care Home · {settings.licenseNumber}
           </div>
         </div>
 
@@ -26,12 +26,12 @@ export default function PublicFooter() {
           <h4 className="font-display text-sm font-bold uppercase tracking-wider text-slate-900">Explore</h4>
           <ul className="mt-4 space-y-2.5 text-sm">
             {[
-              ['/about', 'About Auntie Roz'],
+              ['/about', 'Meet Mellissa'],
               ['/programs', 'Programs & ages'],
               ['/tuition-policies', 'Tuition & policies'],
               ['/gallery', 'Photo gallery'],
               ['/faq', 'Parent FAQ'],
-              ['/contact', 'Schedule a tour'],
+              ['/contact', 'Get in touch'],
               ['/login', 'Parent portal login'],
             ].map(([to, label]) => (
               <li key={to}>
@@ -51,12 +51,6 @@ export default function PublicFooter() {
               {settings.address}
             </li>
             <li className="flex gap-2.5">
-              <Phone size={16} className="mt-0.5 shrink-0 text-[#4F77D9]" />
-              <a className="transition hover:text-[#4F77D9]" href={`tel:${settings.phone.replace(/[^0-9]/g, '')}`}>
-                {settings.phone}
-              </a>
-            </li>
-            <li className="flex gap-2.5">
               <Mail size={16} className="mt-0.5 shrink-0 text-[#4F77D9]" />
               <a className="transition hover:text-[#4F77D9]" href={`mailto:${settings.email}`}>
                 {settings.email}
@@ -73,7 +67,7 @@ export default function PublicFooter() {
       <div className="border-t border-slate-200">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
           <p>© {new Date().getFullYear()} Aunties Tykes Family Child Care. All rights reserved.</p>
-          <p>Made with care in Durham, North Carolina.</p>
+          <p>Made with care in Camp Hill, Pennsylvania.</p>
         </div>
       </div>
     </footer>

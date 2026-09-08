@@ -133,7 +133,7 @@ export default function Enroll() {
       })
       setSubmitting(false)
       setDone(true)
-      pushToast({ title: 'Enrollment sent', description: 'Auntie Roz will review it and get back to you.' })
+      pushToast({ title: 'Enrollment sent', description: 'Mellissa will review it and get back to you.' })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }, 700)
   }
@@ -154,7 +154,7 @@ export default function Enroll() {
               Thank you, {primaryContact.split(' ')[0]}.
             </h1>
             <p className="mt-4 text-lg leading-relaxed text-slate-600">
-              Your enrollment form is with {settings.director.split('"')[0].trim() || 'Auntie Roz'}. She reviews these
+              Your enrollment form is with {settings.director || 'our director'}. She reviews these
               personally, usually within two business days, and will call you at{' '}
               <strong className="font-semibold text-slate-800">{phone}</strong> to confirm your start date.
             </p>
@@ -199,12 +199,8 @@ export default function Enroll() {
             Let’s get your little one enrolled
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-slate-600">
-            Takes about five minutes. Everything here goes straight to {settings.businessName} — nothing is shared, and
-            you can call us at{' '}
-            <a href={`tel:${settings.phone}`} className="font-semibold text-[#4F77D9] hover:underline">
-              {settings.phone}
-            </a>{' '}
-            if you would rather do this together.
+            Takes about five minutes. Everything here goes straight to {settings.businessName} — nothing is shared. If
+            you would rather fill this out together, just say so on the contact page and we will set that up.
           </p>
         </div>
       </section>
@@ -294,7 +290,7 @@ export default function Enroll() {
                           value={phone}
                           invalid={Boolean(errors.phone)}
                           onChange={(e) => setPhone(e.target.value)}
-                          placeholder="(919) 555-0142"
+                          placeholder="(717) 555-0142"
                           autoComplete="tel"
                         />
                       </Field>
@@ -303,7 +299,7 @@ export default function Enroll() {
                           value={address}
                           invalid={Boolean(errors.address)}
                           onChange={(e) => setAddress(e.target.value)}
-                          placeholder="218 Larkspur Lane, Durham, NC 27705"
+                          placeholder="27 Maple Hollow Dr, Camp Hill, PA 17011"
                           autoComplete="street-address"
                         />
                       </Field>
@@ -494,7 +490,7 @@ export default function Enroll() {
                       </Button>
                     )}
 
-                    <Field label="Anything else for Auntie Roz?" hint="Optional.">
+                    <Field label="Anything else for Mellissa?" hint="Optional.">
                       <Textarea
                         rows={3}
                         value={notes}
@@ -563,7 +559,7 @@ export default function Enroll() {
                 </Button>
               ) : (
                 <Button as={Link} to="/contact" variant="ghost">
-                  <ArrowLeft size={16} /> Just a tour instead
+                  <ArrowLeft size={16} /> Ask a question instead
                 </Button>
               )}
 

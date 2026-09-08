@@ -172,12 +172,12 @@ export default function Gallery() {
                 <SectionHeading
                   eyebrow="Daily photos"
                   title="Your child's own gallery, every day"
-                  description="Enrolled families get a private feed inside the parent portal — photos attached to the day's report, alongside meals, naps, and a note from the teacher who wrote it."
+                  description="Enrolled families get a private feed inside the parent portal — photos attached to the day's report, alongside meals, naps, and a note from whoever was with them that day."
                 />
               </div>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                 <Button as={Link} to="/contact" size="lg" className="w-full">
-                  Schedule a tour <ArrowRight size={18} />
+                  Get in touch <ArrowRight size={18} />
                 </Button>
                 <Button as={Link} to="/login" size="lg" variant="outline" className="w-full">
                   Parent portal login

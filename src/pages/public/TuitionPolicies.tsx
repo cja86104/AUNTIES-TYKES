@@ -12,11 +12,11 @@ import type { Policies } from '../../types'
 
 const included = [
   'Breakfast, hot lunch, and afternoon snack',
-  'All art, sensory, and curriculum materials',
+  'All art, sensory, and activity supplies',
   'Daily digital reports with photos',
   'Diapers changed on our schedule (you supply)',
   'Parent portal with invoices and documents',
-  'Two parent-teacher conferences a year',
+  'Two check-ins with Mellissa each year',
 ]
 
 interface PolicyMeta {
@@ -100,14 +100,14 @@ export default function TuitionPolicies() {
       unit: '/ week per child',
       desc: 'Five days a week, 7:00 AM – 5:45 PM. First choice of schedule and enrollment priority for siblings.',
       tone: 'primary',
-      features: ['Guaranteed spot year-round', 'All meals included', 'Daily photo reports', 'Two conferences a year'],
+      features: ['Guaranteed spot year-round', 'All meals included', 'Daily photo reports', 'Two check-ins a year'],
       featured: true,
     },
     {
       name: 'Part-time',
       price: rates.partTime,
       unit: '/ week per child',
-      desc: 'Three fixed days (M/W/F or T/Th plus one). Same curriculum, same teachers, fewer days.',
+      desc: 'Three fixed days (M/W/F or T/Th plus one). Same daily rhythm, same care, fewer days.',
       tone: 'outline',
       features: ['Three fixed days', 'All meals included', 'Daily photo reports', 'Subject to availability'],
     },
@@ -133,7 +133,7 @@ export default function TuitionPolicies() {
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
             Tuition is billed monthly on the 1st and due by the 10th through your parent portal. Everything below is the
-            same number we would say out loud on the phone.
+            same number we would tell you in person.
           </p>
         </div>
       </section>
@@ -276,8 +276,8 @@ export default function TuitionPolicies() {
                 ))}
               </ul>
               <div className="mt-7 rounded-2xl border border-dashed border-slate-300 p-5 text-sm leading-relaxed text-slate-600">
-                <strong className="font-semibold text-slate-800">Subsidies welcome.</strong> We accept NC Subsidized
-                Child Care vouchers and can complete employer or FSA paperwork — just ask.
+                <strong className="font-semibold text-slate-800">Subsidies welcome.</strong> We accept Pennsylvania
+                Child Care Works (CCW) subsidized care and can complete employer or FSA paperwork — just ask.
               </div>
             </Card>
           </Reveal>
@@ -313,27 +313,21 @@ export default function TuitionPolicies() {
 
       <section className="px-5 py-10 lg:px-8">
         <Reveal>
-          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#4F77D9] to-[#5DC4A6] px-6 py-14 text-center sm:px-14">
-            <div className="at-grid-dots absolute inset-0 opacity-30" aria-hidden="true" />
+          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-[#5DC4A6]/30 bg-gradient-to-br from-[#FDF1DC] via-white to-[#E6F6F0] px-6 py-14 text-center sm:px-14">
+            <div className="at-grid-dots absolute inset-0 opacity-20" aria-hidden="true" />
             <div className="relative">
-              <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl">
+              <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold leading-tight text-slate-900 sm:text-4xl">
                 Questions about a specific situation?
               </h2>
-              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/85">
+              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-slate-600">
                 Split schedules, vouchers, or a January start — send us the details and we will tell you what is
                 possible.
               </p>
               <div className="mt-9 flex flex-wrap justify-center gap-3">
-                <Button as={Link} to="/contact" size="lg" variant="dark">
+                <Button as={Link} to="/contact" size="lg">
                   Ask a question <ArrowRight size={18} />
                 </Button>
-                <Button
-                  as={Link}
-                  to="/faq"
-                  size="lg"
-                  variant="outline"
-                  className="border-white/60 bg-white/10 text-white hover:border-white hover:text-white"
-                >
+                <Button as={Link} to="/faq" size="lg" variant="outline">
                   Read the FAQ
                 </Button>
               </div>

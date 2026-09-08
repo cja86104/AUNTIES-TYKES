@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, ChevronDown, HelpCircle, ArrowRight, Phone, Mail } from 'lucide-react'
+import { Search, ChevronDown, HelpCircle, ArrowRight, Mail } from 'lucide-react'
 import PageTransition, { Reveal } from '../../components/PageTransition'
 import { Button, Card, Input, EmptyState, SectionHeading } from '../../components/ui'
 import { faqs } from '../../data/mockData'
@@ -29,7 +29,7 @@ export default function FAQ() {
             Answers before you ask.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-            The questions families actually ask on tours — answered the same way we would answer them standing in the
+            The questions families actually ask us — answered the same way we would answer them standing in the
             kitchen.
           </p>
 
@@ -109,21 +109,9 @@ export default function FAQ() {
               <SectionHeading
                 eyebrow="Still wondering?"
                 title="Talk to a person, not a form letter"
-                description="Auntie Roz answers the phone between naps and after 6:00 PM. Texts get a reply the same day."
+                description="Send a message and Mellissa will get back to you personally — usually the same day."
               />
               <div className="space-y-3">
-                <a
-                  href={`tel:${settings.phone.replace(/[^0-9]/g, '')}`}
-                  className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#4F77D9] hover:bg-[#4F77D9]/5"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4F77D9]/10 text-[#4F77D9]">
-                    <Phone size={18} />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-bold text-slate-900">{settings.phone}</span>
-                    <span className="block text-xs text-slate-500">Call or text</span>
-                  </span>
-                </a>
                 <a
                   href={`mailto:${settings.email}`}
                   className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#4F77D9] hover:bg-[#4F77D9]/5"
@@ -137,7 +125,7 @@ export default function FAQ() {
                   </span>
                 </a>
                 <Button as={Link} to="/contact" className="w-full" size="lg">
-                  Schedule a tour <ArrowRight size={18} />
+                  Get in touch <ArrowRight size={18} />
                 </Button>
               </div>
             </Card>

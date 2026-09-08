@@ -218,7 +218,7 @@ export default function Programs() {
 
       <section className="px-5 py-10 lg:px-8">
         <Reveal>
-          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#4F77D9] to-[#5DC4A6] px-6 py-14 text-center sm:px-14">
+          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#4F77D9] via-[#5DC4A6] to-[#efad2b] px-6 py-14 text-center sm:px-14">
             <div className="at-grid-dots absolute inset-0 opacity-30" aria-hidden="true" />
             <div className="relative">
               <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl">
@@ -230,7 +230,7 @@ export default function Programs() {
               </p>
               <div className="mt-9 flex flex-wrap justify-center gap-3">
                 <Button as={Link} to="/contact" size="lg" variant="dark">
-                  Talk with Auntie Roz <ArrowRight size={18} />
+                  Talk with Mellissa <ArrowRight size={18} />
                 </Button>
                 <Button
                   as={Link}

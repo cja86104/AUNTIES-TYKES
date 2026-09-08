@@ -21,7 +21,7 @@ const values = [
   {
     icon: HeartHandshake,
     title: 'Known by name',
-    body: 'Twelve children, three teachers, one house. We know who needs a slow morning and who wants to be first outside.',
+    body: 'Twelve children, one house, one director. We know who needs a slow morning and who wants to be first outside.',
     tone: 'from-[#EAF0FC] to-white text-[#4F77D9]',
   },
   {
@@ -61,15 +61,15 @@ export default function About() {
         <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[1fr_1fr]">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-[#4F77D9]/30 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#39569f] backdrop-blur">
-              <HeartHandshake size={14} /> Since 2016
+              <HeartHandshake size={14} /> Family owned & operated
             </span>
             <h1 className="mt-6 font-display text-4xl font-black leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
               A daycare that grew out of a living room.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
-              {settings.director} spent a decade in large centers watching good teachers stretched across too many
-              children. In 2016 she licensed her own home in Durham with one rule: no child would ever be a number on a
-              roster.
+              {settings.director}'s story goes here — her background in early childhood care, what led her to open
+              her own home, and the one rule she built Aunties Tykes around. Send over a paragraph and we'll drop it in
+              exactly as you want it said.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button as={Link} to="/contact" size="lg">
@@ -81,9 +81,9 @@ export default function About() {
             </div>
             <dl className="mt-11 grid max-w-md grid-cols-3 gap-6 border-t border-slate-200 pt-7">
               {[
-                ['2016', 'opened'],
-                ['0', 'violations'],
                 [settings.capacity, 'children max'],
+                ['3', 'age groups'],
+                ['PA', 'licensed home'],
               ].map(([v, l]) => (
                 <div key={l}>
                   <dt className="font-display text-2xl font-extrabold text-slate-900">{v}</dt>
@@ -98,8 +98,8 @@ export default function About() {
               <div className="h-[380px] w-full overflow-hidden sm:h-[460px]">
                 <img
                   data-aiwp-slot="2"
-                  src="https://placehold.co/900x1000/EAF0FC/3960BE?text=Auntie+Roz+%26+the+tykes"
-                  alt="Auntie Roz reading with a group of children"
+                  src="https://images.unsplash.com/photo-1714646793149-189cc073b387?auto=format&fit=crop&w=1400&q=80"
+                  alt="A quiet reading moment at Aunties Tykes"
                   className="h-full w-full object-cover"
                   loading="lazy"
                 />
@@ -117,7 +117,7 @@ export default function About() {
               <div className="h-[320px] w-full overflow-hidden sm:h-[400px]">
                 <img
                   data-aiwp-slot="3"
-                  src="https://placehold.co/900x800/E6F6F0/2E8C72?text=The+playroom"
+                  src="https://images.unsplash.com/photo-1761208663763-c4d30657c910?auto=format&fit=crop&w=1200&q=80"
                   alt="The Aunties Tykes playroom with low shelves and natural light"
                   className="h-full w-full object-cover"
                   loading="lazy"
@@ -175,24 +175,24 @@ export default function About() {
         <div className="mx-auto max-w-7xl">
           <Reveal>
             <SectionHeading
-              eyebrow="The grown-ups"
-              title="Three teachers who have stayed"
-              description="Low turnover is the quiet luxury of a small program. The same faces greet your child every morning."
+              eyebrow="The grown-up in the house"
+              title="One face, every single morning"
+              description="No rotating staff, no substitute you've never met — just the same person who knows your child's favorite book by heart."
               align="center"
             />
           </Reveal>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
+          <div className={team.length === 1 ? 'mx-auto mt-12 max-w-sm' : 'mt-12 grid gap-6 md:grid-cols-3'}>
             {team.map((t, i) => (
               <Reveal key={t.id} delay={i * 0.09}>
                 <Card hover className="flex h-full flex-col overflow-hidden">
-                  <div className="h-60 w-full overflow-hidden bg-slate-100">
-                    <img
-                      data-aiwp-slot={t.slot}
-                      src={t.image}
-                      alt={t.name}
-                      className="h-full w-full object-cover transition duration-700 hover:scale-105"
-                      loading="lazy"
-                    />
+                  {/* No real photo yet — a real headshot of a real named owner shouldn't be faked with stock. */}
+                  <div className="flex h-60 w-full items-center justify-center overflow-hidden bg-gradient-to-br from-[#EAF0FC] via-white to-[#FDF1DC]">
+                    <span className="font-display text-6xl font-black text-[#4F77D9]/20">
+                      {t.name
+                        .split(' ')
+                        .map((w) => w[0])
+                        .join('')}
+                    </span>
                   </div>
                   <div className="flex flex-1 flex-col p-6">
                     <h3 className="font-display text-lg font-extrabold text-slate-900">{t.name}</h3>
@@ -215,7 +215,7 @@ export default function About() {
 
       {/* Safety */}
       <section className="px-5 py-16 lg:px-8">
-        <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#1F2537] px-6 py-14 sm:px-12">
+        <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[#1F3A2E] px-6 py-14 sm:px-12">
           <div className="grid gap-12 lg:grid-cols-[1fr_1.2fr]">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[#F5B942]">
@@ -225,7 +225,7 @@ export default function About() {
                 The boring paperwork, done right.
               </h2>
               <p className="mt-5 text-base leading-relaxed text-white/70">
-                We are a licensed North Carolina Family Child Care Home. Our license, inspection reports, insurance
+                We are a licensed Pennsylvania Family Child Care Home. Our license, inspection reports, insurance
                 certificate, and staff certifications are posted in the entryway and available in your parent portal.
               </p>
               <div className="mt-7 space-y-2.5 text-sm text-white/70">
@@ -261,18 +261,18 @@ export default function About() {
       {/* CTA */}
       <section className="px-5 py-10 lg:px-8">
         <Reveal>
-          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#4F77D9] to-[#5DC4A6] px-6 py-14 text-center sm:px-14">
+          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#25705c] to-[#8a6112] px-6 py-14 text-center sm:px-14">
             <div className="at-grid-dots absolute inset-0 opacity-30" aria-hidden="true" />
             <div className="relative">
               <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl">
                 Come see whether it feels like home.
               </h2>
               <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/85">
-                Tours are Tuesdays and Thursdays at 10:00 AM — right in the middle of project time.
+                Reach out and we will find a time that works — right in the middle of a real day, not a staged one.
               </p>
               <div className="mt-9 flex flex-wrap justify-center gap-3">
                 <Button as={Link} to="/contact" size="lg" variant="dark">
-                  Schedule a tour <ArrowRight size={18} />
+                  Get in touch <ArrowRight size={18} />
                 </Button>
                 <Button
                   as={Link}
