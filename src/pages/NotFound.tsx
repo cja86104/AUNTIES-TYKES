@@ -4,11 +4,9 @@ import { Home, ArrowLeft, Compass, LifeBuoy } from 'lucide-react'
 import { Button, Card } from '../components/ui'
 
 const suggestions = [
-  ['/programs', 'Programs & ages'],
   ['/tuition-policies', 'Tuition & policies'],
-  ['/gallery', 'Photo gallery'],
   ['/faq', 'Parent FAQ'],
-  ['/contact', 'Schedule a tour'],
+  ['/contact', 'Get in touch'],
   ['/login', 'Parent portal login'],
 ]
 

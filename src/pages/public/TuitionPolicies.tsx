@@ -1,36 +1,40 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { ChevronDown, Check, ArrowRight, Calculator, Receipt, CalendarDays, Thermometer, Timer, Baby } from 'lucide-react'
+import {
+  ChevronDown,
+  ArrowRight,
+  Receipt,
+  CalendarDays,
+  Thermometer,
+  Timer,
+  Baby,
+  Clock,
+  Backpack,
+  Utensils,
+  Moon,
+  ShieldCheck,
+  Users,
+  Camera,
+  MessageCircle,
+} from 'lucide-react'
 import PageTransition, { Reveal } from '../../components/PageTransition'
-import { Button, Card, SectionHeading, Badge, Field, Select, Input } from '../../components/ui'
+import { Button, Card, SectionHeading } from '../../components/ui'
 import { useStore } from '../../store/useStore'
-import { money } from '../../lib/helpers'
 import type { LucideIcon } from 'lucide-react'
-import type { Policies } from '../../types'
 
-const included = [
-  'Breakfast, hot lunch, and afternoon snack',
-  'All art, sensory, and activity supplies',
-  'Daily digital reports with photos',
-  'Diapers changed on our schedule (you supply)',
-  'Parent portal with invoices and documents',
-  'Two check-ins with Mellissa each year',
-]
-
-interface PolicyMeta {
-  key: keyof Policies
+interface HandbookItem {
+  key: string
   title: string
   icon: LucideIcon
+  body: string
 }
 
-const policyMeta: PolicyMeta[] = [
-  { key: 'sick', title: 'Illness & when to stay home', icon: Thermometer },
-  { key: 'latePickup', title: 'Late pickup', icon: Timer },
-  { key: 'holidays', title: 'Holidays & closures', icon: CalendarDays },
-  { key: 'potty', title: 'Potty learning', icon: Baby },
-]
+interface HandbookCategory {
+  title: string
+  items: HandbookItem[]
+}
 
 interface PolicyItemProps {
   title: string
@@ -78,46 +82,102 @@ function PolicyItem({ title, icon: Icon, body, open, onToggle }: PolicyItemProps
 
 export default function TuitionPolicies() {
   const settings = useStore((s) => s.settings)
-  const rates = settings.rates
-  const [openKey, setOpenKey] = useState<string | null>('sick')
-  const [plan, setPlan] = useState('fullTime')
-  const [kids, setKids] = useState(1)
-  const [dropIns, setDropIns] = useState(0)
+  const [openKey, setOpenKey] = useState<string | null>(null)
 
-  const estimate = useMemo(() => {
-    const weekly = plan === 'fullTime' ? rates.fullTime : rates.partTime
-    const count = Math.max(1, Math.min(4, Number(kids) || 1))
-    const base = weekly * 4 * count
-    const discount = count > 1 ? ((count - 1) * weekly * 4 * rates.siblingDiscountPct) / 100 : 0
-    const extras = (Number(dropIns) || 0) * rates.dropIn
-    return { base, discount, extras, total: base - discount + extras }
-  }, [plan, kids, dropIns, rates])
-
-  const tiers = [
+  const handbook: HandbookCategory[] = [
     {
-      name: 'Full-time',
-      price: rates.fullTime,
-      unit: '/ week per child',
-      desc: 'Five days a week, 7:00 AM – 5:45 PM. First choice of schedule and enrollment priority for siblings.',
-      tone: 'primary',
-      features: ['Guaranteed spot year-round', 'All meals included', 'Daily photo reports', 'Two check-ins a year'],
-      featured: true,
+      title: 'Daily life',
+      items: [
+        {
+          key: 'hours',
+          title: 'Hours & drop-off',
+          icon: Clock,
+          body: `We're open **Monday through Friday, 7:00 AM to 5:45 PM**. Drop-off closes at 9:30 AM so we can start our morning rhythm without interruptions — if you need to arrive later, just send a quick text.`,
+        },
+        {
+          key: 'pack',
+          title: 'What to bring',
+          icon: Backpack,
+          body: `A labeled water bottle, two full changes of clothes (three during potty learning), diapers and wipes if needed, a crib sheet and small blanket for nap, and weather-appropriate outerwear.
+
+We provide all meals and snacks, so lunch boxes aren't needed.`,
+        },
+        {
+          key: 'meals',
+          title: 'Meals & snacks',
+          icon: Utensils,
+          body: `Breakfast, a hot lunch, and an afternoon snack are included every day and posted on a monthly menu. We're a **peanut-free house** and can accommodate most dietary needs with a note from you.`,
+        },
+        {
+          key: 'nap',
+          title: 'Nap & rest time',
+          icon: Moon,
+          body: `Infants sleep on their own schedule in safe-sleep certified cribs. Toddlers and preschoolers rest from about 12:45 to 2:30. Non-sleepers get quiet books and puzzles on their mat after the first 45 minutes.`,
+        },
+      ],
     },
     {
-      name: 'Part-time',
-      price: rates.partTime,
-      unit: '/ week per child',
-      desc: 'Three fixed days (M/W/F or T/Th plus one). Same daily rhythm, same care, fewer days.',
-      tone: 'outline',
-      features: ['Three fixed days', 'All meals included', 'Daily photo reports', 'Subject to availability'],
+      title: 'Health & safety',
+      items: [
+        {
+          key: 'sick',
+          title: 'When to keep your child home',
+          icon: Thermometer,
+          body: settings.policies.sick,
+        },
+        {
+          key: 'potty',
+          title: 'Potty learning, our way',
+          icon: Baby,
+          body: settings.policies.potty,
+        },
+        {
+          key: 'safety',
+          title: 'How we keep everyone safe',
+          icon: ShieldCheck,
+          body: `Locked entry, background-checked adults, and monthly safety drills. Every caregiver in the home carries a cleared background check plus current CPR and First Aid, and our kitchen is peanut-free with allergy protocols in place.`,
+        },
+      ],
     },
     {
-      name: 'Drop-in',
-      price: rates.dropIn,
-      unit: '/ day',
-      desc: 'For enrolled families who need an extra day, or occasional care when we have room to spare.',
-      tone: 'outline',
-      features: ['Booked 48 hours ahead', 'Meals included', 'Enrolled families first', 'Availability confirmed by text'],
+      title: 'Schedule & attendance',
+      items: [
+        {
+          key: 'latePickup',
+          title: 'Pickup & late fees',
+          icon: Timer,
+          body: settings.policies.latePickup,
+        },
+        {
+          key: 'holidays',
+          title: 'Holidays & closures',
+          icon: CalendarDays,
+          body: settings.policies.holidays,
+        },
+        {
+          key: 'ratios',
+          title: 'Group sizes & ratios',
+          icon: Users,
+          body: `We keep it small on purpose — **twelve children total**, split by age: Infants 1:3, Toddlers 1:4, Preschool 1:6. Smaller groups mean more hands, more patience, and more one-on-one time for your child.`,
+        },
+      ],
+    },
+    {
+      title: 'Staying connected',
+      items: [
+        {
+          key: 'updates',
+          title: 'Daily updates',
+          icon: Camera,
+          body: `Every family gets a parent portal login for daily reports — meals, naps, diapers, mood, and activities. Announcements and invoices live there too.`,
+        },
+        {
+          key: 'questions',
+          title: 'Questions anytime',
+          icon: MessageCircle,
+          body: `This page covers the basics, but every family is different. Reach out through the contact page anytime — Mellissa answers those personally, usually the same day.`,
+        },
+      ],
     },
   ]
 
@@ -129,183 +189,46 @@ export default function TuitionPolicies() {
             <Receipt size={14} /> Tuition & policies
           </span>
           <h1 className="mt-6 font-display text-4xl font-black leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
-            Clear pricing. No surprise fees.
+            What to expect, plainly stated.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-            Tuition is billed monthly on the 1st and due by the 10th through your parent portal. Everything below is the
-            same number we would tell you in person.
+            Everything a family needs to know before day one — hours, meals, safety, and how we handle the everyday
+            stuff. Right here, not buried behind a login.
           </p>
         </div>
       </section>
 
-      {/* Tiers */}
-      <section className="px-5 py-10 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-6 md:grid-cols-3">
-          {tiers.map((t, i) => (
-            <Reveal key={t.name} delay={i * 0.08}>
-              <Card
-                hover
-                className={`flex h-full flex-col p-7 ${t.featured ? 'border-[#4F77D9]/40 ring-2 ring-[#4F77D9]/25' : ''}`}
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display text-lg font-extrabold text-slate-900">{t.name}</h3>
-                  {t.featured && <Badge tone="blue">Most families</Badge>}
-                </div>
-                <p className="mt-5 font-display text-4xl font-black tracking-tight text-slate-900">
-                  {money(t.price)}
-                  <span className="ml-1 align-middle text-sm font-semibold text-slate-500">{t.unit}</span>
-                </p>
-                <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-600">{t.desc}</p>
-                <ul className="mt-6 space-y-2.5">
-                  {t.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-sm text-slate-700">
-                      <Check size={17} className="mt-0.5 shrink-0 text-[#5DC4A6]" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  as={Link}
-                  to="/contact"
-                  variant={t.featured ? 'primary' : 'outline'}
-                  className="mt-7 w-full"
-                >
-                  Check availability
-                </Button>
-              </Card>
-            </Reveal>
-          ))}
-        </div>
-
-        <div className="mx-auto mt-8 grid max-w-7xl gap-4 sm:grid-cols-3">
-          {[
-            ['One-time registration fee', money(rates.registrationFee), 'Due at enrollment, holds your spot'],
-            ['Sibling discount', `${rates.siblingDiscountPct}%`, 'Off tuition for each additional child'],
-            ['Late pickup', `${money(rates.lateFeePerMinute)} / min`, 'After 5:45 PM, two grace passes a year'],
-          ].map(([label, value, sub], i) => (
-            <Reveal key={label} delay={i * 0.07}>
-              <Card className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-                <p className="mt-2 font-display text-2xl font-extrabold text-slate-900">{value}</p>
-                <p className="mt-1 text-xs text-slate-500">{sub}</p>
-              </Card>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* Estimator + included */}
-      <section className="px-5 py-14 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_1fr]">
-          <Reveal>
-            <Card className="h-full p-7">
-              <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#EAF0FC] to-white text-[#4F77D9]">
-                  <Calculator size={20} />
-                </span>
-                <div>
-                  <h2 className="font-display text-xl font-extrabold text-slate-900">Monthly estimate</h2>
-                  <p className="text-sm text-slate-500">Four-week month, before taxes or subsidies.</p>
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                <Field label="Schedule">
-                  <Select value={plan} onChange={(e) => setPlan(e.target.value)}>
-                    <option value="fullTime">Full-time (5 days)</option>
-                    <option value="partTime">Part-time (3 days)</option>
-                  </Select>
-                </Field>
-                <Field label="Children">
-                  <Select value={kids} onChange={(e) => setKids(Number(e.target.value))}>
-                    {[1, 2, 3, 4].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Extra drop-in days">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="20"
-                    value={dropIns}
-                    onChange={(e) => setDropIns(Number(e.target.value) || 0)}
-                  />
-                </Field>
-              </div>
-
-              <div className="mt-6 space-y-2.5 rounded-2xl bg-slate-50 p-5 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Base tuition (4 weeks)</span>
-                  <span className="font-semibold text-slate-900">{money(estimate.base)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Sibling discount</span>
-                  <span className="font-semibold text-[#2E8C72]">−{money(estimate.discount)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">Drop-in days</span>
-                  <span className="font-semibold text-slate-900">{money(estimate.extras)}</span>
-                </div>
-                <div className="flex items-center justify-between border-t border-slate-200 pt-3">
-                  <span className="font-semibold text-slate-800">Estimated monthly total</span>
-                  <span className="font-display text-2xl font-extrabold text-slate-900">{money(estimate.total)}</span>
-                </div>
-              </div>
-              <p className="mt-4 text-xs leading-relaxed text-slate-500">
-                This is an estimate only. Your first invoice includes the {money(rates.registrationFee)} registration
-                fee, and months with five billing weeks are prorated at the weekly rate.
-              </p>
-            </Card>
-          </Reveal>
-
-          <Reveal delay={0.08}>
-            <Card className="h-full p-7">
-              <h2 className="font-display text-xl font-extrabold text-slate-900">What tuition includes</h2>
-              <p className="mt-1.5 text-sm text-slate-500">
-                If it happens inside our house, it is already paid for. You pack diapers, wipes, and a nap blanket.
-              </p>
-              <ul className="mt-6 space-y-3">
-                {included.map((f) => (
-                  <li key={f} className="flex items-start gap-3 text-[15px] text-slate-700">
-                    <Check size={18} className="mt-0.5 shrink-0 text-[#5DC4A6]" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-7 rounded-2xl border border-dashed border-slate-300 p-5 text-sm leading-relaxed text-slate-600">
-                <strong className="font-semibold text-slate-800">Subsidies welcome.</strong> We accept Pennsylvania
-                Child Care Works (CCW) subsidized care and can complete employer or FSA paperwork — just ask.
-              </div>
-            </Card>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* Policies */}
+      {/* Parent handbook */}
       <section className="px-5 py-14 lg:px-8">
         <div className="mx-auto max-w-4xl">
           <Reveal>
             <SectionHeading
-              eyebrow="House policies"
-              title="The rules that keep everyone healthy"
-              description="These are the four questions we get most. The full parent handbook lives in your portal once you enroll."
+              eyebrow="Parent handbook"
+              title="Get to know how we do things"
+              description="No binder to dig through — just the plain-language version, organized by topic."
               align="center"
             />
           </Reveal>
-          <div className="mt-10 space-y-4">
-            {policyMeta.map((p, i) => (
-              <Reveal key={p.key} delay={i * 0.06}>
-                <PolicyItem
-                  title={p.title}
-                  icon={p.icon}
-                  body={settings.policies[p.key] || 'Policy details coming soon.'}
-                  open={openKey === p.key}
-                  onToggle={() => setOpenKey(openKey === p.key ? null : p.key)}
-                />
-              </Reveal>
+          <div className="mt-10 space-y-9">
+            {handbook.map((category, ci) => (
+              <div key={category.title}>
+                <h2 className="font-display text-sm font-bold uppercase tracking-wider text-slate-500">
+                  {category.title}
+                </h2>
+                <div className="mt-4 space-y-4">
+                  {category.items.map((item, i) => (
+                    <Reveal key={item.key} delay={(ci * category.items.length + i) * 0.04}>
+                      <PolicyItem
+                        title={item.title}
+                        icon={item.icon}
+                        body={item.body}
+                        open={openKey === item.key}
+                        onToggle={() => setOpenKey(openKey === item.key ? null : item.key)}
+                      />
+                    </Reveal>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -332,6 +255,27 @@ export default function TuitionPolicies() {
                 </Button>
               </div>
             </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* A note from Mellissa */}
+      <section className="px-5 py-20 lg:px-8">
+        <Reveal>
+          <div className="mx-auto max-w-5xl text-center">
+            <p
+              style={{ fontFamily: "'Caveat', cursive" }}
+              className="text-4xl leading-[1.15] text-slate-800 sm:text-5xl lg:text-[3.4rem]"
+            >
+              Every family's schedule looks a little different, so the numbers do too — reach out and I'll walk you
+              through exactly what it looks like for yours.
+            </p>
+            <p
+              style={{ fontFamily: "'Caveat', cursive" }}
+              className="mt-6 text-3xl text-[#4F77D9] sm:text-4xl"
+            >
+              — Mellissa
+            </p>
           </div>
         </Reveal>
       </section>

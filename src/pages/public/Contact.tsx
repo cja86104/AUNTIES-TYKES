@@ -112,8 +112,8 @@ export default function Contact() {
                     <Button variant="outline" onClick={() => setSent(false)}>
                       Send another message
                     </Button>
-                    <Button as={Link} to="/programs">
-                      Explore programs <ArrowRight size={16} />
+                    <Button as={Link} to="/">
+                      Back to home <ArrowRight size={16} />
                     </Button>
                   </div>
                 </motion.div>

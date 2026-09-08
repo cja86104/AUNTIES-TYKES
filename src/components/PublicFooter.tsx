@@ -26,10 +26,8 @@ export default function PublicFooter() {
           <h4 className="font-display text-sm font-bold uppercase tracking-wider text-slate-900">Explore</h4>
           <ul className="mt-4 space-y-2.5 text-sm">
             {[
-              ['/about', 'Meet Mellissa'],
-              ['/programs', 'Programs & ages'],
+              ['/parent-portal-guide', 'Portal guide'],
               ['/tuition-policies', 'Tuition & policies'],
-              ['/gallery', 'Photo gallery'],
               ['/faq', 'Parent FAQ'],
               ['/contact', 'Get in touch'],
               ['/login', 'Parent portal login'],

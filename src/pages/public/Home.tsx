@@ -5,13 +5,10 @@ import {
   Blocks,
   ShieldCheck,
   Clock,
-  ArrowRight,
-  Quote,
   Sun,
 } from 'lucide-react'
 import PageTransition, { Reveal } from '../../components/PageTransition'
-import { Button, Card, SectionHeading, Badge } from '../../components/ui'
-import { programs, testimonials } from '../../data/mockData'
+import { Button, Card, SectionHeading } from '../../components/ui'
 
 const highlights = [
   {
@@ -74,7 +71,7 @@ export default function Home() {
               className="mt-7 max-w-xl text-lg leading-relaxed text-slate-600"
             >
               Aunties Tykes is a licensed 12-child family daycare in Camp Hill, PA for babies through pre-K. Small groups,
-              a real daily rhythm, and photo updates before you finish your first coffee.
+              a real daily rhythm, and a place where your child is known by name.
             </motion.p>
 
             <motion.div
@@ -83,8 +80,8 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mt-9 flex flex-wrap items-center gap-3"
             >
-              <Button as={Link} to="/programs" size="lg">
-                Explore our programs
+              <Button as={Link} to="/contact" size="lg">
+                Get in touch
               </Button>
             </motion.div>
           </div>
@@ -151,9 +148,6 @@ export default function Home() {
                 Predictability is what makes little ones brave. Our day has the same shape every time — arrival snuggles,
                 circle, project, outside, lunch, real nap, and one more round outside before pickup.
               </p>
-              <Button as={Link} to="/programs" variant="sunny" className="mt-8">
-                See the full daily routine <ArrowRight size={16} />
-              </Button>
             </div>
             <div className="grid grid-cols-3 gap-4">
               {dayInLife.map((d, i) => (
@@ -177,94 +171,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Program preview */}
-      <section className="px-5 py-16 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <Reveal>
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <SectionHeading eyebrow="Programs" title="Three age groups, one family" className="max-w-xl" />
-              <Button as={Link} to="/programs" variant="outline">
-                Compare all programs <ArrowRight size={16} />
-              </Button>
-            </div>
-          </Reveal>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {programs.map((p, i) => (
-              <Reveal key={p.id} delay={i * 0.08}>
-                <Card hover className="flex h-full flex-col p-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-display text-xl font-extrabold text-slate-900">{p.name}</h3>
-                    <Badge tone={p.spots.includes('Waitlist') ? 'amber' : 'green'}>{p.spots}</Badge>
-                  </div>
-                  <p className="mt-1.5 text-sm font-semibold text-[#4F77D9]">{p.ages}</p>
-                  <p className="mt-3.5 flex-1 text-sm leading-relaxed text-slate-600">{p.summary}</p>
-                  <ul className="mt-5 space-y-1.5">
-                    {p.highlights.map((h) => (
-                      <li key={h} className="flex items-start gap-2 text-sm text-slate-600">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#5DC4A6]" />
-                        {h}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    to="/programs"
-                    className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-[#4F77D9] transition hover:gap-2.5"
-                  >
-                    Program details <ArrowRight size={15} />
-                  </Link>
-                </Card>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="px-5 py-16 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <Reveal>
-            <SectionHeading eyebrow="Parent voices" title="What families tell their friends" align="center" />
-          </Reveal>
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            {testimonials.map((t, i) => (
-              <Reveal key={t.id} delay={i * 0.1}>
-                <Card hover className="flex h-full flex-col p-7">
-                  <Quote size={26} className="text-[#F5B942]" />
-                  <p className="mt-4 flex-1 text-[15px] leading-relaxed text-slate-700">{t.quote}</p>
-                  <div className="mt-6 flex items-center gap-3 border-t border-slate-100 pt-5">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F77D9] to-[#5DC4A6] font-display font-extrabold text-white">
-                      {t.name[0]}
-                    </span>
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">{t.name}</p>
-                      <p className="text-xs text-slate-500">{t.detail}</p>
-                    </div>
-                  </div>
-                </Card>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="px-5 py-10 lg:px-8">
+      {/* A note from Mellissa */}
+      <section className="px-5 py-20 lg:px-8">
         <Reveal>
-          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#4F77D9] to-[#5DC4A6] px-6 py-14 text-center sm:px-14">
-            <div className="at-grid-dots absolute inset-0 opacity-30" aria-hidden="true" />
-            <div className="relative">
-              <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl">
-                Ready to see Aunties Tykes in person?
-              </h2>
-              <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/85">
-                Reach out and we will set up a time that works for you — you will see the real daily rhythm, not a staged room.
-              </p>
-              <div className="mt-9 flex flex-wrap justify-center gap-3">
-                <Button as={Link} to="/contact" size="lg" variant="dark">
-                  Get in touch <ArrowRight size={18} />
-                </Button>
-              </div>
-            </div>
+          <div className="mx-auto max-w-5xl text-center">
+            <p
+              style={{ fontFamily: "'Caveat', cursive" }}
+              className="text-4xl leading-[1.15] text-slate-800 sm:text-5xl lg:text-[3.4rem]"
+            >
+              Every family who walks through our door becomes part of ours — that's not a slogan, it's just how we
+              do things here.
+            </p>
+            <p
+              style={{ fontFamily: "'Caveat', cursive" }}
+              className="mt-6 text-3xl text-[#4F77D9] sm:text-4xl"
+            >
+              — Mellissa
+            </p>
           </div>
         </Reveal>
       </section>

@@ -17,10 +17,8 @@ import Home from './pages/public/Home'
  * ships the whole admin console — recharts, dnd-kit and all — to a parent who
  * only wanted to read the tuition page.
  */
-const About = lazy(() => import('./pages/public/About'))
-const Programs = lazy(() => import('./pages/public/Programs'))
+const ParentPortalGuide = lazy(() => import('./pages/public/ParentPortalGuide'))
 const TuitionPolicies = lazy(() => import('./pages/public/TuitionPolicies'))
-const Gallery = lazy(() => import('./pages/public/Gallery'))
 const FAQ = lazy(() => import('./pages/public/FAQ'))
 const Contact = lazy(() => import('./pages/public/Contact'))
 const Enroll = lazy(() => import('./pages/public/Enroll'))
@@ -71,10 +69,8 @@ function AnimatedRoutes() {
         <Routes location={location} key={location.pathname}>
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/programs" element={<Programs />} />
+            <Route path="/parent-portal-guide" element={<ParentPortalGuide />} />
             <Route path="/tuition-policies" element={<TuitionPolicies />} />
-            <Route path="/gallery" element={<Gallery />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/enroll" element={<Enroll />} />

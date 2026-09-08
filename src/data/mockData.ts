@@ -642,7 +642,7 @@ export const faqs: Faq[] = [
   { q: 'How do you handle potty training?', a: 'We follow your lead and start when your child shows readiness. Bathroom visits happen after meals and before nap, and accidents are treated as a normal part of learning.' },
   { q: 'What is your sick policy?', a: 'Children need to stay home with a fever of 100.4°F or higher, vomiting or diarrhea, an undiagnosed rash, or draining eyes. They may return 24 hours after symptoms resolve without medication.' },
   { q: 'Are you licensed and insured?', a: 'Yes — we hold Pennsylvania Family Child Care Home license PA-FCCH-041207, carry liability insurance, and every adult in the home has a cleared background check plus current CPR and First Aid.' },
-  { q: 'How do we get updates during the day?', a: 'Every family gets a parent portal login. Daily reports with meals, naps, diapers, mood, activities, and photos are posted before pickup. Announcements and invoices live there too.' },
+  { q: 'How do we get updates during the day?', a: 'Every family gets a parent portal login for daily reports — meals, naps, diapers, mood, and activities. Announcements and invoices live there too.' },
   { q: 'Is there a waitlist?', a: 'Usually, yes. We keep 12 spots total. Join the waitlist through the contact form and we will tell you honestly where you stand and when we expect an opening.' },
   { q: 'Do you offer part-time care?', a: 'We offer part-time (three fixed days) and occasional drop-in care when a spot is available. Full-time families always get first choice of schedule.' },
 ]

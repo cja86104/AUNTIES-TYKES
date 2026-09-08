@@ -8,10 +8,8 @@ import { cx } from '../lib/helpers'
 
 const links = [
   { to: '/', label: 'Home' },
-  { to: '/about', label: 'About' },
-  { to: '/programs', label: 'Programs' },
+  { to: '/parent-portal-guide', label: 'Portal Guide' },
   { to: '/tuition-policies', label: 'Tuition & Policies' },
-  { to: '/gallery', label: 'Gallery' },
   { to: '/faq', label: 'FAQ' },
   { to: '/contact', label: 'Contact' },
 ]

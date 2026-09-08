@@ -30,30 +30,20 @@ export const PRIVATE_PREFIXES = ['/admin', '/parent', '/login', '/enroll'] as co
 export const DEFAULT_SEO: PageSeo = {
   title: 'Aunties Tykes — Licensed Home Daycare in Camp Hill, PA',
   description:
-    'A small, licensed home daycare in Camp Hill, PA. Play-based learning, infant to preschool, tiny group sizes, and a daily photo report for every family.',
+    'A small, licensed home daycare in Camp Hill, PA. Play-based learning, infant to preschool, tiny group sizes, and real daily reports for every family.',
 }
 
 export const PAGE_SEO: Record<string, PageSeo> = {
   '/': DEFAULT_SEO,
-  '/about': {
-    title: 'Meet Mellissa Allen | Aunties Tykes Daycare, Camp Hill PA',
+  '/parent-portal-guide': {
+    title: 'Parent Portal Guide | Aunties Tykes Daycare, Camp Hill PA',
     description:
-      'Meet Mellissa Allen, owner of Aunties Tykes. A small, licensed home daycare caring for up to twelve children at a time in Camp Hill, Pennsylvania.',
-  },
-  '/programs': {
-    title: 'Infant, Toddler & Preschool Programs | Aunties Tykes',
-    description:
-      'Three age groups with their own rhythm and ratios — infants 1:3, toddlers 1:4, preschool 1:6. See the daily routine for each room and what a day really looks like.',
+      'A walkthrough of the Aunties Tykes parent portal — daily reports, attendance, billing, documents, and messaging, all explained in plain language.',
   },
   '/tuition-policies': {
     title: 'Tuition & Policies | Aunties Tykes Daycare, Camp Hill PA',
     description:
       'Full-time, part-time, and drop-in rates with a live cost estimator, plus our sick policy, late pickup rules, holiday closures, and potty learning approach.',
-  },
-  '/gallery': {
-    title: 'Photo Gallery | Aunties Tykes Daycare, Camp Hill PA',
-    description:
-      'Look inside our home daycare — the reading loft, morning circle rug, garden beds, mud kitchen, and the messy art days families hear about at pickup.',
   },
   '/faq': {
     title: 'Frequently Asked Questions | Aunties Tykes Daycare',
