@@ -66,7 +66,7 @@ function AnimatedRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <AnimatePresence mode="wait" initial={false}>
-        <Routes location={location} key={location.pathname}>
+        <Routes location={location} key={location.key}>
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/parent-portal-guide" element={<ParentPortalGuide />} />
