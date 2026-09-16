@@ -439,7 +439,7 @@ export default function Enroll() {
                     <div>
                       <h2 className="font-display text-xl font-extrabold text-slate-900">Emergency contacts</h2>
                       <p className="mt-1 text-sm text-slate-500">
-                        People we can call if we cannot reach you. At least one is required by our license.
+                        People we can call if we cannot reach you. Please provide at least one.
                       </p>
                     </div>
 
@@ -585,7 +585,7 @@ export default function Enroll() {
           </Card>
 
           <p className="mt-6 text-center text-xs text-slate-500">
-            Licensed {settings.licenseNumber} · {settings.address}
+            {settings.address}
           </p>
         </div>
       </section>

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Wallet, CheckCircle2, AlertTriangle, ArrowRight, ReceiptText, CalendarClock } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import { Badge, Button, Card, EmptyState, PageHeader, StatCard, Tabs, statusTone } from '../../components/ui'
 import { useFamilyScope } from '../../lib/useFamilyScope'
@@ -13,6 +14,7 @@ interface PaymentRow extends Payment {
 }
 
 export default function ParentBilling() {
+  const { t } = useTranslation()
   const { invoices, outstanding, nextInvoice, overdueCount } = useFamilyScope()
   const [tab, setTab] = useState<'all' | InvoiceStatus>('all')
 
@@ -37,10 +39,10 @@ export default function ParentBilling() {
 
   const tabs = useMemo(
     () => [
-      { value: 'all', label: 'All', count: decorated.length },
-      { value: 'unpaid', label: 'Open', count: decorated.filter((r) => r.status === 'unpaid').length },
-      { value: 'overdue', label: 'Overdue', count: decorated.filter((r) => r.status === 'overdue').length },
-      { value: 'paid', label: 'Paid', count: decorated.filter((r) => r.status === 'paid').length },
+      { value: 'all', label: t('billing.tabAll'), count: decorated.length },
+      { value: 'unpaid', label: t('billing.tabOpen'), count: decorated.filter((r) => r.status === 'unpaid').length },
+      { value: 'overdue', label: t('billing.tabOverdue'), count: decorated.filter((r) => r.status === 'overdue').length },
+      { value: 'paid', label: t('billing.tabPaid'), count: decorated.filter((r) => r.status === 'paid').length },
     ],
     [decorated],
   )
@@ -48,12 +50,12 @@ export default function ParentBilling() {
   return (
     <PageTransition>
       <PageHeader
-        title="Billing"
-        description="Your statements, what is still owed, and every payment we have recorded."
+        title={t('billing.title')}
+        description={t('billing.description')}
         actions={
           nextInvoice ? (
             <Button as={Link} to={`/parent/invoices/${nextInvoice.id}`}>
-              <Wallet size={16} /> Pay {money(invoiceBalance(nextInvoice))}
+              <Wallet size={16} /> {t('billing.payAmount', { amount: money(invoiceBalance(nextInvoice)) })}
             </Button>
           ) : undefined
         }
@@ -62,32 +64,32 @@ export default function ParentBilling() {
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={Wallet}
-          label="Balance due"
+          label={t('billing.statBalance')}
           value={money(outstanding)}
-          sub={outstanding > 0 ? 'Across your open statements' : 'Nothing owed — thank you!'}
+          sub={outstanding > 0 ? t('billing.statBalanceSubOwed') : t('billing.statBalanceSubClear')}
           tone={outstanding > 0 ? 'amber' : 'green'}
         />
         <StatCard
           icon={CalendarClock}
-          label="Next due"
+          label={t('billing.statNextDue')}
           value={nextInvoice ? fmtDate(nextInvoice.dueDate, 'MMM d') : '—'}
           sub={
             dueInDays === null
-              ? 'Nothing scheduled'
+              ? t('billing.statNextDueSubNone')
               : dueInDays < 0
-                ? `${Math.abs(dueInDays)} days past due`
+                ? t('billing.statNextDueSubPastDue', { days: Math.abs(dueInDays) })
                 : dueInDays === 0
-                  ? 'Due today'
-                  : `In ${dueInDays} days`
+                  ? t('billing.statNextDueSubToday')
+                  : t('billing.statNextDueSubIn', { days: dueInDays })
           }
           tone={dueInDays !== null && dueInDays < 0 ? 'rose' : 'violet'}
         />
-        <StatCard icon={CheckCircle2} label="Paid to date" value={money(totalPaid)} sub={`${invoices.length} statements total`} tone="green" />
+        <StatCard icon={CheckCircle2} label={t('billing.statPaidToDate')} value={money(totalPaid)} sub={t('billing.statPaidToDateSub', { count: invoices.length })} tone="green" />
         <StatCard
           icon={AlertTriangle}
-          label="Overdue"
+          label={t('billing.statOverdue')}
           value={overdueCount}
-          sub={overdueCount === 0 ? 'All current' : 'Please settle when you can'}
+          sub={overdueCount === 0 ? t('billing.statOverdueSubClear') : t('billing.statOverdueSubSome')}
           tone={overdueCount > 0 ? 'rose' : 'blue'}
         />
       </div>
@@ -97,14 +99,14 @@ export default function ParentBilling() {
           <CheckCircle2 size={22} className="shrink-0 text-[#2E8C72]" />
           <div className="min-w-0 flex-1">
             <p className="font-display text-sm font-bold text-slate-900">
-              Last payment: {money(lastPayment.amount)} on {fmtDate(lastPayment.date)}
+              {t('billing.lastPayment', { amount: money(lastPayment.amount), date: fmtDate(lastPayment.date) })}
             </p>
             <p className="text-xs text-slate-600">
-              {lastPayment.method} · applied to {lastPayment.invoiceId}
+              {t('billing.lastPaymentSub', { method: lastPayment.method, invoiceId: lastPayment.invoiceId })}
             </p>
           </div>
           <Button as={Link} to={`/parent/invoices/${lastPayment.invoiceId}`} size="sm" variant="outline">
-            View receipt <ArrowRight size={14} />
+            {t('billing.viewReceipt')} <ArrowRight size={14} />
           </Button>
         </Card>
       )}
@@ -116,16 +118,16 @@ export default function ParentBilling() {
       {rows.length === 0 ? (
         <EmptyState
           icon={ReceiptText}
-          title={tab === 'all' ? 'No invoices yet' : 'Nothing in this view'}
+          title={tab === 'all' ? t('billing.noInvoicesTitle') : t('billing.noViewTitle')}
           description={
             tab === 'all'
-              ? 'Statements post to your portal on the 1st of each month.'
-              : 'Switch tabs to see your other statements.'
+              ? t('billing.noInvoicesDesc')
+              : t('billing.noViewDesc')
           }
           action={
             tab !== 'all' ? (
               <Button variant="outline" onClick={() => setTab('all')}>
-                Show all invoices
+                {t('billing.showAllInvoices')}
               </Button>
             ) : undefined
           }
@@ -145,26 +147,26 @@ export default function ParentBilling() {
                     <p className="font-display text-base font-extrabold text-slate-900">{inv.id}</p>
                     <p className="truncate text-xs text-slate-500">{inv.period}</p>
                   </div>
-                  <Badge tone={statusTone(status)}>{status}</Badge>
+                  <Badge tone={statusTone(status)}>{t(`status.${status}`)}</Badge>
                 </div>
 
                 <div className="flex-1 space-y-2.5 px-5 py-4 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Amount</span>
+                    <span className="text-slate-500">{t('billing.amount')}</span>
                     <span className="font-semibold text-slate-900">{money(inv.amount)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Balance</span>
+                    <span className="text-slate-500">{t('billing.balance')}</span>
                     <span className={`font-semibold ${balance > 0 ? 'text-slate-900' : 'text-[#2E8C72]'}`}>
-                      {balance > 0 ? money(balance) : 'Paid in full'}
+                      {balance > 0 ? money(balance) : t('billing.paidInFull')}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Due</span>
+                    <span className="text-slate-500">{t('billing.due')}</span>
                     <span className="font-semibold text-slate-900">{fmtDate(inv.dueDate)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Line items</span>
+                    <span className="text-slate-500">{t('billing.lineItems')}</span>
                     <span className="text-slate-700">{inv.lineItems.length}</span>
                   </div>
                 </div>
@@ -176,7 +178,7 @@ export default function ParentBilling() {
                     variant={balance > 0 ? 'primary' : 'outline'}
                     className="w-full"
                   >
-                    {balance > 0 ? `Pay ${money(balance)}` : 'View statement'}
+                    {balance > 0 ? t('billing.payAmount', { amount: money(balance) }) : t('billing.viewStatement')}
                   </Button>
                 </div>
               </Card>

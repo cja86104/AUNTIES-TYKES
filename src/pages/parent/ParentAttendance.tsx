@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { CalendarDays, ClipboardCheck, UserX, Clock, Download } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import {
   Avatar,
@@ -35,6 +36,7 @@ function hoursLabel(mins: number | null): string {
 }
 
 export default function ParentAttendance() {
+  const { t } = useTranslation()
   const { kids } = useFamilyScope()
   const attendance = useStore((s) => s.attendance)
   const pushToast = useStore((s) => s.pushToast)
@@ -64,7 +66,7 @@ export default function ParentAttendance() {
 
   const tabs = useMemo(
     () => [
-      { value: 'all', label: 'All children', count: attendance.filter((a) => kidIds.includes(a.childId)).length },
+      { value: 'all', label: t('attendance.allChildren'), count: attendance.filter((a) => kidIds.includes(a.childId)).length },
       ...kids.map((k) => ({
         value: k.id,
         label: k.name.split(' ')[0] ?? k.name,
@@ -90,9 +92,9 @@ export default function ParentAttendance() {
       a.download = 'my-attendance.csv'
       a.click()
       URL.revokeObjectURL(url)
-      pushToast({ title: 'Attendance exported', description: 'my-attendance.csv downloaded.' })
+      pushToast({ title: t('attendance.exportedToastTitle'), description: t('attendance.exportedToastDesc') })
     } catch {
-      pushToast({ tone: 'error', title: 'Export failed', description: 'Your browser blocked the download.' })
+      pushToast({ tone: 'error', title: t('attendance.exportFailedTitle'), description: t('attendance.exportFailedDesc') })
     }
   }
 
@@ -101,8 +103,8 @@ export default function ParentAttendance() {
   return (
     <PageTransition>
       <PageHeader
-        title="Attendance"
-        description="Every check-in and check-out we have recorded for your children."
+        title={t('attendance.title')}
+        description={t('attendance.description')}
         actions={
           <>
             <div className="relative">
@@ -112,7 +114,7 @@ export default function ParentAttendance() {
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
                 className="w-full pl-9 sm:w-40"
-                aria-label="From date"
+                aria-label={t('attendance.fromDate')}
               />
             </div>
             <div className="relative">
@@ -122,20 +124,20 @@ export default function ParentAttendance() {
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
                 className="w-full pl-9 sm:w-40"
-                aria-label="To date"
+                aria-label={t('attendance.toDate')}
               />
             </div>
             <Button variant="outline" onClick={exportCsv} disabled={rows.length === 0}>
-              <Download size={16} /> Export
+              <Download size={16} /> {t('attendance.export')}
             </Button>
           </>
         }
       />
 
       <div className="grid gap-5 sm:grid-cols-3">
-        <StatCard icon={ClipboardCheck} label="Days attended" value={presentDays} sub="In the selected range" tone="green" />
-        <StatCard icon={UserX} label="Days absent" value={absentDays} sub="Called out or no-show" tone="rose" />
-        <StatCard icon={Clock} label="Average day" value={hoursLabel(avgMinutes)} sub="Drop-off to pickup" tone="blue" />
+        <StatCard icon={ClipboardCheck} label={t('attendance.statDaysAttended')} value={presentDays} sub={t('attendance.statDaysAttendedSub')} tone="green" />
+        <StatCard icon={UserX} label={t('attendance.statDaysAbsent')} value={absentDays} sub={t('attendance.statDaysAbsentSub')} tone="rose" />
+        <StatCard icon={Clock} label={t('attendance.statAvgDay')} value={hoursLabel(avgMinutes)} sub={t('attendance.statAvgDaySub')} tone="blue" />
       </div>
 
       <div className="mb-6 mt-6 flex flex-wrap items-center gap-3">
@@ -149,7 +151,7 @@ export default function ParentAttendance() {
             }}
             className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
           >
-            Clear filters
+            {t('attendance.clearFilters')}
           </button>
         )}
       </div>
@@ -157,11 +159,11 @@ export default function ParentAttendance() {
       {rows.length === 0 ? (
         <EmptyState
           icon={CalendarDays}
-          title={filtersActive ? 'No days match those filters' : 'No attendance recorded yet'}
+          title={filtersActive ? t('attendance.noMatchTitle') : t('attendance.noRecordsTitle')}
           description={
             filtersActive
-              ? 'Try widening the date range or switching children.'
-              : 'Check-ins will appear here from your first day with us.'
+              ? t('attendance.noMatchDesc')
+              : t('attendance.noRecordsDesc')
           }
           action={
             filtersActive ? (
@@ -173,7 +175,7 @@ export default function ParentAttendance() {
                   setToDate('')
                 }}
               >
-                Clear filters
+                {t('attendance.clearFilters')}
               </Button>
             ) : undefined
           }
@@ -184,12 +186,12 @@ export default function ParentAttendance() {
             <table className="w-full min-w-[620px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                  <th className="px-5 py-3">Child</th>
-                  <th className="px-5 py-3">Date</th>
-                  <th className="px-5 py-3">Dropped off</th>
-                  <th className="px-5 py-3">Picked up</th>
-                  <th className="px-5 py-3">Hours</th>
-                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">{t('attendance.colChild')}</th>
+                  <th className="px-5 py-3">{t('attendance.colDate')}</th>
+                  <th className="px-5 py-3">{t('attendance.colDroppedOff')}</th>
+                  <th className="px-5 py-3">{t('attendance.colPickedUp')}</th>
+                  <th className="px-5 py-3">{t('attendance.colHours')}</th>
+                  <th className="px-5 py-3">{t('attendance.colStatus')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -216,7 +218,7 @@ export default function ParentAttendance() {
                         {hoursLabel(minutesBetween(r.checkIn, r.checkOut))}
                       </td>
                       <td className="px-5 py-3.5">
-                        <Badge tone={statusTone(r.status)}>{r.status}</Badge>
+                        <Badge tone={statusTone(r.status)}>{t(`status.${r.status}`)}</Badge>
                         {r.note && <p className="mt-0.5 text-xs italic text-slate-400">{r.note}</p>}
                       </td>
                     </motion.tr>

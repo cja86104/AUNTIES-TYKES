@@ -18,6 +18,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { setPortalLanguage } from '../i18n'
 import { Avatar } from '../components/ui'
 import { cx } from '../lib/helpers'
 
@@ -46,6 +47,15 @@ export default function AdminLayout() {
     setOpen(false)
     window.scrollTo({ top: 0 })
   }, [location.pathname])
+
+  // The admin console is English-only. i18next is a single global instance
+  // shared with the parent portal (via InvoiceView / DailyLogCard), so force
+  // it back to English whenever the admin shell is mounted -- otherwise a
+  // parent's chosen language can leak into the admin views after a role
+  // switch in the same browser session.
+  useEffect(() => {
+    setPortalLanguage('en')
+  }, [])
 
   const doLogout = () => {
     logout()

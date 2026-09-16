@@ -46,7 +46,7 @@ export default function PublicNav() {
           <span className="leading-tight">
             <span className="block font-display text-lg font-extrabold tracking-tight text-slate-900">Aunties Tykes</span>
             <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Licensed home daycare
+              Home daycare & family portal
             </span>
           </span>
         </Link>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { FolderOpen, FileText, Download, ShieldCheck, CheckCircle2, Search, Upload } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import {
   Badge,
@@ -22,6 +23,7 @@ import { documentCategories } from '../../data/mockData'
 import type { DocumentCategory, DocumentRecord, UploadedFileMeta } from '../../types'
 
 export default function ParentDocuments() {
+  const { t } = useTranslation()
   const { user, documents } = useFamilyScope()
   const acknowledgements = useStore((s) => s.acknowledgements)
   const acknowledgeDocument = useStore((s) => s.acknowledgeDocument)
@@ -43,7 +45,7 @@ export default function ParentDocuments() {
 
   const tabs = useMemo(
     () => [
-      { value: 'all', label: 'All', count: documents.length },
+      { value: 'all', label: t('billing.tabAll'), count: documents.length },
       ...documentCategories
         .filter((c) => documents.some((d) => d.category === c))
         .map((c) => ({ value: c, label: c, count: documents.filter((d) => d.category === c).length })),
@@ -65,53 +67,53 @@ export default function ParentDocuments() {
       requiresAck: false,
     })
     pushToast({
-      title: 'Thanks — we got it',
-      description: `${meta.title} was sent to Auntie Roz for your child's file.`,
+      title: t('documents.toastThanksTitle'),
+      description: t('documents.toastThanksDesc', { title: meta.title }),
     })
   }
 
   const onDownload = (doc: DocumentRecord) => {
     pushToast({
       tone: 'info',
-      title: 'Demo build — no file attached',
-      description: `${doc.title} is a placeholder record in this preview.`,
+      title: t('documents.toastDemoTitle'),
+      description: t('documents.toastDemoDesc', { title: doc.title }),
     })
   }
 
   const onAcknowledge = (doc: DocumentRecord) => {
     acknowledgeDocument(doc.id)
-    pushToast({ title: 'Thank you', description: `We've noted that you read ${doc.title}.` })
+    pushToast({ title: t('documents.toastAckTitle'), description: t('documents.toastAckDesc', { title: doc.title }) })
   }
 
   return (
     <PageTransition>
       <PageHeader
-        title="Documents"
-        description="Handbooks, menus, calendars, and the forms we need back from you."
+        title={t('documents.title')}
+        description={t('documents.description')}
         actions={
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search documents…"
+              placeholder={t('documents.searchPlaceholder')}
               className="w-full pl-9 sm:w-56"
-              aria-label="Search documents"
+              aria-label={t('documents.searchPlaceholder')}
             />
           </div>
         }
       />
 
       <div className="grid gap-5 sm:grid-cols-3">
-        <StatCard icon={FolderOpen} label="Available to you" value={documents.length} sub="Shared by Aunties Tykes" tone="blue" />
+        <StatCard icon={FolderOpen} label={t('documents.statAvailable')} value={documents.length} sub={t('documents.statAvailableSub')} tone="blue" />
         <StatCard
           icon={ShieldCheck}
-          label="Need your confirmation"
+          label={t('documents.statNeedsConfirm')}
           value={needsAck.length}
-          sub={needsAck.length === 0 ? 'You are all caught up' : 'Please read and confirm'}
+          sub={needsAck.length === 0 ? t('documents.statNeedsConfirmSubClear') : t('documents.statNeedsConfirmSubSome')}
           tone={needsAck.length > 0 ? 'amber' : 'green'}
         />
-        <StatCard icon={Upload} label="You've sent us" value={myUploads.length} sub="Forms uploaded from your account" tone="violet" />
+        <StatCard icon={Upload} label={t('documents.statSent')} value={myUploads.length} sub={t('documents.statSentSub')} tone="violet" />
       </div>
 
       {needsAck.length > 0 && (
@@ -120,11 +122,14 @@ export default function ParentDocuments() {
             <ShieldCheck size={20} className="mt-0.5 shrink-0 text-[#8a6112]" />
             <div>
               <h2 className="font-display text-base font-bold text-slate-900">
-                {needsAck.length} {needsAck.length === 1 ? 'document needs' : 'documents need'} your confirmation
+                {t('documents.needsAckTitle', { count: needsAck.length })}
               </h2>
               <p className="mt-1 text-sm text-slate-700">
-                Give {needsAck.length === 1 ? 'it' : 'them'} a read, then tap <strong>I've read this</strong> so we have
-                it on record: {needsAck.map((d) => d.title).join(', ')}.
+                {t('documents.needsAckBody', {
+                  count: needsAck.length,
+                  cta: t('documents.iveReadThis'),
+                  titles: needsAck.map((d) => d.title).join(', '),
+                })}
               </p>
             </div>
           </div>
@@ -138,11 +143,11 @@ export default function ParentDocuments() {
       {rows.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
-          title={query || tab !== 'all' ? 'Nothing matches that' : 'No documents shared yet'}
+          title={query || tab !== 'all' ? t('documents.noMatchTitle') : t('documents.noDocsTitle')}
           description={
             query || tab !== 'all'
-              ? 'Try another category or clear the search.'
-              : 'Handbooks and forms will show up here as we share them.'
+              ? t('documents.noMatchDesc')
+              : t('documents.noDocsDesc')
           }
           action={
             query || tab !== 'all' ? (
@@ -153,7 +158,7 @@ export default function ParentDocuments() {
                   setTab('all')
                 }}
               >
-                Show everything
+                {t('documents.showEverything')}
               </Button>
             ) : undefined
           }
@@ -179,30 +184,30 @@ export default function ParentDocuments() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-display text-sm font-bold text-slate-900">{d.title}</p>
                     <p className="truncate text-xs text-slate-500">
-                      {d.category} · {bytes(d.size)} · {mine ? 'you sent this' : 'shared'} {fmtDate(d.uploadedAt)}
+                      {d.category} · {bytes(d.size)} · {mine ? t('documents.youSentThis') : t('documents.shared')} {fmtDate(d.uploadedAt)}
                     </p>
                   </div>
 
                   {d.requiresAck &&
                     (acked ? (
                       <Badge tone="green">
-                        <CheckCircle2 size={12} /> Confirmed
+                        <CheckCircle2 size={12} /> {t('documents.confirmed')}
                       </Badge>
                     ) : (
                       <Badge tone="amber">
-                        <ShieldCheck size={12} /> Needs confirmation
+                        <ShieldCheck size={12} /> {t('documents.needsConfirmation')}
                       </Badge>
                     ))}
-                  {mine && <Badge tone="violet">Your upload</Badge>}
+                  {mine && <Badge tone="violet">{t('documents.yourUpload')}</Badge>}
 
                   <div className="flex gap-1.5">
                     {d.requiresAck && !acked && (
                       <Button size="sm" variant="accent" onClick={() => onAcknowledge(d)}>
-                        <CheckCircle2 size={14} /> I've read this
+                        <CheckCircle2 size={14} /> {t('documents.iveReadThis')}
                       </Button>
                     )}
                     <Button size="sm" variant="outline" onClick={() => onDownload(d)}>
-                      <Download size={14} /> Download
+                      <Download size={14} /> {t('documents.download')}
                     </Button>
                   </div>
                 </motion.li>
@@ -213,14 +218,13 @@ export default function ParentDocuments() {
       )}
 
       <Card className="mt-8 p-5">
-        <h2 className="font-display text-lg font-bold text-slate-900">Send us a form</h2>
+        <h2 className="font-display text-lg font-bold text-slate-900">{t('documents.sendUsForm')}</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Immunization records, physicals, permission slips — anything we've asked for. Only Aunties Tykes staff can see
-          what you upload here.
+          {t('documents.sendUsFormDesc')}
         </p>
 
         <div className="mt-4 max-w-xs">
-          <Field label="What kind of document is it?">
+          <Field label={t('documents.whatKind')}>
             <Select value={uploadCategory} onChange={(e) => setUploadCategory(e.target.value as DocumentCategory)}>
               {documentCategories.map((c) => (
                 <option key={c} value={c}>
@@ -232,7 +236,7 @@ export default function ParentDocuments() {
         </div>
 
         <div className="mt-4">
-          <FileUploader onUploaded={onUploaded} label="Drop your file here or browse" />
+          <FileUploader onUploaded={onUploaded} label={t('documents.dropFile')} />
         </div>
       </Card>
     </PageTransition>

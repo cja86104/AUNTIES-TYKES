@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { KeyRound, Copy, RefreshCw, Baby, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { Button, Card, Field, Input, Modal, Select, Badge } from './ui'
 import { useStore, makeTempPassword } from '../store/useStore'
-import type { PortalCredentials } from '../types'
+import type { Language, PortalCredentials } from '../types'
 
 export interface ParentAccountDialogProps {
   open: boolean
@@ -31,6 +31,7 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [autoGenerate, setAutoGenerate] = useState(true)
+  const [preferredLanguage, setPreferredLanguage] = useState<Language>('en')
   const [password, setPassword] = useState('')
   const [reveal, setReveal] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
@@ -48,6 +49,7 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
     setName('')
     setEmail('')
     setAutoGenerate(true)
+    setPreferredLanguage('en')
     setPassword('')
     setReveal(false)
     setErrors({})
@@ -75,6 +77,7 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
       name.trim(),
       email.trim(),
       autoGenerate ? undefined : password.trim(),
+      preferredLanguage,
     )
 
     if (!credentials) {
@@ -232,6 +235,14 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
             />
           </Field>
         </div>
+
+        <Field label="Preferred language" hint="Sets the language their portal opens in. They can only be signed in with one at a time.">
+          <Select value={preferredLanguage} onChange={(e) => setPreferredLanguage(e.target.value as Language)}>
+            <option value="en">English</option>
+            <option value="vi">Tiếng Việt (Vietnamese)</option>
+            <option value="es">Español (Spanish)</option>
+          </Select>
+        </Field>
 
         <div className="rounded-2xl border border-slate-200 p-4">
           <label className="flex cursor-pointer items-start gap-3">

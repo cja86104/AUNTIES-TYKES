@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion } from 'framer-motion'
-import { MapPin, Mail, Clock, Send, CheckCircle2, CalendarCheck, ArrowRight, ShieldCheck } from 'lucide-react'
+import { MapPin, Mail, Clock, Send, CheckCircle2, CalendarCheck, ArrowRight } from 'lucide-react'
 import PageTransition, { Reveal } from '../../components/PageTransition'
 import { Button, Card, Field, Input, Textarea, Select, Badge } from '../../components/ui'
 import { useStore } from '../../store/useStore'
@@ -218,9 +218,6 @@ export default function Contact() {
                       {settings.hours}
                     </li>
                   </ul>
-                  <div className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#5DC4A6]/10 px-3 py-2 text-xs font-semibold text-[#25705c]">
-                    <ShieldCheck size={15} /> License {settings.licenseNumber}
-                  </div>
                 </div>
               </Card>
 

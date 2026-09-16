@@ -10,6 +10,13 @@
 
 export type Role = 'admin' | 'parent'
 
+/**
+ * Languages the parent portal can render in. Admin stays English-only by
+ * design (see CLAUDE.md) — this only ever affects `src/pages/parent/**`.
+ */
+export const SUPPORTED_LANGUAGES = ['en', 'vi', 'es'] as const
+export type Language = (typeof SUPPORTED_LANGUAGES)[number]
+
 export interface User {
   id: string
   name: string
@@ -19,6 +26,13 @@ export interface User {
   role: Role
   familyId?: string
   title?: string
+  /**
+   * UI language for the parent portal, set by the owner when the account is
+   * created. Optional (rather than defaulted here) because demo data and
+   * localStorage sessions saved before this field existed won't have it —
+   * every read site falls back to 'en'.
+   */
+  preferredLanguage?: Language
 }
 
 /** The subset of a user persisted to localStorage as the active session. */

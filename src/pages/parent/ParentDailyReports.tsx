@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { NotebookPen, CalendarDays, Search, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import { Badge, Button, EmptyState, Input, PageHeader, Tabs } from '../../components/ui'
 import DailyLogCard from '../../components/DailyLogCard'
@@ -9,6 +10,7 @@ import { useFamilyScope } from '../../lib/useFamilyScope'
 import { todayISO } from '../../lib/helpers'
 
 export default function ParentDailyReports() {
+  const { t } = useTranslation()
   const { childId } = useParams<{ childId: string }>()
   const { kids } = useFamilyScope()
   const dailyLogs = useStore((s) => s.dailyLogs)
@@ -41,7 +43,7 @@ export default function ParentDailyReports() {
 
   const tabs = useMemo(
     () => [
-      { value: 'all', label: 'All children', count: dailyLogs.filter((l) => kidIds.includes(l.childId)).length },
+      { value: 'all', label: t('dailyReports.allChildren'), count: dailyLogs.filter((l) => kidIds.includes(l.childId)).length },
       ...kids.map((k) => ({
         value: k.id,
         label: k.name.split(' ')[0] ?? k.name,
@@ -61,8 +63,8 @@ export default function ParentDailyReports() {
   return (
     <PageTransition>
       <PageHeader
-        title="Daily reports"
-        description="Meals, naps, diapers, mood, and a note from the day — posted before pickup."
+        title={t('dailyReports.title')}
+        description={t('dailyReports.description')}
         actions={
           <>
             <div className="relative">
@@ -70,9 +72,9 @@ export default function ParentDailyReports() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search reports…"
+                placeholder={t('dailyReports.searchPlaceholder')}
                 className="w-full pl-9 sm:w-56"
-                aria-label="Search daily reports"
+                aria-label={t('dailyReports.searchAria')}
               />
             </div>
             <div className="relative">
@@ -83,7 +85,7 @@ export default function ParentDailyReports() {
                 max={todayISO()}
                 onChange={(e) => setDateFilter(e.target.value)}
                 className="w-full pl-9 sm:w-44"
-                aria-label="Filter by date"
+                aria-label={t('dailyReports.filterByDate')}
               />
             </div>
           </>
@@ -97,27 +99,27 @@ export default function ParentDailyReports() {
             onClick={clearAll}
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
           >
-            <X size={13} /> Clear filters
+            <X size={13} /> {t('dailyReports.clearFilters')}
           </button>
         )}
         <Badge tone="neutral">
-          {logs.length} {logs.length === 1 ? 'report' : 'reports'}
+          {t('dailyReports.reportCount', { count: logs.length })}
         </Badge>
       </div>
 
       {logs.length === 0 ? (
         <EmptyState
           icon={NotebookPen}
-          title={filtersActive ? 'No reports match those filters' : 'No reports yet'}
+          title={filtersActive ? t('dailyReports.noMatchTitle') : t('dailyReports.noReportsTitle')}
           description={
             filtersActive
-              ? 'Try a different child or clear the date to see everything.'
-              : 'A full report is posted before pickup each day — check back this afternoon.'
+              ? t('dailyReports.noMatchDesc')
+              : t('dailyReports.noReportsDesc')
           }
           action={
             filtersActive ? (
               <Button variant="outline" onClick={clearAll}>
-                Clear filters
+                {t('dailyReports.clearFilters')}
               </Button>
             ) : undefined
           }

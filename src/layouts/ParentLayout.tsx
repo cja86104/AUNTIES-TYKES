@@ -2,21 +2,24 @@ import { useEffect, useState } from 'react'
 import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { LayoutDashboard, Baby, NotebookPen, ClipboardCheck, Wallet, FolderOpen, MessageSquare, LogOut, Menu } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../store/useStore'
 import { Avatar } from '../components/ui'
 import { cx } from '../lib/helpers'
+import { setPortalLanguage } from '../i18n'
 
 const nav = [
-  { to: '/parent/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/parent/children', label: 'My Children', icon: Baby },
-  { to: '/parent/daily-reports', label: 'Daily Reports', icon: NotebookPen },
-  { to: '/parent/attendance', label: 'Attendance', icon: ClipboardCheck },
-  { to: '/parent/billing', label: 'Billing', icon: Wallet },
-  { to: '/parent/documents', label: 'Documents', icon: FolderOpen },
-  { to: '/parent/messages', label: 'Messages', icon: MessageSquare },
+  { to: '/parent/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { to: '/parent/children', labelKey: 'nav.myChildren', icon: Baby },
+  { to: '/parent/daily-reports', labelKey: 'nav.dailyReports', icon: NotebookPen },
+  { to: '/parent/attendance', labelKey: 'nav.attendance', icon: ClipboardCheck },
+  { to: '/parent/billing', labelKey: 'nav.billing', icon: Wallet },
+  { to: '/parent/documents', labelKey: 'nav.documents', icon: FolderOpen },
+  { to: '/parent/messages', labelKey: 'nav.messages', icon: MessageSquare },
 ]
 
 export default function ParentLayout() {
+  const { t } = useTranslation()
   const user = useStore((s) => s.user)
   const logout = useStore((s) => s.logout)
   const navigate = useNavigate()
@@ -27,6 +30,12 @@ export default function ParentLayout() {
     setOpen(false)
     window.scrollTo({ top: 0 })
   }, [location.pathname])
+
+  // The signed-in parent's own account decides the portal language — set by
+  // the owner when the account was created (see ParentAccountDialog).
+  useEffect(() => {
+    setPortalLanguage(user?.preferredLanguage)
+  }, [user?.preferredLanguage])
 
   const doLogout = () => {
     logout()
@@ -43,26 +52,26 @@ export default function ParentLayout() {
             </span>
             <span className="leading-tight">
               <span className="block font-display text-base font-extrabold text-slate-900">Aunties Tykes</span>
-              <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Parent portal</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t('portal.brandLine')}</span>
             </span>
           </Link>
 
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <p className="text-sm font-bold text-slate-900">{user?.name}</p>
-              <p className="text-xs text-slate-500">Family account</p>
+              <p className="text-xs text-slate-500">{t('portal.familyAccount')}</p>
             </div>
             <Avatar name={user?.name || 'Parent'} hue="from-[#F5B942] to-[#5DC4A6]" size="md" />
             <button
               onClick={doLogout}
               className="hidden rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-rose-300 hover:text-rose-600 sm:inline-flex sm:items-center sm:gap-1.5"
             >
-              <LogOut size={15} /> Sign out
+              <LogOut size={15} /> {t('portal.signOut')}
             </button>
             <button
               onClick={() => setOpen((o) => !o)}
               className="rounded-xl border border-slate-300 p-2 text-slate-600 lg:hidden"
-              aria-label="Toggle portal menu"
+              aria-label={t('portal.toggleMenu')}
             >
               <Menu size={18} />
             </button>
@@ -83,7 +92,7 @@ export default function ParentLayout() {
                 )
               }
             >
-              <n.icon size={16} /> {n.label}
+              <n.icon size={16} /> {t(n.labelKey)}
             </NavLink>
           ))}
         </nav>
@@ -108,14 +117,14 @@ export default function ParentLayout() {
                       )
                     }
                   >
-                    <n.icon size={17} /> {n.label}
+                    <n.icon size={17} /> {t(n.labelKey)}
                   </NavLink>
                 ))}
                 <button
                   onClick={doLogout}
                   className="mt-1 flex w-full items-center gap-2.5 rounded-xl px-3 py-3 text-sm font-semibold text-rose-600 hover:bg-rose-50"
                 >
-                  <LogOut size={17} /> Sign out
+                  <LogOut size={17} /> {t('portal.signOut')}
                 </button>
               </div>
             </motion.nav>

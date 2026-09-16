@@ -3,8 +3,8 @@
  *
  * Indexability follows DEMO_MODE in src/lib/config.ts — see the launch
  * checklist there. While the site shows placeholder business information,
- * indexing it would put a fake license number and address into Google under
- * this domain, so it stays out of search results on purpose.
+ * indexing it would put fake business details (address, contact info) into
+ * Google under this domain, so it stays out of search results on purpose.
  */
 import { DEMO_MODE } from './config'
 
@@ -28,9 +28,9 @@ export interface PageSeo {
 export const PRIVATE_PREFIXES = ['/admin', '/parent', '/login', '/enroll'] as const
 
 export const DEFAULT_SEO: PageSeo = {
-  title: 'Aunties Tykes — Licensed Home Daycare in Camp Hill, PA',
+  title: 'Aunties Tykes — Family Portal | Camp Hill, PA Home Daycare',
   description:
-    'A small, licensed home daycare in Camp Hill, PA. Play-based learning, infant to preschool, tiny group sizes, and real daily reports for every family.',
+    'The Aunties Tykes family portal — daily reports, photos, attendance, invoices, and messages for our Camp Hill, PA home daycare families.',
 }
 
 export const PAGE_SEO: Record<string, PageSeo> = {
@@ -48,7 +48,7 @@ export const PAGE_SEO: Record<string, PageSeo> = {
   '/faq': {
     title: 'Frequently Asked Questions | Aunties Tykes Daycare',
     description:
-      'Hours, what to pack, meals, nap schedules, potty training, sick policy, licensing, and how the waitlist works — the questions parents ask us most.',
+      'Hours, what to pack, meals, nap schedules, potty training, sick policy, and how the waitlist works — the questions parents ask us most.',
   },
   '/contact': {
     title: 'Contact Us | Aunties Tykes, Camp Hill PA',

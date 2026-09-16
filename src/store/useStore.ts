@@ -29,6 +29,7 @@ import type {
   DocumentRecord,
   Family,
   Invoice,
+  Language,
   Lead,
   NewAnnouncement,
   NewDailyLog,
@@ -156,6 +157,7 @@ export interface StoreState extends DataSlice {
     name: string,
     email: string,
     password?: string,
+    preferredLanguage?: Language,
   ) => PortalCredentials | null
 
   addLead: (lead: NewLead) => void
@@ -260,6 +262,7 @@ export const useStore = create<StoreState>()((set, get) => {
         role: found.role,
         familyId: found.familyId,
         title: found.title,
+        preferredLanguage: found.preferredLanguage,
       }
       writeJSON(SESSION_KEY, session)
       set({ user: session })
@@ -427,7 +430,7 @@ export const useStore = create<StoreState>()((set, get) => {
     updateChild: (id, patch) =>
       commit((s) => ({ children: s.children.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
 
-    createParentLogin: (familyId, name, email, password) => {
+    createParentLogin: (familyId, name, email, password, preferredLanguage) => {
       const clean = email.trim()
       if (!clean) return null
       if (get().users.some((u) => u.email.toLowerCase() === clean.toLowerCase())) return null
@@ -436,7 +439,15 @@ export const useStore = create<StoreState>()((set, get) => {
       commit((s) => ({
         users: [
           ...s.users,
-          { id: uid('usr'), name, email: clean, password: credentials.password, role: 'parent' as const, familyId },
+          {
+            id: uid('usr'),
+            name,
+            email: clean,
+            password: credentials.password,
+            role: 'parent' as const,
+            familyId,
+            preferredLanguage: preferredLanguage ?? 'en',
+          },
         ],
       }))
       return credentials

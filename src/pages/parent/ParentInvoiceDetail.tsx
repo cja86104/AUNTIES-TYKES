@@ -1,11 +1,13 @@
 import { Link, useParams } from 'react-router-dom'
 import { ReceiptText } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import InvoiceView from '../../components/InvoiceView'
 import { Button, EmptyState } from '../../components/ui'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 
 export default function ParentInvoiceDetail() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const { invoices, family } = useFamilyScope()
 
@@ -17,11 +19,11 @@ export default function ParentInvoiceDetail() {
       <PageTransition>
         <EmptyState
           icon={ReceiptText}
-          title="We couldn't find that invoice"
-          description="It may have been removed, or the link belongs to a different account."
+          title={t('invoiceDetail.notFoundTitle')}
+          description={t('invoiceDetail.notFoundDesc')}
           action={
             <Button as={Link} to="/parent/billing">
-              Back to billing
+              {t('invoiceDetail.backToBilling')}
             </Button>
           }
         />

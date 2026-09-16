@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import { Megaphone, MessageSquare, Send, Plus, Users, Inbox } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import {
   Avatar,
@@ -26,6 +27,7 @@ interface NewThreadErrors {
 }
 
 export default function ParentMessages() {
+  const { t } = useTranslation()
   const { user, familyId, family, announcements } = useFamilyScope()
   const allThreads = useStore((s) => s.threads)
   const sendThreadMessage = useStore((s) => s.sendThreadMessage)
@@ -55,13 +57,13 @@ export default function ParentMessages() {
     if (!activeThread || !reply.trim()) return
     sendThreadMessage(activeThread.id, { from: 'parent', authorName, body: reply.trim() })
     setReply('')
-    pushToast({ title: 'Message sent', description: 'Auntie Roz will see it on her next check of the portal.' })
+    pushToast({ title: t('messages.toastSentTitle'), description: t('messages.toastReplySentDesc') })
   }
 
   const createThread = () => {
     const next: NewThreadErrors = {}
-    if (!subject.trim()) next.subject = 'What is this about?'
-    if (body.trim().length < 5) next.body = 'Add a little more detail'
+    if (!subject.trim()) next.subject = t('messages.subjectError')
+    if (body.trim().length < 5) next.body = t('messages.bodyError')
     setErrors(next)
     if (Object.keys(next).length) return
 
@@ -83,17 +85,17 @@ export default function ParentMessages() {
     setBody('')
     setErrors({})
     setTab('threads')
-    pushToast({ title: 'Message sent', description: 'We started a new conversation with Auntie Roz.' })
+    pushToast({ title: t('messages.toastSentTitle'), description: t('messages.toastNewThreadDesc') })
   }
 
   return (
     <PageTransition>
       <PageHeader
-        title="Messages"
-        description="Announcements from Aunties Tykes, and your own conversations with Auntie Roz."
+        title={t('messages.title')}
+        description={t('messages.description')}
         actions={
           <Button onClick={() => setOpen(true)}>
-            <Plus size={16} /> New message
+            <Plus size={16} /> {t('messages.newMessage')}
           </Button>
         }
       />
@@ -101,8 +103,8 @@ export default function ParentMessages() {
       <div className="mb-6">
         <Tabs
           tabs={[
-            { value: 'announcements', label: 'Announcements', count: announcements.length },
-            { value: 'threads', label: 'My conversations', count: threads.length },
+            { value: 'announcements', label: t('messages.tabAnnouncements'), count: announcements.length },
+            { value: 'threads', label: t('messages.tabConversations'), count: threads.length },
           ]}
           value={tab}
           onChange={(v) => setTab(v as 'announcements' | 'threads')}
@@ -111,7 +113,7 @@ export default function ParentMessages() {
 
       {tab === 'announcements' ? (
         announcements.length === 0 ? (
-          <EmptyState icon={Megaphone} title="No announcements yet" description="Notices from Auntie Roz will appear here." />
+          <EmptyState icon={Megaphone} title={t('messages.noAnnouncementsTitle')} description={t('messages.noAnnouncementsDesc')} />
         ) : (
           <div className="grid gap-5 lg:grid-cols-2">
             {announcements.map((a, i) => (
@@ -129,7 +131,7 @@ export default function ParentMessages() {
                     </div>
                     {a.audience !== 'all' && (
                       <Badge tone="violet">
-                        <Users size={12} /> Just for you
+                        <Users size={12} /> {t('messages.justForYou')}
                       </Badge>
                     )}
                   </div>
@@ -144,11 +146,11 @@ export default function ParentMessages() {
       ) : threads.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title="No conversations yet"
-          description="Question about nap time, pickup, or a form? Start a message and Auntie Roz will get back to you."
+          title={t('messages.noConversationsTitle')}
+          description={t('messages.noConversationsDesc')}
           action={
             <Button onClick={() => setOpen(true)}>
-              <Plus size={16} /> Write a message
+              <Plus size={16} /> {t('messages.writeMessage')}
             </Button>
           }
         />
@@ -156,7 +158,7 @@ export default function ParentMessages() {
         <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
           <Card className="overflow-hidden">
             <div className="border-b border-slate-100 px-4 py-3">
-              <h2 className="font-display text-sm font-bold text-slate-900">Your conversations</h2>
+              <h2 className="font-display text-sm font-bold text-slate-900">{t('messages.yourConversations')}</h2>
             </div>
             <ul className="divide-y divide-slate-100">
               {threads.map((t) => {
@@ -183,7 +185,7 @@ export default function ParentMessages() {
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
                 <div>
                   <h2 className="font-display text-base font-bold text-slate-900">{activeThread.subject}</h2>
-                  <p className="text-xs text-slate-500">Updated {fmtDate(activeThread.updatedAt)}</p>
+                  <p className="text-xs text-slate-500">{t('messages.updated', { date: fmtDate(activeThread.updatedAt) })}</p>
                 </div>
                 <Badge tone="neutral">
                   <MessageSquare size={12} /> {activeThread.messages.length}
@@ -234,11 +236,11 @@ export default function ParentMessages() {
                         sendReply()
                       }
                     }}
-                    placeholder="Write a reply…"
-                    aria-label="Reply message"
+                    placeholder={t('messages.replyPlaceholder')}
+                    aria-label={t('messages.replyPlaceholder')}
                   />
                   <Button onClick={sendReply} disabled={!reply.trim()}>
-                    <Send size={16} /> Send
+                    <Send size={16} /> {t('messages.send')}
                   </Button>
                 </div>
               </div>
@@ -250,35 +252,35 @@ export default function ParentMessages() {
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="Message Auntie Roz"
-        description="She reads the portal between naps and after pickup. For anything urgent, please call."
+        title={t('messages.modalTitle')}
+        description={t('messages.modalDescription')}
         footer={
           <>
             <Button variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {t('messages.cancel')}
             </Button>
             <Button onClick={createThread}>
-              <Send size={16} /> Send message
+              <Send size={16} /> {t('messages.sendMessage')}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Field label="Subject" error={errors.subject}>
+          <Field label={t('messages.subject')} error={errors.subject}>
             <Input
               value={subject}
               invalid={Boolean(errors.subject)}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Pickup change on Friday"
+              placeholder={t('messages.subjectPlaceholder')}
             />
           </Field>
-          <Field label="Message" error={errors.body}>
+          <Field label={t('messages.message')} error={errors.body}>
             <Textarea
               rows={6}
               value={body}
               invalid={Boolean(errors.body)}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Grandma is picking up on Friday around 4 — she's on the emergency contact list."
+              placeholder={t('messages.messagePlaceholder')}
             />
           </Field>
         </div>

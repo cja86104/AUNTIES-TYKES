@@ -27,7 +27,7 @@ const iso = (d: Date) => format(d, 'yyyy-MM-dd')
 
 export const settings: Settings = {
   businessName: 'Aunties Tykes',
-  tagline: 'A small, licensed home daycare where every child is known by name.',
+  tagline: 'A small home daycare, and a private portal for our families.',
   director: 'Mellissa Allen',
   address: '118 Sycamore Hollow Ln, Camp Hill, PA 17011',
   phone: '(717) 555-0148',
@@ -53,7 +53,7 @@ export const settings: Settings = {
 - A persistent cough that keeps them from resting
 
 Children may return **24 hours after symptoms resolve without medication**. If your child becomes ill during the day we will call you right away and keep them comfortable in our quiet nook until pickup.`,
-    latePickup: `Our licensed day ends at **5:45 PM**. We understand traffic happens — please text as soon as you know you'll be late.
+    latePickup: `Our day ends at **5:45 PM**. We understand traffic happens — please text as soon as you know you'll be late.
 
 - A grace period of 10 minutes is offered twice per calendar year
 - After that, a late fee of **$2 per minute** is added to your next invoice
@@ -641,7 +641,7 @@ export const faqs: Faq[] = [
   { q: 'How does nap time work?', a: 'Infants sleep on their own schedule in safe-sleep certified cribs. Toddlers and preschoolers rest from about 12:45 to 2:30. Non-sleepers get quiet books and puzzles on their mat after 45 minutes.' },
   { q: 'How do you handle potty training?', a: 'We follow your lead and start when your child shows readiness. Bathroom visits happen after meals and before nap, and accidents are treated as a normal part of learning.' },
   { q: 'What is your sick policy?', a: 'Children need to stay home with a fever of 100.4°F or higher, vomiting or diarrhea, an undiagnosed rash, or draining eyes. They may return 24 hours after symptoms resolve without medication.' },
-  { q: 'Are you licensed and insured?', a: 'Yes — we hold Pennsylvania Family Child Care Home license PA-FCCH-041207, carry liability insurance, and every adult in the home has a cleared background check plus current CPR and First Aid.' },
+  { q: 'Are you insured?', a: 'Yes — we carry liability insurance, and every adult in the home has a cleared background check plus current CPR and First Aid.' },
   { q: 'How do we get updates during the day?', a: 'Every family gets a parent portal login for daily reports — meals, naps, diapers, mood, and activities. Announcements and invoices live there too.' },
   { q: 'Is there a waitlist?', a: 'Usually, yes. We keep 12 spots total. Join the waitlist through the contact form and we will tell you honestly where you stand and when we expect an opening.' },
   { q: 'Do you offer part-time care?', a: 'We offer part-time (three fixed days) and occasional drop-in care when a spot is available. Full-time families always get first choice of schedule.' },

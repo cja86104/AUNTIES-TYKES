@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { MapPin, Mail, Clock, ShieldCheck } from 'lucide-react'
+import { MapPin, Mail, Clock } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 export default function PublicFooter() {
@@ -16,10 +16,6 @@ export default function PublicFooter() {
             <span className="font-display text-xl font-extrabold text-slate-900">Aunties Tykes</span>
           </div>
           <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-600">{settings.tagline}</p>
-          <div className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#5DC4A6]/10 px-3 py-2 text-xs font-semibold text-[#25705c]">
-            <ShieldCheck size={15} />
-            PA Licensed Family Child Care Home · {settings.licenseNumber}
-          </div>
         </div>
 
         <div>

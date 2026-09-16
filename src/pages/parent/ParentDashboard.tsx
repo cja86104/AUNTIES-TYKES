@@ -13,6 +13,7 @@ import {
   LogOut,
   Clock,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import {
   Avatar,
@@ -31,6 +32,7 @@ import { useBootstrap } from '../../lib/hooks'
 import { ageLabel, fmtDate, fmtTime, money, todayISO } from '../../lib/helpers'
 
 export default function ParentDashboard() {
+  const { t } = useTranslation()
   const { user, activeKids, kids, outstanding, nextInvoice, announcements } = useFamilyScope()
   const attendance = useStore((s) => s.attendance)
   const dailyLogs = useStore((s) => s.dailyLogs)
@@ -58,12 +60,14 @@ export default function ParentDashboard() {
           {fmtDate(today, 'EEEE, MMMM d')}
         </p>
         <h1 className="mt-1.5 font-display text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-          Hi {firstName} 👋
+          {t('dashboard.greeting', { name: firstName })}
         </h1>
         <p className="mt-2 max-w-2xl text-slate-600">
           {activeKids.length > 0
-            ? `Here's how ${activeKids.length === 1 ? `${activeKids[0]?.name.split(' ')[0]}'s` : 'everyone’s'} day is going.`
-            : 'Your family account is set up and ready.'}
+            ? activeKids.length === 1
+              ? t('dashboard.subtitleOne', { name: activeKids[0]?.name.split(' ')[0] })
+              : t('dashboard.subtitleMany')
+            : t('dashboard.subtitleNone')}
         </p>
       </div>
 
@@ -78,33 +82,33 @@ export default function ParentDashboard() {
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             icon={Baby}
-            label="Children"
+            label={t('dashboard.statChildren')}
             value={activeKids.length}
-            sub={kids.length > activeKids.length ? `${kids.length - activeKids.length} on the waitlist` : 'Enrolled with us'}
+            sub={kids.length > activeKids.length ? t('dashboard.statChildrenSubWaitlist', { count: kids.length - activeKids.length }) : t('dashboard.statChildrenSubEnrolled')}
             tone="blue"
             to="/parent/children"
           />
           <StatCard
             icon={Wallet}
-            label="Balance due"
+            label={t('dashboard.statBalance')}
             value={money(outstanding)}
-            sub={outstanding > 0 ? 'Across your open statements' : 'You are all paid up — thank you!'}
+            sub={outstanding > 0 ? t('dashboard.statBalanceSubOwed') : t('dashboard.statBalanceSubClear')}
             tone={outstanding > 0 ? 'amber' : 'green'}
             to="/parent/billing"
           />
           <StatCard
             icon={CalendarClock}
-            label="Next invoice due"
+            label={t('dashboard.statNextInvoice')}
             value={nextInvoice ? fmtDate(nextInvoice.dueDate, 'MMM d') : '—'}
-            sub={nextInvoice ? `${nextInvoice.id} · ${money(nextInvoice.amount)}` : 'Nothing scheduled'}
+            sub={nextInvoice ? t('dashboard.statNextInvoiceSub', { id: nextInvoice.id, amount: money(nextInvoice.amount) }) : t('dashboard.statNextInvoiceSubNone')}
             tone="violet"
             to={nextInvoice ? `/parent/invoices/${nextInvoice.id}` : '/parent/billing'}
           />
           <StatCard
             icon={Megaphone}
-            label="Announcements"
+            label={t('dashboard.statAnnouncements')}
             value={announcements.length}
-            sub={latestAnnouncement ? `Latest ${fmtDate(latestAnnouncement.date, 'MMM d')}` : 'Nothing posted yet'}
+            sub={latestAnnouncement ? t('dashboard.statAnnouncementsSubLatest', { date: fmtDate(latestAnnouncement.date, 'MMM d') }) : t('dashboard.statAnnouncementsSubNone')}
             tone="green"
             to="/parent/messages"
           />
@@ -115,9 +119,9 @@ export default function ParentDashboard() {
         <div className="space-y-6">
           <Card className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-              <h2 className="font-display text-lg font-bold text-slate-900">Today at a glance</h2>
+              <h2 className="font-display text-lg font-bold text-slate-900">{t('dashboard.todayGlance')}</h2>
               <Button as={Link} to="/parent/attendance" size="sm" variant="ghost">
-                Attendance history <ArrowRight size={14} />
+                {t('dashboard.attendanceHistory')} <ArrowRight size={14} />
               </Button>
             </div>
 
@@ -125,8 +129,8 @@ export default function ParentDashboard() {
               <div className="p-5">
                 <EmptyState
                   icon={Baby}
-                  title="No enrolled children yet"
-                  description="Once enrollment starts, check-ins show up here each morning."
+                  title={t('dashboard.noChildrenTitle')}
+                  description={t('dashboard.noChildrenDesc')}
                 />
               </div>
             ) : (
@@ -150,7 +154,7 @@ export default function ParentDashboard() {
                           {child.name}
                         </Link>
                         <p className="truncate text-xs text-slate-500">
-                          {child.ageGroup} · {ageLabel(child.dob)} · with {child.teacher}
+                          {t('dashboard.childMeta', { ageGroup: t(`ageGroup.${child.ageGroup}`), age: ageLabel(child.dob), teacher: child.teacher })}
                         </p>
                       </div>
                       <div className="flex items-center gap-4 text-xs text-slate-600">
@@ -163,7 +167,7 @@ export default function ParentDashboard() {
                           {record?.checkOut ? fmtTime(record.checkOut) : '—'}
                         </span>
                       </div>
-                      <Badge tone={statusTone(status)}>{status}</Badge>
+                      <Badge tone={statusTone(status)}>{t(`status.${status}`)}</Badge>
                     </motion.li>
                   )
                 })}
@@ -173,9 +177,9 @@ export default function ParentDashboard() {
 
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-lg font-bold text-slate-900">Latest daily report</h2>
+              <h2 className="font-display text-lg font-bold text-slate-900">{t('dashboard.latestReport')}</h2>
               <Button as={Link} to="/parent/daily-reports" size="sm" variant="ghost">
-                See all <ArrowRight size={14} />
+                {t('dashboard.seeAll')} <ArrowRight size={14} />
               </Button>
             </div>
             {latestLog ? (
@@ -183,8 +187,8 @@ export default function ParentDashboard() {
             ) : (
               <EmptyState
                 icon={NotebookPen}
-                title="No reports yet"
-                description="Auntie Roz posts meals, naps, and a note before pickup each day."
+                title={t('dashboard.noReportsTitle')}
+                description={t('dashboard.noReportsDesc')}
               />
             )}
           </div>
@@ -192,10 +196,10 @@ export default function ParentDashboard() {
 
         <div className="space-y-6">
           <Card className="p-5">
-            <h2 className="font-display text-lg font-bold text-slate-900">Quick actions</h2>
+            <h2 className="font-display text-lg font-bold text-slate-900">{t('dashboard.quickActions')}</h2>
             <div className="mt-4 space-y-2.5">
               <Button as={Link} to="/parent/daily-reports" variant="outline" className="w-full justify-start">
-                <NotebookPen size={16} /> View daily reports
+                <NotebookPen size={16} /> {t('dashboard.viewDailyReports')}
               </Button>
               <Button
                 as={Link}
@@ -203,13 +207,13 @@ export default function ParentDashboard() {
                 variant="outline"
                 className="w-full justify-start"
               >
-                <CreditCard size={16} /> {outstanding > 0 ? `Pay ${money(outstanding)}` : 'View billing'}
+                <CreditCard size={16} /> {outstanding > 0 ? t('dashboard.payAmount', { amount: money(outstanding) }) : t('dashboard.viewBilling')}
               </Button>
               <Button as={Link} to="/parent/messages" variant="outline" className="w-full justify-start">
-                <Megaphone size={16} /> Read announcements
+                <Megaphone size={16} /> {t('dashboard.readAnnouncements')}
               </Button>
               <Button as={Link} to="/parent/documents" variant="outline" className="w-full justify-start">
-                <Clock size={16} /> Forms &amp; documents
+                <Clock size={16} /> {t('dashboard.formsDocuments')}
               </Button>
             </div>
           </Card>
@@ -217,7 +221,7 @@ export default function ParentDashboard() {
           {latestAnnouncement && (
             <Card className="overflow-hidden">
               <div className="border-b border-slate-100 bg-gradient-to-br from-[#FDF1DC] to-white px-5 py-4">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8a6112]">Latest announcement</p>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8a6112]">{t('dashboard.latestAnnouncement')}</p>
                 <h3 className="mt-1 font-display text-base font-bold text-slate-900">{latestAnnouncement.title}</h3>
                 <p className="text-xs text-slate-500">{fmtDate(latestAnnouncement.date, 'EEEE, MMMM d')}</p>
               </div>
@@ -229,7 +233,7 @@ export default function ParentDashboard() {
                   to="/parent/messages"
                   className="inline-flex items-center gap-1 text-sm font-semibold text-[#4F77D9] hover:underline"
                 >
-                  All announcements <ArrowRight size={14} />
+                  {t('dashboard.allAnnouncements')} <ArrowRight size={14} />
                 </Link>
               </div>
             </Card>

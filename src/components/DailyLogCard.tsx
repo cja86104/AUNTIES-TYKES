@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { Utensils, Moon, Baby, Smile, Sparkles, NotebookPen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Card, Badge, Avatar } from './ui'
@@ -32,6 +33,7 @@ export interface DailyLogCardProps {
 }
 
 export default function DailyLogCard({ log, child, index = 0, actions }: DailyLogCardProps) {
+  const { t } = useTranslation()
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
@@ -56,12 +58,12 @@ export default function DailyLogCard({ log, child, index = 0, actions }: DailyLo
         </div>
 
         <div className="grid gap-5 p-5 sm:grid-cols-2">
-          <Row icon={Utensils} label="Meals">{log.meals}</Row>
-          <Row icon={Moon} label="Naps">{log.naps}</Row>
-          <Row icon={Baby} label="Diapers / potty">{log.potty}</Row>
-          <Row icon={Sparkles} label="Activities">{log.activities.join(' · ')}</Row>
+          <Row icon={Utensils} label={t('dailyLogCard.meals')}>{log.meals}</Row>
+          <Row icon={Moon} label={t('dailyLogCard.naps')}>{log.naps}</Row>
+          <Row icon={Baby} label={t('dailyLogCard.diapersPotty')}>{log.potty}</Row>
+          <Row icon={Sparkles} label={t('dailyLogCard.activities')}>{log.activities.join(' · ')}</Row>
           <div className="sm:col-span-2">
-            <Row icon={NotebookPen} label={`Note from ${log.author || 'Auntie Roz'}`}>{log.notes || '—'}</Row>
+            <Row icon={NotebookPen} label={t('dailyLogCard.noteFrom', { author: log.author || t('dailyLogCard.defaultAuthor') })}>{log.notes || '—'}</Row>
           </div>
         </div>
 
@@ -73,7 +75,7 @@ export default function DailyLogCard({ log, child, index = 0, actions }: DailyLo
                   <img
                     data-aiwp-slot={p.slot}
                     src={p.url}
-                    alt={p.caption || 'Daily report photo'}
+                    alt={p.caption || t('dailyLogCard.photoAlt')}
                     className="h-full w-full object-cover transition duration-500 hover:scale-105"
                     loading="lazy"
                   />
