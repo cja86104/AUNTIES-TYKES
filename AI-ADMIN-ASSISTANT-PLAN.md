@@ -1,20 +1,27 @@
-# AI Admin Assistant — Planning Doc
+# AI Admin Assistant — Planning Doc (v2 — full build, voice included)
 
 **Status:** Plan only. Nothing in this document has been built. No locked file
 has been touched to produce it.
-**Drafted:** September 2026, with Claude (Cowork), against the current state
-of this repo (Vite/React demo, `DEMO_MODE = true`, no backend yet).
+**Drafted:** September 2026, with Claude (Cowork). Supersedes the earlier
+September draft — that version assumed no backend and treated voice as a
+later fast-follow. Neither is true anymore: the Supabase backend is going
+live tonight, and voice — both directions, working on Safari — is now a v1
+requirement, not a phase-2 nice-to-have. This version reflects that.
+
+**Working name used throughout:** *Ro*. Placeholder from the planning
+conversation, not a locked decision — swap it for whatever you or Melissa
+land on. Nothing else in this plan depends on the specific name.
 
 ---
 
 ## 1. The ask, in one sentence
 
-Give the owner a way to run the admin console by typing (or eventually
-speaking) instructions — "send today's daily reports," "who hasn't paid
-this month," "don't message the Brooks family until Friday" — and have an
-AI carry out the same actions the admin UI already does, including
-deciding which families get contacted and which don't, at OpenRouter's
-cheap-tier pricing rather than frontier-model pricing.
+Give the owner a real assistant — not a settings-panel chatbot — that she can
+type *or talk* to, that already knows her families, her invoices, her
+attendance, and the standing instructions she's given it, and that carries
+out the same actions the admin UI already does, including deciding which
+families get contacted and which don't, at OpenRouter's cheap-tier pricing
+rather than frontier-model pricing.
 
 That's a real, buildable feature. It is not a "point an LLM at the database
 and let it drive" feature — that version fails fast in a childcare app,
@@ -24,35 +31,22 @@ not sit above it. Everything below is designed around keeping that true.
 
 ---
 
-## 2. Why this waits on the Supabase migration — and doesn't add a second one
+## 2. Where this stands tonight
 
-Right now there is no backend. Passwords are plain text in a Zustand store,
-there's no server to call, and nothing is audited. An AI agent that can
-"do anything the admin can do" needs three things that only exist once
-this app has a real backend:
+The Supabase migration — Auth, Postgres tables mirroring `types.ts`, RLS
+that reproduces what `useFamilyScope` does client-side today — is going
+live tonight. That migration and this feature are still the same project,
+not two: the tables, RLS policies, and server functions this needs are the
+ones the real launch needs regardless of AI.
 
-- A server-side boundary to call into (so the AI can't reach a family's
-  data it shouldn't, the same way `useFamilyScope` stops a browser URL from
-  doing it today)
-- A place to log every action it takes, tied to the instruction that caused
-  it
-- A real place to send from (Resend/Postmark, per `ARCHITECTURE.md`'s
-  "demo-only seams" table) — right now "Email" sends nothing
-
-`ARCHITECTURE.md` already flags this move as coming: *"When this moves to
-Supabase, [useFamilyScope] is the seam."* Good news: that migration and this
-feature are the same project, not two. The Supabase tables, RLS policies,
-and server functions this needs to build are the same ones the real launch
-needs regardless of AI. Sequence it as:
-
-1. **Supabase migration** (Auth, Postgres tables mirroring `types.ts`, RLS
-   that reproduces what `useFamilyScope` does client-side today) — the
-   already-planned, non-AI work.
+1. **Supabase migration** — happening tonight. A server-side boundary to
+   call into, a place to log every action, and a real place to send from
+   (Resend/Postmark) all come from this, not from the AI work.
 2. **AI layer on top of the same server functions** the real admin UI ends
    up calling — not a parallel path.
 
-Building the AI layer against today's `localStorage` demo would mean
-throwing it away and rebuilding it in step 1 anyway.
+Nothing in §§3–9 below starts before step 1 is actually live and the admin
+UI is calling real server functions instead of the localStorage store.
 
 ---
 
@@ -76,210 +70,354 @@ and already validated exactly like the UI form that calls it today.
 | `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium |
 
 The model's only job is to figure out *which tool, with which arguments* a
-sentence maps to. It cannot invent a tool, and a tool it doesn't have
-listed simply isn't callable — same principle as a locked file in this
-repo: the deny list is enforced outside the thing you're trying to trust.
+sentence (typed or spoken) maps to. It cannot invent a tool, and a tool it
+doesn't have listed simply isn't callable.
 
 ---
 
-## 4. "What to send to who" — a rules engine that the AI edits, not an AI that decides live
+## 4. Who Ro is — identity, not a feature list
 
-This is the part worth getting right, because "let the AI decide every
-send from scratch" is exactly where both cost and reliability go wrong —
-it means an LLM call, and an LLM's judgment, sitting in the critical path
-of every single message to every parent, every day.
+This is the part that decides whether it feels like a real assistant or a
+form with a chat bubble on it, and it costs nothing to get right.
 
-Instead, split it in two:
+The system prompt is assembled fresh each session from real state — not
+written once and left static — the same way a rich companion prompt pulls
+from live data instead of a fixed bio. For Ro, the ingredients are:
+who Melissa is, her standing rules, today's real numbers (checked-in count,
+unpaid invoices, pending enrollments, unanswered threads), and a strict
+closing section that governs how it talks.
 
-**Standing rules** — plain structured data, evaluated by ordinary code,
+**It's written in second person, addressed to the model as an identity, not
+described in third person as a tool.** That distinction is the actual
+mechanism, not flavor:
+
+- "This assistant helps daycare administrators manage attendance, billing,
+  and messaging" teaches the model to *narrate about itself* — which is
+  where "Hi! I'm an AI assistant, how can I help you today?" comes from.
+- "You are Ro, Melissa's operations partner at Aunties Tykes. You know
+  which families are enrolled, who's checked in today, whose invoice is
+  overdue, and what she's told you about how she wants each family
+  handled" teaches the model to *inhabit* that role instead.
+
+The closing "how you respond" section matters just as much: texting
+register, no markdown headers, no numbered action-item lists, ask one
+sharp question before launching into a plan when the data to answer
+confidently isn't there yet. That's what keeps replies reading like a
+person who works there instead of a report generator.
+
+If Melissa ever writes freeform context about how she wants Ro to sound or
+what she wants it to know about her business, that text gets normalized
+into consistent second-person register with one cheap model call *at save
+time*, not re-interpreted live on every turn.
+
+---
+
+## 5. What Ro notices without being asked
+
+This is the piece that makes it feel like an assistant instead of a search
+box: a small set of watchers, each checking real state against a real
+condition, each respecting a cooldown and quiet hours so Melissa isn't
+pinged about the same thing five times or at 9pm on a Sunday.
+
+| Trigger | Condition | Priority |
+|---|---|---|
+| `daily_log_missing` | A child's `attendance` shows `checked-out` today, no matching `dailyLogs` entry exists | Medium |
+| `payment_overdue` | An invoice is past `dueDate` with a balance owed, no reminder sent within the cooldown window | Medium → High with age |
+| `enrollment_stale` | An `enrollments` row has sat `pending` past a threshold | Medium |
+| `ack_pending` | A `documents` row has `requiresAck: true` and a family hasn't acknowledged it | Low |
+| `unanswered_message` | A `threads` entry's last message is from a parent, no reply within the cooldown window | Medium → High with age |
+| `cold_lead` | A `leads`/`waitlist` entry has had no status change or activity in N days | Low |
+
+Each of these is a plain read query, evaluated by ordinary code — no model
+call, no cost, no judgment involved in deciding *whether* to surface it.
+They only ever surface things to Melissa; anything in the Send/Money/PII
+tier still goes through the confirmation gate in §7 before it does
+anything to a family. Noticing and acting stay separate.
+
+The result is that opening the console (or asking Ro out loud, "what's
+going on today?") gets her a short, ranked list — "3 families haven't
+paid, the Chen daily log never went out, the Brooks haven't heard from you
+in a week" — instead of her having to go find that herself.
+
+---
+
+## 6. What Ro remembers, and how
+
+Not a semantic memory system, not embeddings, not a "memory palace" — that
+kind of infrastructure is overkill for what this needs and is genuinely
+more failure-prone than it's worth at this scale. What Ro needs is two
+much simpler things, both of which already work at this scale in a chat
+product built the same way:
+
+**Standing instructions become real rows, not conversation context.**
+When Melissa says "don't message the Brooks family until Friday," that
+becomes a saved rule in a rules table — the same kind of record as a
+child's allergy or an invoice — checked before any send-tier action runs.
+It's not the model "remembering" anything; it's a lookup against data that
+persists regardless of what conversation she's in or whether she closed
+the tab. That's also why it's inspectable and correctable — she or you can
+open the actual list of standing rules and edit or delete any of them,
+never a black box.
+
+**A cheap pattern-match runs before the model does, for the common
+shapes.** Rather than sending every sentence to a model to classify,
+match obvious instruction shapes with plain regex first — "don't
+(message|contact|email) the X family (until|before) Y," "X is paying on
+Y," "remind me to Z" — and only fall through to the Tier-0 model (§8) when
+nothing matches. Costs nothing, and most of what a small home daycare
+owner actually says fits a handful of shapes. Start with a small list,
+expand it as you see what she actually types and says — don't try to
+guess the full set up front.
+
+---
+
+## 7. "What to send to who" — a rules engine Ro edits, not a model that decides live
+
+*(Carried over from the original draft — this reasoning didn't change.)*
+
+**Standing rules** are plain structured data, evaluated by ordinary code,
 no model involved at send time. Things like: *daily logs go out
-automatically at checkout, except don't message the Okafors after 6pm,
-and never auto-send anything billing-related.* The rules engine is what
-actually decides who gets what, deterministically, every time.
+automatically at checkout, except don't message the Okafors after 6pm, and
+never auto-send anything billing-related.*
 
-**The AI's real job** is narrower than "decide who gets messaged":
+**Ro's real job** is narrower than "decide who gets messaged":
 
-- Turn a sentence like *"stop sending the Brooks family anything until
-  Friday"* into a rule change, and show her the rule in plain English
-  before it's saved
-- Draft the actual wording of a message in her voice, from real fields
-  (child's name, today's nap time, today's meal) — never inventing a
-  detail that isn't in the record
-- Handle the one-off ad hoc command — *"send this week's invoice reminder
-  to everyone except families on a payment plan"* — by resolving the
-  recipient list through the same family-scoped queries the admin UI
-  already uses, showing her the resolved list, and waiting for her tap
+- Turn a sentence into a rule change (typed or spoken), and show Melissa
+  the rule in plain English before it's saved
+- Draft the actual wording of a message in her voice, from real fields —
+  never inventing a detail that isn't in the record
+- Handle one-off ad hoc commands by resolving the recipient list through
+  the same family-scoped queries the admin UI already uses, showing her
+  the resolved list, and waiting for her tap (or, once voice output is
+  trusted, a spoken confirmation)
 
-Worked examples:
-
-| She says | What actually happens |
-|---|---|
-| "Send today's daily reports" | Rules engine resolves "today's checked-out children with an unsent daily log," AI drafts each family's blurb from that child's real log entry, she sees a list, one tap sends all |
-| "Don't bug the Okafors about the invoice, they already told me they're paying Friday" | AI writes a suppression rule (`billing reminders → Okafor family → until Friday`), confirms it back to her in plain English, no message sent by this instruction — it just prevents one later |
-| "Who hasn't paid this month" | Read-only query, no send tool involved, no confirmation needed — just an answer |
+**Confirmation tiers.** *Low* actions (attendance, daily logs, documents)
+can auto-run once trust is established. *Send*, *Money*, and *PII* actions
+always show a preview and require her tap — no exceptions in v1, including
+send actions the rules engine itself triggers. Voice makes it easier for
+her to *ask* and to *hear the answer* — it does not loosen this gate. A
+spoken "send it" still routes through the same confirmation UI a tap does;
+this plan does not add voice-only approval for anything in the Money or
+PII tier.
 
 ---
 
-## 5. Guardrails specific to a childcare + money app
+## 8. Guardrails specific to a childcare + money app
 
-- **Confirmation tiers.** *Low* actions (attendance, daily logs, documents)
-  can auto-run once trust is established. *Send*, *Money*, and *PII*
-  actions (rows marked above) always show a preview and require her tap —
-  no exceptions in v1, including "send" actions the rules engine itself
-  triggers, until there's a track record.
+*(Carried over from the original draft, unchanged — still the right list.)*
+
 - **Audit log.** Every AI-initiated action stores the instruction that
   caused it, the tool called, the arguments, and who/what it touched.
-  This is the same discipline the rest of the repo already has around
-  the family-scope boundary — an acquirer will want to see this, not take
-  your word for it.
 - **No invented facts about a child.** Message drafting is templated: the
-  model rephrases fields it's handed, it does not get to state anything
-  about a specific child that isn't already in a record. This is the
-  single highest-consequence failure mode (a wrong or fabricated claim
-  about someone's kid) and it's cheap to close off structurally instead
-  of trusting the model not to.
+  model rephrases fields it's handed, never states anything about a
+  specific child that isn't already in a record.
 - **PII minimization in prompts.** Tier-0/1 model calls get first names
-  and internal IDs, not full addresses, DOB, or anything payment-related —
-  Stripe already isn't supposed to touch this app's own storage, and the
-  AI layer shouldn't either. When picking OpenRouter providers, prefer
-  ones offering zero-data-retention where it's offered, given minors'
-  data is in scope.
-- **Rate limit / blast-radius cap.** A hard ceiling (configurable, start
-  low) on sends-per-hour and a same-message-to-N-families threshold that
-  forces a confirmation regardless of rule state — the thing that catches
-  "the rule was wrong and it just tried to message all 14 families" before
-  it happens.
-- **Undo window.** Anything sent through this system gets a short window
-  (e.g., 2 minutes) where "undo" pulls it back if the transport allows,
-  and always gets logged even if it can't be recalled.
+  and internal IDs, not full addresses, DOB, or anything payment-related.
+- **Rate limit / blast-radius cap.** A hard ceiling on sends-per-hour and a
+  same-message-to-N-families threshold that forces confirmation
+  regardless of rule state.
+- **Undo window.** Anything sent gets a short window where "undo" pulls it
+  back if the transport allows, and is always logged even if it can't be.
 
 ---
 
-## 6. Model routing — tiered, OpenRouter-only, priced for a home daycare's actual volume
+## 9. Voice — full v1, both directions, Safari is non-negotiable
 
-You already run multi-model OpenRouter setups, so this is the specific
-shape for this feature rather than a primer. Three tiers, picked by task
-shape, not by "best model available":
+Voice ships with the initial build. Not deferred, not a fast-follow. The
+Safari requirement isn't a nice-to-have either — it's the thing that
+decides whether this is usable for the client at all, so the architecture
+below is chosen specifically because it's Safari-safe *by construction*,
+not because a particular vendor happens to support it today.
 
-**Tier 0 — intent parsing** (which tool, which arguments; the highest-volume,
-lowest-difficulty call, run on nearly every instruction). A small
-tool-calling-capable model is genuinely enough here — this is structured
-extraction, not reasoning. As of September 2026, DeepSeek's current
-tool-calling model sits around **$0.21 / $0.31 per million input/output
-tokens** on OpenRouter, and even cheaper MoE "flash" variants from several
-labs are pricing under $0.10 input. This tier should cost fractions of a
-cent per instruction.
+**The rule that makes Safari support non-negotiable-and-true at the same
+time: never rely on browser-native speech APIs.** `webkitSpeechRecognition`
+doesn't reliably open the real microphone on iOS Safari (it rides on Apple
+Dictation under the hood and is inconsistent across mobile browsers), and
+`speechSynthesis()` has inconsistent voice availability and quality on
+Safari. Both are free, and both are exactly the wrong choice given the
+requirement.
 
-**Tier 1 — message drafting** (writing the actual sentence a parent reads,
-in her voice). Slightly higher quality is worth paying for here since a
-parent reads the output directly, but this still doesn't need a frontier
-model — a Gemini Flash-class or similarly positioned mid-tier model
-(roughly **$0.75 / $3.75 per million** at current discounted OpenRouter
-rates) is well beyond what a two-sentence daily-report blurb needs.
+**What actually works everywhere, Safari included:** the server calls a
+speech API and gets back an audio file; input goes the same way in
+reverse — the browser records audio and uploads it, the server
+transcribes it. Neither direction depends on a browser's own speech
+engine. Safari has always fully supported MP3 playback through a normal
+`<audio>` element; the only real constraint is universal across every
+modern browser, not Safari-specific — playback has to start from a user
+gesture (a tap), which a chat interface already does naturally.
 
-**Tier 2 — rare escalation** (an ambiguous instruction, or one that touches
-money and multiple families at once). Route to a stronger reasoning model
-only when Tier 0 confidence is low or the tool risk tier is Money/PII —
-and even here, a mid-reasoning model is sufficient specifically *because*
-step 5's confirmation gate means a human checks the output before anything
-executes. There's no case in this feature where paying $15–25/million
-input tokens buys anything a human isn't already re-checking.
+**Speech-to-text (her voice → text):** OpenRouter's audio-transcription
+endpoint, `openai/whisper-large-v3-turbo` (Groq-hosted), roughly
+$0.0007/minute — same API key already used for chat. At single-owner
+volume this is effectively free. Record with `MediaRecorder`, upload the
+clip, transcribe server-side, feed the transcript into the normal
+send-message flow as if she'd typed it.
 
-**Practical setup:** don't hardcode model IDs — OpenRouter pricing and
-model lineups shift monthly (the numbers above are a September 2026
-snapshot; re-check at build time). Keep a small model-registry config —
-tier → ordered list of model IDs with a fallback — so swapping in a
-cheaper or newer model later is a config change, not a code change. This
-also gives you a place to add a local Ollama model later for your own dev
-testing without it ever being in the path a live client account depends
-on — her production traffic stays 100% OpenRouter so it's always available
-from her browser with no dependency on your machine being on.
+**Text-to-speech (Ro's replies → her voice):** OpenRouter now has a native
+TTS endpoint (`/api/v1/audio/speech`), added since the original draft —
+this means voice output can run on the exact same provider and key as
+chat and speech-to-text, rather than adding OpenAI as a second vendor.
+Candidate model: `openai/gpt-4o-mini-tts` (OpenRouter currently lists it
+as `openai/gpt-4o-mini-tts-2025-12-15` — confirm the current ID via
+OpenRouter's Models API at build time, these roll forward), priced per
+character, roughly $0.015/minute of generated audio by OpenAI's own
+published rate — reconfirm OpenRouter's actual rate for the model at build
+time since routed pricing can differ slightly from a provider's direct
+rate. At Melissa's volume this is a few dollars a month at most, most
+likely cents.
 
-**Illustrative cost:** a single small home daycare — a handful of
-families, maybe 10–20 AI-mediated actions on a busy day — lands at Tier 0
-volumes of a few thousand tokens per action. Even with Tier 1 drafting on
-every send, that's well under a dollar a month per client at today's
-pricing, before any Tier 2 escalation (which should be rare by design).
-That's the number worth defending to a client, not "AI costs," full stop.
+Two things worth knowing exist, not necessarily for v1:
+
+- **ElevenLabs** is a meaningfully more natural-sounding voice than
+  OpenAI's or Azure's, if quality becomes the deciding factor later. $6/mo
+  for 30,000 credits on their Starter plan (their free tier's 10,000
+  credits/month might even cover a single owner's daily digest on its
+  own). Separate account and key, so it's a deliberate upgrade, not a
+  default — the server-audio-file architecture is identical, only the
+  fetch call changes.
+- **OpenAI's TTS API directly** (`tts-1`/`tts-1-hd`, $15–30 per 1M chars)
+  is a reference implementation, not a recommendation — it's what an
+  existing companion product in the portfolio already runs, including a
+  sentence-chunking trick for perceived latency. Useful to look at if
+  OpenRouter's TTS endpoint has rough edges at build time; not the primary
+  path given it'd be a second provider outside the OpenRouter-only
+  standard this app already holds to for chat.
+
+**Playback UI:** every Ro reply gets a tap-to-listen affordance next to
+the text — never autoplay. That satisfies the universal user-gesture
+requirement automatically and means nothing about the Safari story depends
+on a workaround; it's just how the feature is built.
+
+**Verification, not just architecture.** Test actual recording and
+playback on a real iPhone in Safari once, early in the build — before
+Melissa is relying on it. The mechanism above is standard and safe, but
+"works in Chrome dev tools" isn't the same as confirming it on the one
+device that has to work. Cheap to check now, expensive to discover at
+launch.
 
 ---
 
-## 7. Interface
+## 10. Model routing — tiered, OpenRouter-only, priced for a home daycare's actual volume
 
-- New admin route, `/admin/assistant` — a chat panel, following the
-  existing `AdminLayout` shell and `ui.tsx` components (this is a new page
-  under the admin tree, so it inherits the locked-area conversation in
-  §8, not the free-to-edit public pages).
-- Text input for v1. A microphone button using the browser's built-in
-  Web Speech API is a genuine "hands-free" option with **zero additional
-  AI cost** (it's local browser speech-to-text, not a model call) and is
-  worth adding once the typed flow is proven — no reason to pay a
-  transcription API for this.
+Final picks, deliberately spread across three different labs rather than
+defaulting to one provider for everything — chosen for fit, not chased on
+price. Verified against OpenRouter's own model pages, September 2026:
+
+**Tier 0 — intent parsing.** `inclusionai/ling-3.0-flash-vl` — $0.06 / $0.18
+per 1M tokens, 131K context. Hybrid instant/reasoning model with tool
+calling built in — exactly the "which tool, which arguments" job, and
+cheap enough that the regex fast-path in §6 only exists to skip calls that
+would've cost fractions of a cent anyway.
+
+**Tier 1 — message drafting.** `qwen/qwen3.8-flash` — $0.15 / $0.47 per 1M
+tokens, 1M context, confirmed tool calling. The sentence a parent actually
+reads doesn't need a frontier model, just consistent tone — this is well
+past what a two-sentence daily-report blurb requires.
+
+**Tier 2 — rare escalation.** `anthropic/claude-haiku-4.5` — $1 / $5 per
+1M tokens, 200K context, extended thinking with controllable reasoning
+depth. OpenRouter's own listing puts it at matching Claude Sonnet 4 on
+reasoning, coding, and computer-use tasks — genuinely capable, not a
+"cheap tier" compromise — at a fraction of Opus's $5/$25 rate. Route here
+only when Tier 0 confidence is low or the tool's risk tier is Money/PII,
+and even then the confirmation gate in §7 means a human checks the output
+before anything executes.
+
+Don't hardcode model IDs. Keep a small model-registry config — tier →
+ordered list of model IDs with a fallback, the same shape as a working
+provider-config file already in the portfolio (`AI_CONFIG` → tiers →
+models) — so swapping in a cheaper or newer model, or adding a second
+option per tier for redundancy, is a config change, not a code change.
+
+**Illustrative cost:** a handful of families, 10–20 AI-mediated actions on
+a busy day, well under a dollar a month per client at today's pricing —
+before any Tier 2 escalation, which should be rare by design. Voice adds
+pennies on top of that at single-owner volume. That's the number worth
+defending to a client, not "AI costs," full stop.
+
+---
+
+## 11. Interface
+
+- New admin route, `/admin/assistant` — a chat panel following the
+  existing `AdminLayout` shell and `ui.tsx` components. New page under the
+  admin tree, so it inherits the locked-area conversation in §12.
+- **Both typed and spoken input from day one.** A microphone control next
+  to the text input, using the OpenRouter/Whisper pipeline from §9 — not
+  the browser's own speech recognition.
+- **Every Ro reply gets a tap-to-listen control**, using the OpenRouter
+  TTS pipeline from §9. Off by default per message (she taps to hear it,
+  it doesn't talk at her unprompted), always available.
 - Every AI action surfaces as a running activity feed — "Sent to: Brooks,
-  Okafor, Chen — tap to view" — so she's watching what happened, not
-  trusting a black box. This doubles as the audit log's UI.
+  Okafor, Chen — tap to view" — doubling as the audit log's UI. The
+  proactive notices from §5 land in the same feed, ranked by priority.
 
 ---
 
-## 8. What this touches that's currently locked
+## 12. What this touches that's currently locked
 
-Building this for real reaches into files `PROTECTED-AREAS.md` currently
-denies: `src/store/**` (new actions need to exist somewhere), a new page
-under `src/pages/admin/**`, and possibly `src/types.ts` for rule/audit
-schemas. Per that file's own instructions: *"stop and ask the owner
-first"* — noting it here because the owner and the client are the same
-person for this feature, so that's a decision you make with yourself, not
-a blocker, but it means the lock should be lifted deliberately for this
-work (not worked around) when you actually start building, and re-applied
-once it's signed off the same way the rest of the portal was.
+Building this for real reaches into files `PROTECTED-AREAS.md` denies:
+`src/store/**` (new actions need to exist somewhere), a new page under
+`src/pages/admin/**`, and possibly `src/types.ts` for rule/audit schemas.
+Per that file's own instructions: stop and ask the owner first — the
+owner and the client are the same person for this feature, so the lock
+should be lifted deliberately when you actually start building, not
+worked around, and re-applied once it's signed off the same way the rest
+of the portal was.
 
 ---
 
-## 9. Phased rollout
+## 13. Phased rollout
 
-1. **Phase 0 — Supabase migration.** Already the acknowledged next step
-   regardless of AI (§2). Nothing here starts before this exists.
-2. **Phase 1 — read-only + draft-only.** She can ask questions and get
-   drafted messages; nothing sends without her tap. Zero blast radius,
-   builds a track record for Tier 0's accuracy.
+1. **Phase 0 — Supabase migration.** In progress tonight. Nothing below
+   starts before real server functions exist to call into.
+2. **Phase 1 — read-only + draft-only, voice included.** She can ask
+   questions (typed or spoken) and get drafted messages and spoken
+   replies; nothing sends without her tap. Zero blast radius on the
+   action side, builds a track record for Tier-0 accuracy, and gets the
+   voice pipeline proven early rather than bolted on later. Voice being
+   in v1 is about the input/output channel, not about loosening any
+   confirmation gate — those stay exactly as cautious as Phase 1 always
+   was.
 3. **Phase 2 — low-risk auto-actions.** Daily-log delivery on the rules
-   engine, with the undo window and a daily digest of what went out
-   unattended.
+   engine, the proactive notices from §5 live, undo window, daily digest
+   of what went out unattended.
 4. **Phase 3 — broader action set.** Billing reminders, enrollment
    nudges — still confirmation-gated for anything in the Money/PII tier,
    indefinitely. Full unattended autonomy on money or child-safety
-   communications isn't a milestone to build toward here; the
-   confirmation gate is the feature, not a training-wheels stage to
-   remove.
+   communications isn't a milestone to build toward; the confirmation
+   gate is the feature, not training wheels to remove.
 
 ---
 
-## 10. Decisions this plan doesn't make for you
+## 14. Decisions this plan still doesn't make for you
 
-- **Single-client or reusable?** This is one small home daycare today.
-  Is this feature specific to Aunties Tykes, or is it actually the first
-  build of something you'd want to offer across future daycare clients?
-  That changes whether the rules engine and tool catalog get built
-  generic/multi-tenant now or specific to this business — worth deciding
-  before Phase 0's schema work, not after.
-- **Whose OpenRouter key pays for her usage** — your studio account with
-  a per-client usage cap, or a key she holds herself? Affects margin and
-  how cleanly this attributes as a cost center if Aunties Tykes is ever
-  part of an acquisition conversation.
-- **Voice for v1, or later?** §7 treats it as a fast-follow, not a
-  blocker — confirm that's right rather than a must-have for launch.
+- **Single-client or reusable?** Still open — does the rules engine and
+  tool catalog get built generic/multi-tenant now, or specific to Aunties
+  Tykes? Worth deciding before Phase 0's schema work is final.
+- **Whose OpenRouter key pays for her usage** — your studio account with a
+  per-client cap, or a key she holds herself? Affects margin and how this
+  attributes as a cost center if Aunties Tykes is ever part of an
+  acquisition conversation.
+- **Ro's actual name and voice selection** — placeholder name and no
+  voice picked yet. Low-stakes, easy to change later, but pick something
+  before it's in front of Melissa as a finished thing.
 
----
-
-## 11. Suggested next step
-
-Start Phase 0. It's required with or without this feature, and it's where
-the real design decisions (RLS shape, what the server functions look like)
-get made — this plan's tool catalog in §3 is written to map onto whatever
-that migration produces, not the other way around.
+Resolved since the last draft: voice ships in v1, not deferred. Provider
+stays OpenRouter-only across chat, transcription, and speech, rather than
+splitting to a second vendor for voice.
 
 ---
 
-*Pricing in §6 is a September 2026 OpenRouter snapshot (DeepSeek tool-calling
-and Gemini Flash-class listings) — reconfirm current model IDs and rates at
-build time rather than treating the numbers above as fixed.*
+## 15. Suggested next step
+
+Finish Phase 0 tonight. Everything from §3 on is written to map onto
+whatever that migration produces, not the other way around — once real
+server functions exist, §3's tool catalog and §5's trigger queries are the
+next concrete build targets.
+
+---
+
+*Pricing in §§9–10 is a September 2026 snapshot — reconfirm current model
+IDs and rates via OpenRouter's Models API at build time rather than
+treating the numbers above as fixed.*
