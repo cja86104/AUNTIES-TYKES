@@ -21,8 +21,12 @@ export interface User {
   id: string
   name: string
   email: string
-  /** Demo build only — there is no auth backend yet. */
-  password: string
+  /**
+   * Demo build only. Live accounts authenticate through Supabase Auth, which
+   * owns the credential — a profile loaded from the database has no password
+   * field at all, which is why this is optional rather than an empty string.
+   */
+  password?: string
   role: Role
   familyId?: string
   title?: string

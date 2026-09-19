@@ -22,7 +22,7 @@ export type EnrollmentStatusDb = 'pending' | 'approved' | 'declined'
 /** Columns in `Required` must be supplied on insert; the rest have defaults. */
 type Insertable<Row, Required extends keyof Row> = Pick<Row, Required> & Partial<Omit<Row, Required>>
 
-export interface FamilyRow {
+export type FamilyRow = {
   id: string
   name: string
   primary_contact: string
@@ -37,7 +37,7 @@ export interface FamilyRow {
   created_at: string
 }
 
-export interface ProfileRow {
+export type ProfileRow = {
   id: string
   name: string
   email: string
@@ -48,7 +48,7 @@ export interface ProfileRow {
   created_at: string
 }
 
-export interface ChildRow {
+export type ChildRow = {
   id: string
   family_id: string
   name: string
@@ -65,7 +65,7 @@ export interface ChildRow {
   created_at: string
 }
 
-export interface AttendanceRow {
+export type AttendanceRow = {
   id: string
   child_id: string
   date: string
@@ -76,7 +76,7 @@ export interface AttendanceRow {
   created_at: string
 }
 
-export interface DailyLogRow {
+export type DailyLogRow = {
   id: string
   child_id: string
   date: string
@@ -92,7 +92,7 @@ export interface DailyLogRow {
   created_at: string
 }
 
-export interface InvoiceRow {
+export type InvoiceRow = {
   id: string
   family_id: string
   period: string
@@ -104,7 +104,7 @@ export interface InvoiceRow {
   created_at: string
 }
 
-export interface PaymentRow {
+export type PaymentRow = {
   id: string
   invoice_id: string
   date: string
@@ -114,7 +114,7 @@ export interface PaymentRow {
   created_at: string
 }
 
-export interface DocumentRow {
+export type DocumentRow = {
   id: string
   title: string
   category: DocumentCategoryDb
@@ -129,13 +129,13 @@ export interface DocumentRow {
   uploaded_at: string
 }
 
-export interface DocumentAcknowledgementRow {
+export type DocumentAcknowledgementRow = {
   document_id: string
   profile_id: string
   acknowledged_at: string
 }
 
-export interface AnnouncementRow {
+export type AnnouncementRow = {
   id: string
   title: string
   body: string
@@ -144,7 +144,7 @@ export interface AnnouncementRow {
   date: string
 }
 
-export interface ThreadRow {
+export type ThreadRow = {
   id: string
   family_id: string
   subject: string
@@ -152,7 +152,7 @@ export interface ThreadRow {
   created_at: string
 }
 
-export interface ThreadMessageRow {
+export type ThreadMessageRow = {
   id: string
   thread_id: string
   from_role: UserRoleDb
@@ -162,7 +162,7 @@ export interface ThreadMessageRow {
   at: string
 }
 
-export interface EnrollmentRow {
+export type EnrollmentRow = {
   id: string
   submitted_at: string
   status: EnrollmentStatusDb
@@ -181,7 +181,7 @@ export interface EnrollmentRow {
   created_family_id: string | null
 }
 
-export interface LeadRow {
+export type LeadRow = {
   id: string
   parent_name: string
   email: string
@@ -193,7 +193,7 @@ export interface LeadRow {
   created_at: string
 }
 
-export interface WaitlistProspectRow {
+export type WaitlistProspectRow = {
   id: string
   child_name: string
   age_group: AgeGroupDb
@@ -204,7 +204,7 @@ export interface WaitlistProspectRow {
 }
 
 /** Single row, id = 1. No license_number: the daycare is not a licensed facility. */
-export interface SettingsRow {
+export type SettingsRow = {
   id: number
   business_name: string
   tagline: string
@@ -228,14 +228,14 @@ export interface SettingsRow {
   updated_at: string
 }
 
-interface Table<Row, Required extends keyof Row> {
+type Table<Row, Required extends keyof Row> = {
   Row: Row
   Insert: Insertable<Row, Required>
   Update: Partial<Row>
   Relationships: []
 }
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       families: Table<FamilyRow, 'name'>
@@ -255,10 +255,10 @@ export interface Database {
       waitlist_prospects: Table<WaitlistProspectRow, 'child_name' | 'age_group'>
       settings: Table<SettingsRow, 'id'>
     }
-    Views: Record<never, never>
+    Views: { [_ in never]: never }
     Functions: {
-      is_admin: { Args: Record<never, never>; Returns: boolean }
-      current_family_id: { Args: Record<never, never>; Returns: string }
+      is_admin: { Args: Record<string, never>; Returns: boolean }
+      current_family_id: { Args: Record<string, never>; Returns: string }
     }
     Enums: {
       user_role: UserRoleDb
@@ -269,6 +269,6 @@ export interface Database {
       document_category: DocumentCategoryDb
       enrollment_status: EnrollmentStatusDb
     }
-    CompositeTypes: Record<never, never>
+    CompositeTypes: { [_ in never]: never }
   }
 }
