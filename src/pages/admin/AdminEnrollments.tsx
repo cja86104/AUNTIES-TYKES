@@ -11,7 +11,7 @@ import {
   Baby,
   ShieldCheck,
   Copy,
-  KeyRound,
+  
   ArrowRight,
   AlertTriangle,
 } from 'lucide-react'
@@ -85,15 +85,6 @@ export default function AdminEnrollments() {
     declineEnrollment(confirmDecline.id)
     pushToast({ tone: 'info', title: 'Enrollment declined', description: `${confirmDecline.familyName} was not enrolled.` })
     setConfirmDecline(null)
-  }
-
-  const copyCredentials = () => {
-    if (!result?.credentials) return
-    const text = `Aunties Tykes parent portal\nEmail: ${result.credentials.email}\nTemporary password: ${result.credentials.password}`
-    navigator.clipboard.writeText(text).then(
-      () => pushToast({ title: 'Login details copied' }),
-      () => pushToast({ tone: 'error', title: 'Could not copy' }),
-    )
   }
 
   return (
@@ -381,36 +372,11 @@ export default function AdminEnrollments() {
           </>
         }
       >
-        {result?.credentials ? (
-          <div className="space-y-4">
-            <Card className="bg-slate-50 p-5">
-              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                <KeyRound size={13} /> Parent portal login
-              </p>
-              <dl className="mt-3 space-y-2 text-sm">
-                <div className="flex justify-between gap-4">
-                  <dt className="text-slate-500">Email</dt>
-                  <dd className="font-semibold text-slate-900">{result.credentials.email}</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-slate-500">Temporary password</dt>
-                  <dd className="font-mono font-semibold text-slate-900">{result.credentials.password}</dd>
-                </div>
-              </dl>
-              <Button size="sm" variant="outline" className="mt-4 w-full" onClick={copyCredentials}>
-                <Copy size={14} /> Copy login details
-              </Button>
-            </Card>
-            <p className="text-xs text-slate-500">
-              This preview build has no email sending connected, so the password is not sent automatically — copy it and
-              pass it along however you normally would.
-            </p>
-          </div>
-        ) : (
-          <Card className="bg-amber-50 p-4 text-sm text-amber-900">
-            {result?.loginError ?? 'The family and children were created, but no portal login was issued.'}
-          </Card>
-        )}
+        <Card className="bg-slate-50 p-4 text-sm leading-relaxed text-slate-600">
+          The family and their children are on file. To give them portal access, go to{' '}
+          <span className="font-semibold text-slate-800">Families → Create parent account</span>, choose a password, and
+          pass it along. Make one for each guardian who needs their own sign-in.
+        </Card>
       </Modal>
     </PageTransition>
   )

@@ -103,6 +103,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate()
   const { isLoading } = useBootstrap('admin-dashboard')
 
+  const user = useStore((s) => s.user)
   const children = useStore((s) => s.children)
   const families = useStore((s) => s.families)
   const attendance = useStore((s) => s.attendance)
@@ -211,7 +212,7 @@ export default function AdminDashboard() {
   return (
     <PageTransition>
       <PageHeader
-        title="Good day, Auntie Roz"
+        title={`Good day, ${user?.name.split(' ')[0] ?? 'there'}`}
         description={`${fmtDate(today, 'EEEE, MMMM d')} · ${presentCount} here now, ${absentCount} out, ${
           rows.length - presentCount - outCount - absentCount
         } still expected.`}

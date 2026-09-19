@@ -19,7 +19,7 @@ import type { Policies, Rates, Settings } from '../../types'
 type BusinessDraft = Omit<Settings, 'rates' | 'policies'>
 
 const policyFields: { key: keyof Policies; label: string; hint: string }[] = [
-  { key: 'sick', label: 'Illness & when to stay home', hint: 'Shown on the public Tuition & Policies page.' },
+  { key: 'sick', label: 'Illness & when to stay home', hint: 'Shown on the public Parent Handbook page.' },
   { key: 'latePickup', label: 'Late pickup', hint: 'Explain the grace period and the per-minute fee.' },
   { key: 'holidays', label: 'Holidays & closures', hint: 'List the paid closure days families should plan around.' },
   { key: 'potty', label: 'Potty learning', hint: 'What you expect parents to send in during learning weeks.' },
@@ -78,7 +78,7 @@ export default function AdminSettings() {
 
   const savePolicies = () => {
     updatePolicies(policies)
-    pushToast({ title: 'Policies saved', description: 'Families see the new wording on the Tuition & Policies page.' })
+    pushToast({ title: 'Policies saved', description: 'Families see the new wording on the Parent Handbook page.' })
   }
 
   const doReset = () => {
@@ -104,7 +104,7 @@ export default function AdminSettings() {
         <p>
           These fields are live. Changing a rate here updates the tuition estimator on the public{' '}
           <Link to="/tuition-policies" className="font-semibold underline">
-            Tuition &amp; Policies
+            Parent Handbook
           </Link>{' '}
           page, and policy edits change the text families read there.
         </p>

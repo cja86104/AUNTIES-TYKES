@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Search, Users, ArrowRight, Phone, Mail, CalendarCheck, Inbox, UserPlus, KeyRound, Copy } from 'lucide-react'
+import { Search, Users, ArrowRight, Phone, Mail, CalendarCheck, Inbox, UserPlus, KeyRound } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
   Card,
@@ -22,7 +22,6 @@ import ChildForm, { emptyChildForm, formToChild, validateChildForm } from '../..
 import ParentAccountDialog from '../../components/ParentAccountDialog'
 import type { ChildFormValue } from '../../components/ChildForm'
 import { todayISO } from '../../lib/helpers'
-import type { PortalCredentials } from '../../types'
 import { useStore } from '../../store/useStore'
 import { useBootstrap } from '../../lib/hooks'
 import { money, fmtDate, invoiceBalance, sum } from '../../lib/helpers'
@@ -38,86 +37,40 @@ export default function AdminFamilies() {
   const updateLead = useStore((s) => s.updateLead)
   const addFamily = useStore((s) => s.addFamily)
   const addChild = useStore((s) => s.addChild)
-  const createParentLogin = useStore((s) => s.createParentLogin)
 
   const [addOpen, setAddOpen] = useState(false)
   const [acctOpen, setAcctOpen] = useState(false)
-  const [newFamilyPassword, setNewFamilyPassword] = useState('')
   const [famDraft, setFamDraft] = useState<FamilyFormValue>(emptyFamilyForm())
   const [kidDraft, setKidDraft] = useState<ChildFormValue>(emptyChildForm())
   const [withChild, setWithChild] = useState(true)
-  const [makeLogin, setMakeLogin] = useState(true)
-  const [passwordError, setPasswordError] = useState('')
   const [famErrors, setFamErrors] = useState<Record<string, string>>({})
   const [kidErrors, setKidErrors] = useState<Record<string, string>>({})
-  const [newLogin, setNewLogin] = useState<PortalCredentials | null>(null)
 
   const openAdd = () => {
     setFamDraft(emptyFamilyForm())
     setKidDraft(emptyChildForm())
     setWithChild(true)
-    setMakeLogin(true)
-    setNewFamilyPassword('')
     setFamErrors({})
     setKidErrors({})
-    setNewFamilyPassword('')
-    setPasswordError('')
     setAddOpen(true)
   }
 
-  const saveNewFamily = async () => {
+  const saveNewFamily = () => {
     const fe = validateFamilyForm(famDraft)
     const ke = withChild ? validateChildForm({ ...kidDraft, familyId: 'pending' }) : {}
     delete ke.familyId
     setFamErrors(fe)
     setKidErrors(ke)
-    // The owner chooses the password: it is shown once and cannot be looked up
-    // again, so a generated one nobody recorded just means another phone call.
-    const pwError = makeLogin && newFamilyPassword.trim().length < 8 ? 'Use at least 8 characters' : ''
-    setPasswordError(pwError)
-    if (Object.keys(fe).length || Object.keys(ke).length || pwError) return
+    if (Object.keys(fe).length || Object.keys(ke).length) return
 
     const familyId = addFamily({ ...famDraft, joinedAt: todayISO() })
     if (withChild) addChild(formToChild({ ...kidDraft, familyId }))
-    let credentials: PortalCredentials | null = null
-    let loginError = ''
-    if (makeLogin) {
-      try {
-        credentials = await createParentLogin(
-          familyId,
-          famDraft.primaryContact.trim(),
-          famDraft.email,
-          newFamilyPassword.trim(),
-        )
-      } catch (error) {
-        loginError = error instanceof Error ? error.message : 'Could not create the account'
-      }
-    }
 
     setAddOpen(false)
     pushToast({
       title: 'Family added',
       description: `${famDraft.name.trim()} is on file${withChild ? ` with ${kidDraft.name.trim()}` : ''}.`,
     })
-    if (makeLogin) {
-      if (credentials) setNewLogin(credentials)
-      else
-        pushToast({
-          tone: 'error',
-          title: 'Login not created',
-          description: loginError || 'That email is already used by another account.',
-        })
-    }
-  }
-
-  const copyLogin = () => {
-    if (!newLogin) return
-    navigator.clipboard
-      .writeText(`Aunties Tykes parent portal\nEmail: ${newLogin.email}\nTemporary password: ${newLogin.password}`)
-      .then(
-        () => pushToast({ title: 'Login details copied' }),
-        () => pushToast({ tone: 'error', title: 'Could not copy' }),
-      )
   }
   const pushToast = useStore((s) => s.pushToast)
 
@@ -330,7 +283,7 @@ export default function AdminFamilies() {
             <Button variant="ghost" onClick={() => setAddOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => void saveNewFamily()}>
+            <Button onClick={saveNewFamily}>
               <UserPlus size={16} /> Add family
             </Button>
           </>
@@ -359,66 +312,16 @@ export default function AdminFamilies() {
             )}
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-slate-50 p-4">
-            <input
-              type="checkbox"
-              checked={makeLogin}
-              onChange={(e) => setMakeLogin(e.target.checked)}
-              className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#4F77D9]"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-slate-800">Create a parent portal login</span>
-              <span className="block text-xs text-slate-500">
-                Uses the email above. The password is shown once after you save.
-              </span>
-              {makeLogin && (
-                <span className="mt-3 block">
-                  <Input
-                    value={newFamilyPassword}
-                    onChange={(e) => setNewFamilyPassword(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                    invalid={Boolean(passwordError)}
-                    placeholder="Password — at least 8 characters"
-                    aria-label="Password for the new parent account"
-                  />
-                  {passwordError && (
-                    <span className="mt-1.5 block text-xs font-semibold text-[#E86A6A]">{passwordError}</span>
-                  )}
-                </span>
-              )}
-            </span>
-          </label>
+          <p className="rounded-2xl bg-slate-50 p-4 text-xs leading-relaxed text-slate-500">
+            Portal access is set up separately. Save the family, then use{' '}
+            <span className="font-semibold text-slate-700">Create parent account</span> to choose a password and hand it
+            over. Make one for each guardian who needs their own sign-in.
+          </p>
         </div>
       </Modal>
 
       <ParentAccountDialog open={acctOpen} onClose={() => setAcctOpen(false)} />
 
-      <Modal
-        open={Boolean(newLogin)}
-        onClose={() => setNewLogin(null)}
-        title="Portal login created"
-        description="Share these with the family so they can sign in."
-        footer={<Button onClick={() => setNewLogin(null)}>Done</Button>}
-      >
-        <Card className="bg-slate-50 p-5">
-          <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-            <KeyRound size={13} /> Parent portal login
-          </p>
-          <dl className="mt-3 space-y-2 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">Email</dt>
-              <dd className="font-semibold text-slate-900">{newLogin?.email}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-slate-500">Temporary password</dt>
-              <dd className="font-mono font-semibold text-slate-900">{newLogin?.password}</dd>
-            </div>
-          </dl>
-          <Button size="sm" variant="outline" className="mt-4 w-full" onClick={copyLogin}>
-            <Copy size={14} /> Copy login details
-          </Button>
-        </Card>
-      </Modal>
     </PageTransition>
   )
 }

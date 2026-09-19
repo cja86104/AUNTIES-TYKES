@@ -186,7 +186,7 @@ We provide all meals and snacks, so lunch boxes aren't needed.`,
       <section className="px-5 pb-10 pt-10 lg:px-8 lg:pt-16">
         <div className="mx-auto max-w-4xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-[#4F77D9]/30 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#39569f] backdrop-blur">
-            <Receipt size={14} /> Tuition & policies
+            <Receipt size={14} /> Parent handbook
           </span>
           <h1 className="mt-6 font-display text-4xl font-black leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
             What to expect, plainly stated.
@@ -203,7 +203,7 @@ We provide all meals and snacks, so lunch boxes aren't needed.`,
         <div className="mx-auto max-w-4xl">
           <Reveal>
             <SectionHeading
-              eyebrow="Parent handbook"
+              eyebrow="Policies"
               title="Get to know how we do things"
               description="No binder to dig through — just the plain-language version, organized by topic."
               align="center"

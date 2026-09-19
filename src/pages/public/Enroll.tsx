@@ -538,7 +538,7 @@ export default function Enroll() {
                       <span className="text-sm text-slate-700">
                         I have read the{' '}
                         <Link to="/tuition-policies" className="font-semibold text-[#4F77D9] hover:underline">
-                          tuition and policies
+                          parent handbook
                         </Link>{' '}
                         — including the sick policy, late pickup fee, and holiday closures — and the information above is
                         accurate.

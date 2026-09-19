@@ -27,7 +27,7 @@ export const emptyChildForm = (familyId = ''): ChildFormValue => ({
   status: 'active',
   plan: 'Full-time',
   startDate: '',
-  teacher: 'Auntie Roz',
+  teacher: 'Auntie Melissa',
   allergies: '',
   medications: '',
   notes: '',
@@ -57,7 +57,7 @@ export const formToChild = (v: ChildFormValue): Omit<Child, 'id' | 'hue'> => ({
   status: v.status,
   plan: v.plan,
   startDate: v.startDate,
-  teacher: v.teacher.trim() || 'Auntie Roz',
+  teacher: v.teacher.trim() || 'Auntie Melissa',
   allergies: v.allergies.split(',').map((s) => s.trim()).filter(Boolean),
   medications: v.medications.split(',').map((s) => s.trim()).filter(Boolean),
   notes: v.notes.trim(),
@@ -150,7 +150,7 @@ export default function ChildForm({ value, onChange, errors = {}, families }: Ch
       </Field>
 
       <Field label="Primary teacher">
-        <Input value={value.teacher} onChange={(e) => set('teacher', e.target.value)} placeholder="Auntie Roz" />
+        <Input value={value.teacher} onChange={(e) => set('teacher', e.target.value)} placeholder="Auntie Melissa" />
       </Field>
       <Field label="Allergies" hint="Comma separated.">
         <Input value={value.allergies} onChange={(e) => set('allergies', e.target.value)} placeholder="Peanuts, strawberries" />

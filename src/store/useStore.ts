@@ -73,20 +73,6 @@ function pickHue(index: number): string {
   return CHILD_HUES[index % CHILD_HUES.length] ?? CHILD_HUES[0]
 }
 
-const PASSWORD_WORDS = [
-  'Willow', 'Meadow', 'Sunny', 'Maple', 'Cedar',
-  'Robin', 'Harbor', 'Lantern', 'Poppy', 'Juniper',
-] as const
-
-/**
- * A temporary password the owner can read out over the phone without spelling
- * anything twice — no ambiguous characters, no case traps.
- */
-export function makeTempPassword(): string {
-  const word = PASSWORD_WORDS[Math.floor(Math.random() * PASSWORD_WORDS.length)] ?? 'Willow'
-  return `Tykes-${word}-${String(Math.floor(1000 + Math.random() * 9000))}`
-}
-
 /** "peanuts, eggs" -> ["peanuts", "eggs"] */
 function splitList(value: string): string[] {
   return value
@@ -515,7 +501,7 @@ export const useStore = create<StoreState>()((set, get) => {
       commit(
         (s) => ({
           dailyLogs: [
-            { author: s.user?.name ?? 'Rosalind Hayes', photos: [], ...log, id: uid('dl') },
+            { author: s.user?.name ?? s.settings.businessName, photos: [], ...log, id: uid('dl') },
             ...s.dailyLogs,
           ],
         }),
@@ -769,12 +755,9 @@ export const useStore = create<StoreState>()((set, get) => {
       const familyId = uid('fam')
       const childIds = sub.children.map(() => uid('chd'))
       const cleanEmail = sub.email.trim()
-      const emailTaken = get().users.some((u) => u.email.toLowerCase() === cleanEmail.toLowerCase())
-      const credentials: PortalCredentials | null = emailTaken
-        ? null
-        : { email: cleanEmail, password: makeTempPassword() }
 
-      commit((s) => {
+      commit(
+        (s) => {
         const family: Family = {
           id: familyId,
           name: sub.familyName,
@@ -797,7 +780,7 @@ export const useStore = create<StoreState>()((set, get) => {
           status: 'active' as const,
           plan: c.plan,
           startDate: c.startDate,
-          teacher: 'Auntie Roz',
+          teacher: 'Auntie Melissa',
           allergies: splitList(c.allergies),
           medications: splitList(c.medications),
           notes: c.notes,
@@ -806,33 +789,25 @@ export const useStore = create<StoreState>()((set, get) => {
         return {
           families: [...s.families, family],
           children: [...s.children, ...kids],
-          users: credentials
-            ? [
-                ...s.users,
-                {
-                  id: uid('usr'),
-                  name: sub.primaryContact,
-                  email: credentials.email,
-                  password: credentials.password,
-                  role: 'parent' as const,
-                  familyId,
-                },
-              ]
-            : s.users,
           enrollments: s.enrollments.map((e) =>
             e.id === id
               ? { ...e, status: 'approved' as const, reviewedAt: todayISO(), createdFamilyId: familyId }
               : e,
           ),
         }
-      })
+      },
+      async (s) => {
+        const family = s.families.find((f) => f.id === familyId)
+        if (family) await persist.family(family)
+        for (const childId of childIds) {
+          const child = s.children.find((c) => c.id === childId)
+          if (child) await persist.child(child)
+        }
+        await persist.enrollmentStatus(id, 'approved', familyId)
+      },
+      )
 
-      return {
-        familyId,
-        childIds,
-        credentials,
-        loginError: emailTaken ? 'An account already uses that email, so no new login was created.' : undefined,
-      }
+      return { familyId, childIds }
     },
 
     declineEnrollment: (id) =>

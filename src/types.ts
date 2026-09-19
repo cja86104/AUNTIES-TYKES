@@ -294,12 +294,14 @@ export interface PortalCredentials {
   password: string
 }
 
+/**
+ * Approving an enrollment creates the family and its children only. Portal
+ * accounts are made separately, one per guardian, so the owner always chooses
+ * the password and can repeat it to anyone who forgets it.
+ */
 export interface ApprovalResult {
   familyId: string
   childIds: string[]
-  credentials: PortalCredentials | null
-  /** Set when a login could not be made because the email is already in use. */
-  loginError?: string
 }
 
 /* --------------------------------- leads ---------------------------------- */

@@ -79,7 +79,7 @@ export default function AdminMessages() {
     if (!activeThread || !reply.trim()) return
     sendThreadMessage(activeThread.id, {
       from: 'admin',
-      authorName: user?.name ?? 'Rosalind Hayes',
+      authorName: user?.name ?? 'Aunties Tykes',
       body: reply.trim(),
     })
     setReply('')

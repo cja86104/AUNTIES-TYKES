@@ -41,7 +41,7 @@ export const PAGE_SEO: Record<string, PageSeo> = {
       'A walkthrough of the Aunties Tykes parent portal — daily reports, attendance, billing, documents, and messaging, all explained in plain language.',
   },
   '/tuition-policies': {
-    title: 'Tuition & Policies | Aunties Tykes Daycare, Camp Hill PA',
+    title: 'Parent Handbook | Aunties Tykes Daycare, Camp Hill PA',
     description:
       'Full-time, part-time, and drop-in rates with a live cost estimator, plus our sick policy, late pickup rules, holiday closures, and potty learning approach.',
   },

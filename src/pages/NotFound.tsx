@@ -4,7 +4,7 @@ import { Home, ArrowLeft, Compass, LifeBuoy } from 'lucide-react'
 import { Button, Card } from '../components/ui'
 
 const suggestions = [
-  ['/tuition-policies', 'Tuition & policies'],
+  ['/tuition-policies', 'Parent handbook'],
   ['/faq', 'Parent FAQ'],
   ['/contact', 'Get in touch'],
   ['/login', 'Parent portal login'],

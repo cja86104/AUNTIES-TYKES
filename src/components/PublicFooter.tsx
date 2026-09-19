@@ -23,7 +23,7 @@ export default function PublicFooter() {
           <ul className="mt-4 space-y-2.5 text-sm">
             {[
               ['/parent-portal-guide', 'Portal guide'],
-              ['/tuition-policies', 'Tuition & policies'],
+              ['/tuition-policies', 'Parent handbook'],
               ['/faq', 'Parent FAQ'],
               ['/contact', 'Get in touch'],
               ['/login', 'Parent portal login'],
