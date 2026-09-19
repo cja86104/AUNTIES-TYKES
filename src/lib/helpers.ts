@@ -87,8 +87,22 @@ export function sum<T>(list: T[], pick?: (item: T) => number): number {
   return list.reduce<number>((s, x) => s + (pick ? pick(x) : (x as unknown as number)), 0)
 }
 
+/**
+ * Ids are the database primary key (text, see supabase/migrations/0003), so a
+ * collision would be a failed insert, not a cosmetic glitch. The readable
+ * prefix is kept for debugging; uniqueness comes from randomUUID.
+ *
+ * The fallback covers Safari older than 15.4, where crypto.randomUUID is
+ * missing — voice support means this app is expected to run on iOS Safari.
+ */
 export function uid(prefix = 'id'): string {
-  return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+  const rand =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random()
+          .toString(36)
+          .slice(2, 10)}`
+  return `${prefix}_${rand}`
 }
 
 export function bytes(n: number | null | undefined): string {

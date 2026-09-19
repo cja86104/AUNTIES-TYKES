@@ -1,6 +1,6 @@
 # Aunties Tykes — Project Context
 
-Marketing site + private portals for a small licensed home daycare in Durham, NC.
+Marketing site + private portals for a small home daycare in Camp Hill, PA.
 Built by Allen Code Co as a **build-to-sell** product. Version 1 is a complete,
 wired demo with realistic placeholder data, shared with the owner for approval.
 

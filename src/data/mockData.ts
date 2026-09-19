@@ -28,11 +28,11 @@ const iso = (d: Date) => format(d, 'yyyy-MM-dd')
 export const settings: Settings = {
   businessName: 'Aunties Tykes',
   tagline: 'A small home daycare, and a private portal for our families.',
-  director: 'Mellissa Allen',
-  address: '118 Sycamore Hollow Ln, Camp Hill, PA 17011',
-  phone: '(717) 555-0148',
-  email: 'hello@auntiestykes.com',
-  hours: 'Monday – Friday · 7:00 AM – 5:45 PM',
+  director: 'Melissa Allen',
+  address: 'Camp Hill, PA',
+  phone: 'TBD — add before launch',
+  email: 'TBD — add before launch',
+  hours: 'TBD — add before launch',
   capacity: 12,
   ratios: 'Infants 1:3 · Toddlers 1:4 · Preschool 1:6',
   rates: {

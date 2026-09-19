@@ -1,9 +1,13 @@
 # Launch checklist
 
-The site is **deliberately invisible to search engines** right now. It carries a
-placeholder license number, address, staff bios, and testimonials. Indexing that
-would put fake business details into Google under this domain and give the real
-site a thin-content history to climb out of.
+The site is **deliberately invisible to search engines** right now. It carries
+placeholder contact details, staff bios, and testimonials. Indexing that would
+put fake business details into Google under this domain and give the real site a
+thin-content history to climb out of.
+
+Aunties Tykes is **not a licensed facility**. The `licenseNumber` field was
+removed from the app entirely (types, settings table, admin UI) on 2026-09-18 —
+do not reintroduce it, and do not describe the daycare as licensed anywhere.
 
 ## Going live — 2 steps
 
@@ -39,8 +43,21 @@ deliberate, so one flag flip can never expose a placeholder site by accident.
 
 ## Before real families use it
 
-- [ ] Replace the placeholder content: license number, address, phone, staff
-      bios, testimonials, `placehold.co` images
+- [ ] **Replace the marked placeholders in Admin → Settings.** These three are
+      seeded as the literal text `TBD — add before launch` and every one of them
+      renders publicly — `PublicFooter` (all pages), Contact, FAQ, and the
+      schema.org JSON-LD in `RouteMeta`:
+      - [ ] `phone` — also feeds the `tel:` link on `/login`
+      - [ ] `email` — also feeds `mailto:` links on Contact and FAQ
+      - [ ] `hours`
+- [ ] Confirm the carried-over demo values are really hers: capacity (12),
+      ratios, and all six tuition rates
+- [ ] Confirm the street address — only the town (Camp Hill, PA) is confirmed;
+      the former street address was invented demo data and has been removed
+- [ ] Owner confirms the spelling of her own name — the demo used "Mellissa",
+      the seed uses "Melissa"
+- [ ] Replace the remaining placeholder content: staff bios, testimonials,
+      `placehold.co` images (3 references in `src/`)
 - [ ] Owner reviews every policy text in Admin → Settings — that wording is what
       families are held to
 - [ ] Swap plain-text passwords for Supabase Auth
