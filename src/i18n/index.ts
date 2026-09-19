@@ -11,7 +11,7 @@ import type { Language } from '../types'
  * `ParentLayout`. A parent's active language comes from their own account
  * (`User.preferredLanguage`), set by the owner when the account is created.
  */
-i18n.use(initReactI18next).init({
+void i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
     vi: { translation: vi },

@@ -341,7 +341,6 @@ export interface Settings {
   phone: string
   email: string
   hours: string
-  licenseNumber: string
   capacity: number
   ratios: string
   rates: Rates

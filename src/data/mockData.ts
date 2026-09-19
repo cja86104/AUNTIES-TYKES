@@ -33,7 +33,6 @@ export const settings: Settings = {
   phone: '(717) 555-0148',
   email: 'hello@auntiestykes.com',
   hours: 'Monday – Friday · 7:00 AM – 5:45 PM',
-  licenseNumber: 'PA-FCCH-041207',
   capacity: 12,
   ratios: 'Infants 1:3 · Toddlers 1:4 · Preschool 1:6',
   rates: {

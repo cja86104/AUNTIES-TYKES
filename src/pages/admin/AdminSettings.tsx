@@ -156,10 +156,7 @@ export default function AdminSettings() {
             <Field label="Hours">
               <Input value={business.hours} onChange={(e) => setBiz('hours', e.target.value)} />
             </Field>
-            <Field label="License number">
-              <Input value={business.licenseNumber} onChange={(e) => setBiz('licenseNumber', e.target.value)} />
-            </Field>
-            <Field label="Licensed capacity" hint="Total children allowed on site at once.">
+            <Field label="Capacity" hint="Total children allowed on site at once.">
               <Select value={String(business.capacity)} onChange={(e) => setBiz('capacity', Number(e.target.value))}>
                 {[6, 8, 10, 12, 14, 16, 18, 20].map((n) => (
                   <option key={n} value={n}>
