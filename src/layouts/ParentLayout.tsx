@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { LayoutDashboard, Baby, NotebookPen, ClipboardCheck, Wallet, FolderOpen, MessageSquare, LogOut, Menu } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Baby,
+  NotebookPen,
+  ClipboardCheck,
+  CalendarDays,
+  Wallet,
+  FolderOpen,
+  MessageSquare,
+  LogOut,
+  Menu,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '../store/useStore'
 import { Avatar } from '../components/ui'
@@ -13,6 +24,7 @@ const nav = [
   { to: '/parent/children', labelKey: 'nav.myChildren', icon: Baby },
   { to: '/parent/daily-reports', labelKey: 'nav.dailyReports', icon: NotebookPen },
   { to: '/parent/attendance', labelKey: 'nav.attendance', icon: ClipboardCheck },
+  { to: '/parent/calendar', labelKey: 'nav.calendar', icon: CalendarDays },
   { to: '/parent/billing', labelKey: 'nav.billing', icon: Wallet },
   { to: '/parent/documents', labelKey: 'nav.documents', icon: FolderOpen },
   { to: '/parent/messages', labelKey: 'nav.messages', icon: MessageSquare },

@@ -43,6 +43,7 @@ const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'))
 
 const ParentDashboard = lazy(() => import('./pages/parent/ParentDashboard'))
 const ParentChildren = lazy(() => import('./pages/parent/ParentChildren'))
+const ParentCalendar = lazy(() => import('./pages/parent/ParentCalendar'))
 const ParentChildDetail = lazy(() => import('./pages/parent/ParentChildDetail'))
 const ParentDailyReports = lazy(() => import('./pages/parent/ParentDailyReports'))
 const ParentAttendance = lazy(() => import('./pages/parent/ParentAttendance'))
@@ -118,6 +119,7 @@ function AnimatedRoutes() {
             <Route path="/parent/daily-reports" element={<ParentDailyReports />} />
             <Route path="/parent/daily-reports/:childId" element={<ParentDailyReports />} />
             <Route path="/parent/attendance" element={<ParentAttendance />} />
+            <Route path="/parent/calendar" element={<ParentCalendar />} />
             <Route path="/parent/billing" element={<ParentBilling />} />
             <Route path="/parent/invoices/:id" element={<ParentInvoiceDetail />} />
             <Route path="/parent/documents" element={<ParentDocuments />} />

@@ -6,7 +6,8 @@
     "attendance": "Attendance",
     "billing": "Billing",
     "documents": "Documents",
-    "messages": "Messages"
+    "messages": "Messages",
+    "calendar": "Calendar"
   },
   "portal": {
     "brandLine": "Parent portal",
@@ -312,5 +313,21 @@
     "noteFrom": "Note from {{author}}",
     "defaultAuthor": "Auntie Melissa",
     "photoAlt": "Daily report photo"
+  },
+  "calendar": {
+    "title": "Family Calendar",
+    "description": "Closures, activities, and reminders from Aunties Tykes.",
+    "emptyTitle": "Nothing on the calendar",
+    "emptyDesc": "Closures, activities, and reminders will appear here.",
+    "through": "through {{date}}",
+    "careEndsAt": "Care ends at {{time}}",
+    "kind": {
+      "closure": "Closed",
+      "early_close": "Closing early",
+      "activity": "Activity",
+      "reminder": "Reminder",
+      "schedule_exception": "Schedule change",
+      "birthday": "Birthday"
+    }
   }
 }

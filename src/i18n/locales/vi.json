@@ -6,7 +6,8 @@
     "attendance": "Điểm danh",
     "billing": "Hóa đơn",
     "documents": "Tài liệu",
-    "messages": "Tin nhắn"
+    "messages": "Tin nhắn",
+    "calendar": "Lịch"
   },
   "portal": {
     "brandLine": "Cổng thông tin phụ huynh",
@@ -312,5 +313,21 @@
     "noteFrom": "Ghi chú từ {{author}}",
     "defaultAuthor": "Auntie Melissa",
     "photoAlt": "Ảnh báo cáo hằng ngày"
+  },
+  "calendar": {
+    "title": "Lịch gia đình",
+    "description": "Ngày nghỉ, hoạt động và lời nhắc từ Aunties Tykes.",
+    "emptyTitle": "Chưa có gì trên lịch",
+    "emptyDesc": "Ngày nghỉ, hoạt động và lời nhắc sẽ hiện ở đây.",
+    "through": "đến hết {{date}}",
+    "careEndsAt": "Kết thúc trông trẻ lúc {{time}}",
+    "kind": {
+      "closure": "Đóng cửa",
+      "early_close": "Đóng cửa sớm",
+      "activity": "Hoạt động",
+      "reminder": "Lời nhắc",
+      "schedule_exception": "Thay đổi lịch",
+      "birthday": "Sinh nhật"
+    }
   }
 }

@@ -6,7 +6,8 @@
     "attendance": "Asistencia",
     "billing": "Facturación",
     "documents": "Documentos",
-    "messages": "Mensajes"
+    "messages": "Mensajes",
+    "calendar": "Calendario"
   },
   "portal": {
     "brandLine": "Portal de padres",
@@ -312,5 +313,21 @@
     "noteFrom": "Nota de {{author}}",
     "defaultAuthor": "Auntie Melissa",
     "photoAlt": "Foto del reporte diario"
+  },
+  "calendar": {
+    "title": "Calendario familiar",
+    "description": "Cierres, actividades y recordatorios de Aunties Tykes.",
+    "emptyTitle": "No hay nada en el calendario",
+    "emptyDesc": "Los cierres, las actividades y los recordatorios aparecerán aquí.",
+    "through": "hasta el {{date}}",
+    "careEndsAt": "El cuidado termina a las {{time}}",
+    "kind": {
+      "closure": "Cerrado",
+      "early_close": "Cierre anticipado",
+      "activity": "Actividad",
+      "reminder": "Recordatorio",
+      "schedule_exception": "Cambio de horario",
+      "birthday": "Cumpleaños"
+    }
   }
 }
