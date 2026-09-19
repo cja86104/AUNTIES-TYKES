@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { KeyRound, Copy, RefreshCw, Baby, ShieldCheck, Eye, EyeOff } from 'lucide-react'
+import { KeyRound, Copy, Baby, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { Button, Card, Field, Input, Modal, Select, Badge } from './ui'
-import { useStore, makeTempPassword } from '../store/useStore'
+import { useStore } from '../store/useStore'
 import type { Language, PortalCredentials } from '../types'
 
 export interface ParentAccountDialogProps {
@@ -30,7 +30,6 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
   const [familyId, setFamilyId] = useState(fixedFamilyId ?? '')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [autoGenerate, setAutoGenerate] = useState(true)
   const [preferredLanguage, setPreferredLanguage] = useState<Language>('en')
   const [password, setPassword] = useState('')
   const [reveal, setReveal] = useState(false)
@@ -48,7 +47,6 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
     setFamilyId(fixedFamilyId ?? '')
     setName('')
     setEmail('')
-    setAutoGenerate(true)
     setPreferredLanguage('en')
     setPassword('')
     setReveal(false)
@@ -63,22 +61,28 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
     setEmail((e) => e || family.email)
   }, [family])
 
-  const submit = () => {
+  const submit = async () => {
     const next: Errors = {}
     if (!familyId) next.familyId = 'Choose a family'
     if (name.trim().length < 2) next.name = "Enter the guardian's name"
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = 'Enter a valid email address'
-    if (!autoGenerate && password.trim().length < 8) next.password = 'Use at least 8 characters'
+    if (password.trim().length < 8) next.password = 'Use at least 8 characters'
     setErrors(next)
     if (Object.keys(next).length) return
 
-    const credentials = createParentLogin(
-      familyId,
-      name.trim(),
-      email.trim(),
-      autoGenerate ? undefined : password.trim(),
-      preferredLanguage,
-    )
+    let credentials: PortalCredentials | null
+    try {
+      credentials = await createParentLogin(
+        familyId,
+        name.trim(),
+        email.trim(),
+        password.trim(),
+        preferredLanguage,
+      )
+    } catch (error) {
+      setErrors({ email: error instanceof Error ? error.message : 'Could not create the account' })
+      return
+    }
 
     if (!credentials) {
       setErrors({ email: 'An account already uses that email address' })
@@ -167,7 +171,7 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={submit}>
+          <Button onClick={() => void submit()}>
             <KeyRound size={16} /> Create account
           </Button>
         </>
@@ -244,60 +248,30 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
           </Select>
         </Field>
 
-        <div className="rounded-2xl border border-slate-200 p-4">
-          <label className="flex cursor-pointer items-start gap-3">
-            <input
-              type="checkbox"
-              checked={autoGenerate}
-              onChange={(e) => setAutoGenerate(e.target.checked)}
-              className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#4F77D9]"
+        <Field
+          label="Password"
+          error={errors.password}
+          hint="At least 8 characters. Pick something you can tell them again — it is shown once and cannot be looked up later."
+        >
+          <div className="relative">
+            <Input
+              type={reveal ? 'text' : 'password'}
+              value={password}
+              invalid={Boolean(errors.password)}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pr-12"
+              placeholder="AuntiesTykes2026!"
             />
-            <span>
-              <span className="block text-sm font-semibold text-slate-800">Generate a password for me</span>
-              <span className="block text-xs text-slate-500">
-                Easy to read over the phone, shown once after you save.
-              </span>
-            </span>
-          </label>
-
-          {!autoGenerate && (
-            <div className="mt-4">
-              <Field label="Password" error={errors.password} hint="At least 8 characters.">
-                <div className="relative">
-                  <Input
-                    type={reveal ? 'text' : 'password'}
-                    value={password}
-                    invalid={Boolean(errors.password)}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pr-20"
-                    placeholder="AuntiesTykes2026!"
-                  />
-                  <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setReveal((r) => !r)}
-                      aria-label={reveal ? 'Hide password' : 'Show password'}
-                      className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                    >
-                      {reveal ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPassword(makeTempPassword())
-                        setReveal(true)
-                      }}
-                      aria-label="Suggest a password"
-                      className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-[#4F77D9]"
-                    >
-                      <RefreshCw size={15} />
-                    </button>
-                  </div>
-                </div>
-              </Field>
-            </div>
-          )}
-        </div>
+            <button
+              type="button"
+              onClick={() => setReveal((r) => !r)}
+              aria-label={reveal ? 'Hide password' : 'Show password'}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            >
+              {reveal ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+        </Field>
       </div>
     </Modal>
   )

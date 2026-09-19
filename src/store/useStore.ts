@@ -14,6 +14,16 @@ import {
   waitlistProspects,
 } from '../data/mockData'
 import { uid, nowTime, todayISO } from '../lib/helpers'
+import { DEMO_MODE } from '../lib/config'
+import {
+  createParentLogin as createParentLoginRequest,
+  hydrateAll,
+  hydrateSettings,
+  persist,
+  restoreSession,
+  signIn,
+  signOut,
+} from '../lib/persist'
 import type {
   Announcement,
   ApprovalResult,
@@ -113,12 +123,25 @@ export type LoginResult = { ok: true; user: SessionUser } | { ok: false; error: 
 export interface StoreState extends DataSlice {
   user: SessionUser | null
   toasts: Toast[]
+  /**
+   * False until bootstrap settles. Route guards must wait on this, or a
+   * refresh would bounce a signed-in user to /login before their Supabase
+   * session has been restored.
+   */
+  ready: boolean
 
   pushToast: (toast: NewToast) => void
   dismissToast: (id: string) => void
 
-  login: (email: string, password: string) => LoginResult
+  /** Async in live mode — Supabase Auth is a round trip. */
+  login: (email: string, password: string) => Promise<LoginResult>
   logout: () => void
+
+  /**
+   * Loads public settings, restores any Supabase session, and hydrates the
+   * cache for a signed-in user. Call once on app start.
+   */
+  bootstrap: () => Promise<void>
 
   checkIn: (childId: string) => void
   checkOut: (childId: string) => void
@@ -149,16 +172,18 @@ export interface StoreState extends DataSlice {
   approveEnrollment: (id: string) => ApprovalResult | null
   declineEnrollment: (id: string) => void
   /**
-   * Creates a parent portal account. Pass `password` to set one, or omit it to
-   * generate a temporary one. Returns null when the email is already in use.
+   * Creates a parent portal account. The owner always chooses the password:
+   * it is shown once and cannot be recovered, so a generated one that nobody
+   * wrote down just means another phone call. Returns null when the email is
+   * already in use.
    */
   createParentLogin: (
     familyId: string,
     name: string,
     email: string,
-    password?: string,
+    password: string,
     preferredLanguage?: Language,
-  ) => PortalCredentials | null
+  ) => Promise<PortalCredentials | null>
 
   addLead: (lead: NewLead) => void
   updateLead: (id: string, patch: Partial<Lead>) => void
@@ -172,7 +197,39 @@ export interface StoreState extends DataSlice {
   resetDemoData: () => void
 }
 
-const initialData: DataSlice = {
+/** Live mode starts empty and fills from Supabase; nothing is seeded. */
+const EMPTY_SETTINGS: Settings = {
+  businessName: '',
+  tagline: '',
+  director: '',
+  address: '',
+  phone: '',
+  email: '',
+  hours: '',
+  capacity: 0,
+  ratios: '',
+  rates: { fullTime: 0, partTime: 0, dropIn: 0, registrationFee: 0, lateFeePerMinute: 0, siblingDiscountPct: 0 },
+  policies: { sick: '', latePickup: '', holidays: '', potty: '' },
+}
+
+const emptyData: DataSlice = {
+  users: [],
+  enrollments: [],
+  families: [],
+  children: [],
+  attendance: [],
+  dailyLogs: [],
+  invoices: [],
+  documents: [],
+  announcements: [],
+  threads: [],
+  settings: EMPTY_SETTINGS,
+  leads: [],
+  waitlist: [],
+  acknowledgements: [],
+}
+
+const demoData: DataSlice = {
   users: mUsers,
   enrollments: [],
   families: mFamilies,
@@ -188,6 +245,8 @@ const initialData: DataSlice = {
   waitlist: waitlistProspects,
   acknowledgements: [],
 }
+
+const initialData: DataSlice = DEMO_MODE ? demoData : emptyData
 
 function readJSON<T>(key: string): T | null {
   try {
@@ -226,13 +285,79 @@ function snapshot(state: StoreState): DataSlice {
   }
 }
 
-const savedData = readJSON<Partial<DataSlice>>(DATA_KEY)
-const savedSession = readJSON<SessionUser>(SESSION_KEY)
+// Live mode never restores from localStorage: the database is the source of
+// truth and the session belongs to Supabase Auth.
+const savedData = DEMO_MODE ? readJSON<Partial<DataSlice>>(DATA_KEY) : null
+const savedSession = DEMO_MODE ? readJSON<SessionUser>(SESSION_KEY) : null
 
 export const useStore = create<StoreState>()((set, get) => {
-  const commit = (updater: (state: StoreState) => Partial<StoreState>) => {
+  /**
+   * Applies a change to the cache, then persists it.
+   *
+   * Demo mode writes the whole slice to localStorage, exactly as before. Live
+   * mode hands `sync` the post-update state so it can pick out the row that
+   * changed and push only that. A failed write surfaces as a toast while the
+   * local change stays applied — that is the trade-off of a write-through
+   * cache, and the reason every sync failure is made visible.
+   */
+  const commit = (
+    updater: (state: StoreState) => Partial<StoreState>,
+    sync?: (state: StoreState) => Promise<unknown>,
+  ) => {
     set(updater)
-    writeJSON(DATA_KEY, snapshot(get()))
+    const state = get()
+    if (DEMO_MODE) {
+      writeJSON(DATA_KEY, snapshot(state))
+      return
+    }
+    if (!sync) {
+      // A live-mode action with no sync would change the cache and silently
+      // lose the change on reload. Fail loudly instead.
+      get().pushToast({
+        tone: 'error',
+        title: 'That change was not saved',
+        description: 'This action is not connected to the database yet.',
+      })
+      return
+    }
+    void sync(state).catch((error: unknown) => {
+      get().pushToast({
+        tone: 'error',
+        title: 'That change did not save',
+        description:
+          error instanceof Error ? error.message : 'Check your connection and try again.',
+      })
+    })
+  }
+
+  /** Replace the cached slice with a fresh read from the database. */
+  const applyHydration = async (): Promise<void> => {
+    const data = await hydrateAll()
+    set({
+      users: data.users,
+      families: data.families,
+      children: data.children,
+      attendance: data.attendance,
+      dailyLogs: data.dailyLogs,
+      invoices: data.invoices,
+      documents: data.documents,
+      announcements: data.announcements,
+      threads: data.threads,
+      enrollments: data.enrollments,
+      leads: data.leads,
+      waitlist: data.waitlist,
+      acknowledgements: data.acknowledgements,
+      ...(data.settings ? { settings: data.settings } : {}),
+    })
+  }
+
+  /* ---- sync helpers: pick the row that changed out of the updated state ---- */
+
+  const authorId = (state: StoreState): string | null => state.user?.id ?? null
+
+  const syncAttendance = (state: StoreState, childId: string): Promise<unknown> => {
+    const record = state.attendance.find((a) => a.childId === childId && a.date === todayISO())
+    return record ? persist.attendance(record) : Promise.resolve()
   }
 
   return {
@@ -240,6 +365,7 @@ export const useStore = create<StoreState>()((set, get) => {
     ...(savedData ?? {}),
     user: savedSession,
     toasts: [],
+    ready: DEMO_MODE,
 
     /* ------------------------------- toasts ------------------------------- */
     pushToast: (toast) => {
@@ -250,7 +376,23 @@ export const useStore = create<StoreState>()((set, get) => {
     dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
     /* -------------------------------- auth -------------------------------- */
-    login: (email, password) => {
+    login: async (email, password) => {
+      if (!DEMO_MODE) {
+        try {
+          const session = await signIn(email, password)
+          set({ user: session })
+          await applyHydration()
+          return { ok: true, user: session }
+        } catch (error) {
+          return {
+            ok: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : 'That email and password combination does not match our records.',
+          }
+        }
+      }
       const found = get().users.find(
         (u) => u.email.toLowerCase() === String(email).trim().toLowerCase() && u.password === password,
       )
@@ -269,12 +411,46 @@ export const useStore = create<StoreState>()((set, get) => {
       return { ok: true, user: session }
     },
     logout: () => {
+      if (!DEMO_MODE) {
+        // Clear the cache as well as the session. On a shared device the next
+        // person to sign in must not inherit the previous family's data.
+        set({ user: null, ...emptyData })
+        void signOut().catch(() => {
+          /* the local session is dropped either way */
+        })
+        return
+      }
       try {
         localStorage.removeItem(SESSION_KEY)
       } catch {
         /* noop */
       }
       set({ user: null })
+    },
+
+    bootstrap: async () => {
+      if (DEMO_MODE) {
+        set({ ready: true })
+        return
+      }
+      try {
+        const settings = await hydrateSettings()
+        if (settings) set({ settings })
+        const session = await restoreSession()
+        if (session) {
+          set({ user: session })
+          await applyHydration()
+        }
+      } catch (error) {
+        get().pushToast({
+          tone: 'error',
+          title: 'Could not load your data',
+          description:
+            error instanceof Error ? error.message : 'Check your connection and reload the page.',
+        })
+      } finally {
+        set({ ready: true })
+      }
     },
 
     /* ----------------------------- attendance ----------------------------- */
@@ -296,7 +472,9 @@ export const useStore = create<StoreState>()((set, get) => {
             ...s.attendance,
           ],
         }
-      }),
+      },
+      (s) => syncAttendance(s, childId),
+      ),
 
     checkOut: (childId) =>
       commit((s) => {
@@ -307,7 +485,9 @@ export const useStore = create<StoreState>()((set, get) => {
             a.childId === childId && a.date === date ? { ...a, checkOut: time, status: 'checked-out' as const } : a,
           ),
         }
-      }),
+      },
+      (s) => syncAttendance(s, childId),
+      ),
 
     markAbsent: (childId, note = 'Marked absent') =>
       commit((s) => {
@@ -326,19 +506,37 @@ export const useStore = create<StoreState>()((set, get) => {
             ...s.attendance,
           ],
         }
-      }),
+      },
+      (s) => syncAttendance(s, childId),
+      ),
 
     /* ------------------------------ daily logs ---------------------------- */
     addDailyLog: (log) =>
-      commit((s) => ({
-        dailyLogs: [
-          { author: s.user?.name ?? 'Rosalind Hayes', photos: [], ...log, id: uid('dl') },
-          ...s.dailyLogs,
-        ],
-      })),
+      commit(
+        (s) => ({
+          dailyLogs: [
+            { author: s.user?.name ?? 'Rosalind Hayes', photos: [], ...log, id: uid('dl') },
+            ...s.dailyLogs,
+          ],
+        }),
+        (s) => {
+          const created = s.dailyLogs[0]
+          return created ? persist.dailyLog(created, authorId(s)) : Promise.resolve()
+        },
+      ),
     updateDailyLog: (id, patch) =>
-      commit((s) => ({ dailyLogs: s.dailyLogs.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
-    deleteDailyLog: (id) => commit((s) => ({ dailyLogs: s.dailyLogs.filter((l) => l.id !== id) })),
+      commit(
+        (s) => ({ dailyLogs: s.dailyLogs.map((l) => (l.id === id ? { ...l, ...patch } : l)) }),
+        (s) => {
+          const log = s.dailyLogs.find((l) => l.id === id)
+          return log ? persist.dailyLog(log, authorId(s)) : Promise.resolve()
+        },
+      ),
+    deleteDailyLog: (id) =>
+      commit(
+        (s) => ({ dailyLogs: s.dailyLogs.filter((l) => l.id !== id) }),
+        () => persist.deleteDailyLog(id),
+      ),
 
     /* ------------------------------- invoices ----------------------------- */
     createInvoice: (invoice) =>
@@ -350,19 +548,32 @@ export const useStore = create<StoreState>()((set, get) => {
             ...s.invoices,
           ],
         }
-      }),
+      },
+      (s) => {
+        const created = s.invoices[0]
+        return created ? persist.invoice(created) : Promise.resolve()
+      },
+      ),
     recordPayment: (invoiceId, payment) =>
-      commit((s) => ({
-        invoices: s.invoices.map((i) =>
-          i.id === invoiceId
-            ? { ...i, payments: [...i.payments, { date: todayISO(), ...payment, id: uid('pay') }] }
-            : i,
-        ),
-      })),
+      commit(
+        (s) => ({
+          invoices: s.invoices.map((i) =>
+            i.id === invoiceId
+              ? { ...i, payments: [...i.payments, { date: todayISO(), ...payment, id: uid('pay') }] }
+              : i,
+          ),
+        }),
+        (s) => {
+          const invoice = s.invoices.find((i) => i.id === invoiceId)
+          const recorded = invoice?.payments[invoice.payments.length - 1]
+          return recorded ? persist.payment(recorded, invoiceId) : Promise.resolve()
+        },
+      ),
 
     /* ------------------------------ documents ----------------------------- */
     addDocument: (doc) =>
-      commit((s) => ({
+      commit(
+        (s) => ({
         documents: [
           {
             category: 'Forms' as const,
@@ -376,66 +587,146 @@ export const useStore = create<StoreState>()((set, get) => {
           },
           ...s.documents,
         ],
-      })),
-    deleteDocument: (id) => commit((s) => ({ documents: s.documents.filter((d) => d.id !== id) })),
-    toggleDocVisibility: (id) =>
-      commit((s) => ({
-        documents: s.documents.map((d) => (d.id === id ? { ...d, visibleToParents: !d.visibleToParents } : d)),
-      })),
-    acknowledgeDocument: (docId) =>
-      commit((s) => {
-        const key = `${s.user?.id ?? 'anon'}:${docId}`
-        if (s.acknowledgements.includes(key)) return {}
-        return { acknowledgements: [...s.acknowledgements, key] }
       }),
+      (s) => {
+        const created = s.documents[0]
+        return created ? persist.document(created, authorId(s)) : Promise.resolve()
+      },
+      ),
+    deleteDocument: (id) =>
+      commit(
+        (s) => ({ documents: s.documents.filter((d) => d.id !== id) }),
+        () => persist.deleteDocument(id),
+      ),
+    toggleDocVisibility: (id) =>
+      commit(
+        (s) => ({
+          documents: s.documents.map((d) => (d.id === id ? { ...d, visibleToParents: !d.visibleToParents } : d)),
+        }),
+        (s) => {
+          const doc = s.documents.find((d) => d.id === id)
+          return doc ? persist.document(doc, authorId(s)) : Promise.resolve()
+        },
+      ),
+    acknowledgeDocument: (docId) =>
+      commit(
+        (s) => {
+          const key = `${s.user?.id ?? 'anon'}:${docId}`
+          if (s.acknowledgements.includes(key)) return {}
+          return { acknowledgements: [...s.acknowledgements, key] }
+        },
+        (s) => {
+          const id = s.user?.id
+          return id ? persist.acknowledgement(docId, id) : Promise.resolve()
+        },
+      ),
 
     /* --------------------------- communications --------------------------- */
     addAnnouncement: (announcement) =>
-      commit((s) => ({
-        announcements: [{ date: todayISO(), ...announcement, id: uid('an') }, ...s.announcements],
-      })),
+      commit(
+        (s) => ({
+          announcements: [{ date: todayISO(), ...announcement, id: uid('an') }, ...s.announcements],
+        }),
+        (s) => {
+          const created = s.announcements[0]
+          return created ? persist.announcement(created) : Promise.resolve()
+        },
+      ),
     sendThreadMessage: (threadId, message) =>
-      commit((s) => ({
-        threads: s.threads.map((t) =>
-          t.id === threadId
-            ? {
-                ...t,
-                updatedAt: todayISO(),
-                messages: [...t.messages, { at: todayISO(), ...message, id: uid('msg') }],
-              }
-            : t,
-        ),
-      })),
+      commit(
+        (s) => ({
+          threads: s.threads.map((t) =>
+            t.id === threadId
+              ? {
+                  ...t,
+                  updatedAt: todayISO(),
+                  messages: [...t.messages, { at: todayISO(), ...message, id: uid('msg') }],
+                }
+              : t,
+          ),
+        }),
+        async (s) => {
+          const thread = s.threads.find((t) => t.id === threadId)
+          const sent = thread?.messages[thread.messages.length - 1]
+          if (!thread || !sent) return
+          // Thread first: its updatedAt drives the inbox ordering.
+          await persist.thread(thread)
+          await persist.threadMessage(sent, threadId, authorId(s))
+        },
+      ),
     startThread: (thread) =>
-      commit((s) => ({
-        threads: [{ updatedAt: todayISO(), messages: [], ...thread, id: uid('thr') }, ...s.threads],
-      })),
+      commit(
+        (s) => ({
+          threads: [{ updatedAt: todayISO(), messages: [], ...thread, id: uid('thr') }, ...s.threads],
+        }),
+        (s) => {
+          const created = s.threads[0]
+          return created ? persist.thread(created) : Promise.resolve()
+        },
+      ),
 
     /* ------------------------- families & children ------------------------ */
     addFamily: (family) => {
       const id = uid('fam')
-      commit((s) => ({ families: [...s.families, { ...family, id }] }))
+      commit(
+        (s) => ({ families: [...s.families, { ...family, id }] }),
+        (s) => {
+          const created = s.families.find((f) => f.id === id)
+          return created ? persist.family(created) : Promise.resolve()
+        },
+      )
       return id
     },
     updateFamily: (id, patch) =>
-      commit((s) => ({ families: s.families.map((f) => (f.id === id ? { ...f, ...patch } : f)) })),
+      commit(
+        (s) => ({ families: s.families.map((f) => (f.id === id ? { ...f, ...patch } : f)) }),
+        (s) => {
+          const family = s.families.find((f) => f.id === id)
+          return family ? persist.family(family) : Promise.resolve()
+        },
+      ),
 
     addChild: (child) => {
       const id = uid('chd')
-      commit((s) => ({
-        children: [...s.children, { hue: pickHue(s.children.length), ...child, id }],
-      }))
+      commit(
+        (s) => ({
+          children: [...s.children, { hue: pickHue(s.children.length), ...child, id }],
+        }),
+        (s) => {
+          const created = s.children.find((c) => c.id === id)
+          return created ? persist.child(created) : Promise.resolve()
+        },
+      )
       return id
     },
     updateChild: (id, patch) =>
-      commit((s) => ({ children: s.children.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
+      commit(
+        (s) => ({ children: s.children.map((c) => (c.id === id ? { ...c, ...patch } : c)) }),
+        (s) => {
+          const child = s.children.find((c) => c.id === id)
+          return child ? persist.child(child) : Promise.resolve()
+        },
+      ),
 
-    createParentLogin: (familyId, name, email, password, preferredLanguage) => {
+    createParentLogin: async (familyId, name, email, password, preferredLanguage) => {
       const clean = email.trim()
       if (!clean) return null
       if (get().users.some((u) => u.email.toLowerCase() === clean.toLowerCase())) return null
-      const chosen = password?.trim()
-      const credentials: PortalCredentials = { email: clean, password: chosen || makeTempPassword() }
+      const credentials: PortalCredentials = { email: clean, password: password.trim() }
+
+      if (!DEMO_MODE) {
+        // Rejects with the server's message; the caller surfaces it.
+        await createParentLoginRequest({
+          familyId,
+          name,
+          email: clean,
+          password: credentials.password,
+          preferredLanguage: preferredLanguage ?? 'en',
+        })
+        await applyHydration()
+        return credentials
+      }
+
       commit((s) => ({
         users: [
           ...s.users,
@@ -456,12 +747,18 @@ export const useStore = create<StoreState>()((set, get) => {
     /* ------------------------------ enrollment ---------------------------- */
     submitEnrollment: (submission) => {
       const id = uid('enr')
-      commit((s) => ({
-        enrollments: [
-          { ...submission, id, submittedAt: todayISO(), status: 'pending' as const },
-          ...s.enrollments,
-        ],
-      }))
+      commit(
+        (s) => ({
+          enrollments: [
+            { ...submission, id, submittedAt: todayISO(), status: 'pending' as const },
+            ...s.enrollments,
+          ],
+        }),
+        (s) => {
+          const created = s.enrollments.find((e) => e.id === id)
+          return created ? persist.enrollment(created) : Promise.resolve()
+        },
+      )
       return id
     },
 
@@ -539,30 +836,61 @@ export const useStore = create<StoreState>()((set, get) => {
     },
 
     declineEnrollment: (id) =>
-      commit((s) => ({
-        enrollments: s.enrollments.map((e) =>
-          e.id === id ? { ...e, status: 'declined' as const, reviewedAt: todayISO() } : e,
-        ),
-      })),
+      commit(
+        (s) => ({
+          enrollments: s.enrollments.map((e) =>
+            e.id === id ? { ...e, status: 'declined' as const, reviewedAt: todayISO() } : e,
+          ),
+        }),
+        () => persist.enrollmentStatus(id, 'declined'),
+      ),
 
     /* -------------------------------- leads ------------------------------- */
     addLead: (lead) =>
-      commit((s) => ({
-        leads: [
-          { createdAt: todayISO(), status: 'New inquiry', tourDate: '', ...lead, id: uid('ld') },
-          ...s.leads,
-        ],
-      })),
-    updateLead: (id, patch) => commit((s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
+      commit(
+        (s) => ({
+          leads: [
+            { createdAt: todayISO(), status: 'New inquiry', tourDate: '', ...lead, id: uid('ld') },
+            ...s.leads,
+          ],
+        }),
+        (s) => {
+          const created = s.leads[0]
+          return created ? persist.lead(created) : Promise.resolve()
+        },
+      ),
+    updateLead: (id, patch) =>
+      commit(
+        (s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) }),
+        (s) => {
+          const lead = s.leads.find((l) => l.id === id)
+          return lead ? persist.lead(lead) : Promise.resolve()
+        },
+      ),
 
     /* ------------------------------ waitlist ------------------------------ */
-    setWaitlist: (list) => commit(() => ({ waitlist: list })),
+    setWaitlist: (list) =>
+      commit(
+        () => ({ waitlist: list }),
+        () => persist.waitlist(list),
+      ),
 
     /* ------------------------------ settings ------------------------------ */
-    updateSettings: (patch) => commit((s) => ({ settings: { ...s.settings, ...patch } })),
-    updateRates: (patch) => commit((s) => ({ settings: { ...s.settings, rates: { ...s.settings.rates, ...patch } } })),
+    updateSettings: (patch) =>
+      commit(
+        (s) => ({ settings: { ...s.settings, ...patch } }),
+        (s) => persist.settings(s.settings),
+      ),
+    updateRates: (patch) =>
+      commit(
+        (s) => ({ settings: { ...s.settings, rates: { ...s.settings.rates, ...patch } } }),
+        (s) => persist.settings(s.settings),
+      ),
     updatePolicies: (patch) =>
-      commit((s) => ({ settings: { ...s.settings, policies: { ...s.settings.policies, ...patch } } })),
+      commit(
+        (s) => ({ settings: { ...s.settings, policies: { ...s.settings.policies, ...patch } } }),
+        (s) => persist.settings(s.settings),
+      ),
 
     resetDemoData: () => {
       commit(() => ({ ...initialData }))

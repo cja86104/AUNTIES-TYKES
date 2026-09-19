@@ -71,8 +71,10 @@ export default function Login() {
 
   const onSubmit = async (values: LoginValues) => {
     setFormError('')
-    await new Promise((r) => setTimeout(r, 600))
-    const res = login(values.email, values.password)
+    // The demo fakes latency so the pending state is visible; live mode gets
+    // its latency from the real Supabase round trip.
+    if (DEMO_MODE) await new Promise((r) => setTimeout(r, 600))
+    const res = await login(values.email, values.password)
     if (!res.ok) {
       setFormError(res.error)
       pushToast({ tone: 'error', title: 'Sign-in failed', description: res.error })

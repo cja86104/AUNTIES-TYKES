@@ -29,4 +29,19 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Serverless functions: Node globals, and their own tsconfig. The project
+    // service only discovers tsconfig.json, which covers `src` alone, so this
+    // block has to name tsconfig.api.json explicitly. It comes last so it
+    // overrides the browser defaults set above.
+    files: ['api/**/*.ts'],
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: {
+        projectService: false,
+        project: './tsconfig.api.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
 )

@@ -47,6 +47,7 @@ export default function AdminFamilies() {
   const [kidDraft, setKidDraft] = useState<ChildFormValue>(emptyChildForm())
   const [withChild, setWithChild] = useState(true)
   const [makeLogin, setMakeLogin] = useState(true)
+  const [passwordError, setPasswordError] = useState('')
   const [famErrors, setFamErrors] = useState<Record<string, string>>({})
   const [kidErrors, setKidErrors] = useState<Record<string, string>>({})
   const [newLogin, setNewLogin] = useState<PortalCredentials | null>(null)
@@ -59,27 +60,39 @@ export default function AdminFamilies() {
     setNewFamilyPassword('')
     setFamErrors({})
     setKidErrors({})
+    setNewFamilyPassword('')
+    setPasswordError('')
     setAddOpen(true)
   }
 
-  const saveNewFamily = () => {
+  const saveNewFamily = async () => {
     const fe = validateFamilyForm(famDraft)
     const ke = withChild ? validateChildForm({ ...kidDraft, familyId: 'pending' }) : {}
     delete ke.familyId
     setFamErrors(fe)
     setKidErrors(ke)
-    if (Object.keys(fe).length || Object.keys(ke).length) return
+    // The owner chooses the password: it is shown once and cannot be looked up
+    // again, so a generated one nobody recorded just means another phone call.
+    const pwError = makeLogin && newFamilyPassword.trim().length < 8 ? 'Use at least 8 characters' : ''
+    setPasswordError(pwError)
+    if (Object.keys(fe).length || Object.keys(ke).length || pwError) return
 
     const familyId = addFamily({ ...famDraft, joinedAt: todayISO() })
     if (withChild) addChild(formToChild({ ...kidDraft, familyId }))
-    const credentials = makeLogin
-      ? createParentLogin(
+    let credentials: PortalCredentials | null = null
+    let loginError = ''
+    if (makeLogin) {
+      try {
+        credentials = await createParentLogin(
           familyId,
           famDraft.primaryContact.trim(),
           famDraft.email,
-          newFamilyPassword.trim() || undefined,
+          newFamilyPassword.trim(),
         )
-      : null
+      } catch (error) {
+        loginError = error instanceof Error ? error.message : 'Could not create the account'
+      }
+    }
 
     setAddOpen(false)
     pushToast({
@@ -92,7 +105,7 @@ export default function AdminFamilies() {
         pushToast({
           tone: 'error',
           title: 'Login not created',
-          description: 'That email is already used by another account.',
+          description: loginError || 'That email is already used by another account.',
         })
     }
   }
@@ -317,7 +330,7 @@ export default function AdminFamilies() {
             <Button variant="ghost" onClick={() => setAddOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={saveNewFamily}>
+            <Button onClick={() => void saveNewFamily()}>
               <UserPlus size={16} /> Add family
             </Button>
           </>
@@ -364,9 +377,13 @@ export default function AdminFamilies() {
                     value={newFamilyPassword}
                     onChange={(e) => setNewFamilyPassword(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
-                    placeholder="Leave blank to generate a password"
+                    invalid={Boolean(passwordError)}
+                    placeholder="Password — at least 8 characters"
                     aria-label="Password for the new parent account"
                   />
+                  {passwordError && (
+                    <span className="mt-1.5 block text-xs font-semibold text-[#E86A6A]">{passwordError}</span>
+                  )}
                 </span>
               )}
             </span>

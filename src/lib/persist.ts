@@ -46,6 +46,7 @@ import type {
   EnrollmentSubmission,
   Family,
   Invoice,
+  Language,
   Lead,
   Payment,
   SessionUser,
@@ -193,6 +194,48 @@ export async function hydrateAll(): Promise<HydratedData> {
     waitlist: waitlist.map(toWaitlistProspect),
     acknowledgements: acks.map((a) => `${a.profile_id}:${a.document_id}`),
     settings: settings.data ? toSettings(settings.data) : null,
+  }
+}
+
+/**
+ * Business info for the public site. `settings` is the one table anon may read
+ * (see the settings_readable policy), because the footer, Contact and FAQ all
+ * render it before anyone signs in.
+ */
+export async function hydrateSettings(): Promise<Settings | null> {
+  const { data, error } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle()
+  if (error) throw new SupabaseError(error.message)
+  return data ? toSettings(data) : null
+}
+
+export interface NewParentLogin {
+  familyId: string
+  name: string
+  email: string
+  password: string
+  preferredLanguage: Language
+}
+
+/**
+ * Creates a parent portal account through the server route.
+ *
+ * This cannot be done from the browser: creating a Supabase Auth user needs
+ * the service-role key, which only the serverless function holds. The caller's
+ * access token goes along so the server can confirm they are the owner.
+ */
+export async function createParentLogin(input: NewParentLogin): Promise<void> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) throw new SupabaseError('Your session has expired — sign in again.')
+
+  const response = await fetch('/api/create-parent-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null
+    throw new SupabaseError(body?.error ?? `Could not create the account (${String(response.status)})`)
   }
 }
 

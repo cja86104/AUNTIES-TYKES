@@ -16,4 +16,4 @@
  * put a placeholder site into Google.
  * ───────────────────────────────────────────────────────────────────────────
  */
-export const DEMO_MODE: boolean = true
+export const DEMO_MODE: boolean = false

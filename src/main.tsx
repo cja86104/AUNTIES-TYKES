@@ -2,8 +2,13 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
+import { useStore } from './store/useStore'
 import './index.css'
 import './i18n'
+
+// Loads public settings, restores any Supabase session, and hydrates the cache.
+// No-op in demo mode, where the cache comes from localStorage.
+void useStore.getState().bootstrap()
 
 const queryClient = new QueryClient({
   defaultOptions: {

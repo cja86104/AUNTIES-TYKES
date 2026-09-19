@@ -154,7 +154,7 @@ export default function AdminLayout() {
               </button>
               <div>
                 <p className="font-display text-sm font-extrabold text-slate-900">Aunties Tykes — Admin</p>
-                <p className="text-xs text-slate-500">Owner console · demo data</p>
+                <p className="text-xs text-slate-500">Owner console</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
