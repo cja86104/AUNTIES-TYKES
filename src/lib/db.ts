@@ -13,6 +13,7 @@
 import type {
   Announcement,
   AttendanceRecord,
+  CalendarEvent,
   Child,
   DailyLog,
   DocumentRecord,
@@ -30,6 +31,7 @@ import type {
 import type {
   AnnouncementRow,
   AttendanceRow,
+  CalendarEventRow,
   ChildRow,
   Database,
   DailyLogRow,
@@ -265,6 +267,21 @@ export function toSettings(row: SettingsRow): Settings {
   }
 }
 
+export function toCalendarEvent(row: CalendarEventRow): CalendarEvent {
+  return {
+    id: row.id,
+    kind: row.kind,
+    title: row.title,
+    note: row.note,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on ?? undefined,
+    closesAt: row.closes_at ?? undefined,
+    childId: row.child_id ?? undefined,
+    visibleToParents: row.visible_to_parents,
+    createdAt: row.created_at,
+  }
+}
+
 /* --------------------------------- write --------------------------------- */
 
 export function fromFamily(family: Family): Ins<'families'> {
@@ -415,6 +432,24 @@ export function fromLead(lead: Lead): Ins<'leads'> {
     message: lead.message,
     tour_date: lead.tourDate || null,
     status: lead.status,
+  }
+}
+
+export function fromCalendarEvent(event: CalendarEvent, createdBy: string | null): Ins<'calendar_events'> {
+  return {
+    id: event.id,
+    kind: event.kind,
+    title: event.title,
+    note: event.note,
+    starts_on: event.startsOn,
+    ends_on: event.endsOn ?? null,
+    // The database rejects closes_at on anything but an early close, and a
+    // child_id on anything but a schedule exception — mirror that here so a
+    // bad combination fails locally instead of as a constraint violation.
+    closes_at: event.kind === 'early_close' ? (event.closesAt ?? null) : null,
+    child_id: event.kind === 'schedule_exception' ? (event.childId ?? null) : null,
+    visible_to_parents: event.visibleToParents,
+    created_by: createdBy,
   }
 }
 

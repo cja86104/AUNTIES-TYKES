@@ -90,8 +90,8 @@ export default function AdminEnrollments() {
   return (
     <PageTransition>
       <PageHeader
-        title="Enrollments"
-        description="Forms families filled out themselves. Review one and approve it to create their file, their children, and their portal login."
+        title="Future Arrivals"
+        description="Forms families filled out themselves. Approving one creates their file and their children — portal logins are added separately from Families."
         actions={
           <>
             <Button variant="outline" onClick={copyLink}>

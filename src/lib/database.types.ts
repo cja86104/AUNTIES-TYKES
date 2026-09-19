@@ -18,6 +18,12 @@ export type ChildStatusDb = 'active' | 'waitlist'
 export type AttendanceStatusDb = 'present' | 'absent' | 'expected' | 'checked-out'
 export type DocumentCategoryDb = 'Handbooks' | 'Policies' | 'Forms' | 'Menus' | 'Calendars'
 export type EnrollmentStatusDb = 'pending' | 'approved' | 'declined'
+export type CalendarEventKindDb =
+  | 'closure'
+  | 'early_close'
+  | 'activity'
+  | 'reminder'
+  | 'schedule_exception'
 
 /** Columns in `Required` must be supplied on insert; the rest have defaults. */
 type Insertable<Row, Required extends keyof Row> = Pick<Row, Required> & Partial<Omit<Row, Required>>
@@ -203,6 +209,23 @@ export type WaitlistProspectRow = {
   created_at: string
 }
 
+export type CalendarEventRow = {
+  id: string
+  kind: CalendarEventKindDb
+  title: string
+  note: string
+  starts_on: string
+  /** NULL for a single-day event. */
+  ends_on: string | null
+  /** Only on early_close. */
+  closes_at: string | null
+  /** Only on schedule_exception; NULL means daycare-wide. */
+  child_id: string | null
+  visible_to_parents: boolean
+  created_at: string
+  created_by: string | null
+}
+
 /** Single row, id = 1. No license_number: the daycare is not a licensed facility. */
 export type SettingsRow = {
   id: number
@@ -254,6 +277,7 @@ export type Database = {
       leads: Table<LeadRow, 'parent_name'>
       waitlist_prospects: Table<WaitlistProspectRow, 'child_name' | 'age_group'>
       settings: Table<SettingsRow, 'id'>
+      calendar_events: Table<CalendarEventRow, 'id' | 'kind' | 'title' | 'starts_on'>
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -268,6 +292,7 @@ export type Database = {
       attendance_status: AttendanceStatusDb
       document_category: DocumentCategoryDb
       enrollment_status: EnrollmentStatusDb
+      calendar_event_kind: CalendarEventKindDb
     }
     CompositeTypes: { [_ in never]: never }
   }

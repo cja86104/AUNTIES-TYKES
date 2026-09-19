@@ -13,6 +13,7 @@ import { supabase } from './supabase'
 import {
   fromAnnouncement,
   fromAttendance,
+  fromCalendarEvent,
   fromChild,
   fromDailyLog,
   fromDocument,
@@ -24,6 +25,7 @@ import {
   fromThread,
   fromThreadMessage,
   toAnnouncement,
+  toCalendarEvent,
   toChild,
   toDocument,
   toEnrollment,
@@ -40,6 +42,7 @@ import {
 import type {
   Announcement,
   AttendanceRecord,
+  CalendarEvent,
   Child,
   DailyLog,
   DocumentRecord,
@@ -72,6 +75,7 @@ export interface HydratedData {
   enrollments: EnrollmentSubmission[]
   leads: Lead[]
   waitlist: WaitlistProspect[]
+  calendarEvents: CalendarEvent[]
   acknowledgements: string[]
   settings: Settings | null
 }
@@ -156,6 +160,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     enrollments,
     leads,
     waitlist,
+    calendarEvents,
     settings,
   ] = await Promise.all([
     run(supabase.from('profiles').select('*')),
@@ -173,6 +178,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     run(supabase.from('enrollments').select('*')),
     run(supabase.from('leads').select('*')),
     run(supabase.from('waitlist_prospects').select('*')),
+    run(supabase.from('calendar_events').select('*')),
     supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
   ])
 
@@ -192,6 +198,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     enrollments: enrollments.map(toEnrollment),
     leads: leads.map(toLead),
     waitlist: waitlist.map(toWaitlistProspect),
+    calendarEvents: calendarEvents.map(toCalendarEvent),
     acknowledgements: acks.map((a) => `${a.profile_id}:${a.document_id}`),
     settings: settings.data ? toSettings(settings.data) : null,
   }
@@ -286,6 +293,12 @@ export const persist = {
     run(supabase.from('thread_messages').upsert(fromThreadMessage(message, threadId, authorId)).select()),
 
   lead: (lead: Lead) => run(supabase.from('leads').upsert(fromLead(lead)).select()),
+
+  calendarEvent: (event: CalendarEvent, createdBy: string | null) =>
+    run(supabase.from('calendar_events').upsert(fromCalendarEvent(event, createdBy)).select()),
+
+  deleteCalendarEvent: (id: string) =>
+    run(supabase.from('calendar_events').delete().eq('id', id).select()),
 
   settings: (settings: Settings) => run(supabase.from('settings').upsert(fromSettings(settings)).select()),
 

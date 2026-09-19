@@ -304,6 +304,45 @@ export interface ApprovalResult {
   childIds: string[]
 }
 
+/* ----------------------------- family calendar ---------------------------- */
+
+export type CalendarEventKind =
+  /** Closed all day — a holiday or a vacation day. */
+  | 'closure'
+  /** Open, but care ends early. */
+  | 'early_close'
+  /** Picture day, pajama day, a theme day. */
+  | 'activity'
+  /** A dated note: "bring a change of clothes". */
+  | 'reminder'
+  /** One child only: "Johnny is not coming Tuesday". */
+  | 'schedule_exception'
+
+/**
+ * An event the owner authored. Birthdays and invoice due dates are NOT stored
+ * here — they are derived from `Child.dob` and `Invoice.dueDate` when the
+ * calendar is assembled, so they never need re-entering or fall out of sync.
+ */
+export interface CalendarEvent {
+  id: string
+  kind: CalendarEventKind
+  title: string
+  note: string
+  /** ISO date, yyyy-MM-dd */
+  startsOn: string
+  /** Undefined for a single day; set for a vacation week and the like. */
+  endsOn?: string
+  /** 24h HH:mm. Only meaningful on `early_close`. */
+  closesAt?: string
+  /** Only set on `schedule_exception`; undefined means daycare-wide. */
+  childId?: string
+  visibleToParents: boolean
+  createdAt: string
+}
+
+export type NewCalendarEvent = Omit<CalendarEvent, 'id' | 'createdAt'> &
+  Partial<Pick<CalendarEvent, 'createdAt'>>
+
 /* --------------------------------- leads ---------------------------------- */
 
 export interface Lead {

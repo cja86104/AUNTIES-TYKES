@@ -24,7 +24,6 @@ import { cx } from '../lib/helpers'
 
 const nav = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/enrollments', label: 'Enrollments', icon: ClipboardList },
   { to: '/admin/families', label: 'Families', icon: Users },
   { to: '/admin/children', label: 'Children', icon: Baby },
   { to: '/admin/attendance', label: 'Attendance', icon: ClipboardCheck },
@@ -33,6 +32,7 @@ const nav = [
   { to: '/admin/invoices', label: 'Invoices', icon: ReceiptText },
   { to: '/admin/documents', label: 'Documents', icon: FolderOpen },
   { to: '/admin/messages', label: 'Messages', icon: MessageSquare },
+  { to: '/admin/enrollments', label: 'Future Arrivals', icon: ClipboardList },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 

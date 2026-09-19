@@ -34,6 +34,7 @@ import type {
   PortalCredentials,
   User,
   AttendanceRecord,
+  CalendarEvent,
   Child,
   DailyLog,
   DocumentRecord,
@@ -42,6 +43,7 @@ import type {
   Language,
   Lead,
   NewAnnouncement,
+  NewCalendarEvent,
   NewDailyLog,
   NewDocument,
   NewInvoice,
@@ -100,6 +102,8 @@ interface DataSlice {
   settings: Settings
   leads: Lead[]
   waitlist: WaitlistProspect[]
+  /** Owner-authored calendar entries. Birthdays and due dates are derived. */
+  calendarEvents: CalendarEvent[]
   /** `${userId}:${documentId}` pairs for documents a parent has acknowledged. */
   acknowledgements: string[]
 }
@@ -176,6 +180,10 @@ export interface StoreState extends DataSlice {
 
   setWaitlist: (list: WaitlistProspect[]) => void
 
+  addCalendarEvent: (event: NewCalendarEvent) => string
+  updateCalendarEvent: (id: string, patch: Partial<CalendarEvent>) => void
+  deleteCalendarEvent: (id: string) => void
+
   updateSettings: (patch: Partial<Settings>) => void
   updateRates: (patch: Partial<Rates>) => void
   updatePolicies: (patch: Partial<Policies>) => void
@@ -212,6 +220,7 @@ const emptyData: DataSlice = {
   settings: EMPTY_SETTINGS,
   leads: [],
   waitlist: [],
+  calendarEvents: [],
   acknowledgements: [],
 }
 
@@ -229,6 +238,8 @@ const demoData: DataSlice = {
   settings: mSettings,
   leads: mLeads,
   waitlist: waitlistProspects,
+  // The demo has no seeded calendar; live data comes from Supabase.
+  calendarEvents: [],
   acknowledgements: [],
 }
 
@@ -267,6 +278,7 @@ function snapshot(state: StoreState): DataSlice {
     settings: state.settings,
     leads: state.leads,
     waitlist: state.waitlist,
+    calendarEvents: state.calendarEvents,
     acknowledgements: state.acknowledgements,
   }
 }
@@ -332,6 +344,7 @@ export const useStore = create<StoreState>()((set, get) => {
       enrollments: data.enrollments,
       leads: data.leads,
       waitlist: data.waitlist,
+      calendarEvents: data.calendarEvents,
       acknowledgements: data.acknowledgements,
       ...(data.settings ? { settings: data.settings } : {}),
     })
@@ -848,6 +861,36 @@ export const useStore = create<StoreState>()((set, get) => {
       commit(
         () => ({ waitlist: list }),
         () => persist.waitlist(list),
+      ),
+
+    /* --------------------------- family calendar -------------------------- */
+    addCalendarEvent: (event) => {
+      const id = uid('cal')
+      commit(
+        (s) => ({
+          calendarEvents: [...s.calendarEvents, { createdAt: todayISO(), ...event, id }],
+        }),
+        (s) => {
+          const created = s.calendarEvents.find((e) => e.id === id)
+          return created ? persist.calendarEvent(created, authorId(s)) : Promise.resolve()
+        },
+      )
+      return id
+    },
+    updateCalendarEvent: (id, patch) =>
+      commit(
+        (s) => ({
+          calendarEvents: s.calendarEvents.map((e) => (e.id === id ? { ...e, ...patch } : e)),
+        }),
+        (s) => {
+          const event = s.calendarEvents.find((e) => e.id === id)
+          return event ? persist.calendarEvent(event, authorId(s)) : Promise.resolve()
+        },
+      ),
+    deleteCalendarEvent: (id) =>
+      commit(
+        (s) => ({ calendarEvents: s.calendarEvents.filter((e) => e.id !== id) }),
+        () => persist.deleteCalendarEvent(id),
       ),
 
     /* ------------------------------ settings ------------------------------ */
