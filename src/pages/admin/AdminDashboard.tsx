@@ -12,26 +12,11 @@ import {
   UserX,
   Megaphone,
   MessageSquare,
-  GripVertical,
+  CalendarDays,
   CalendarClock,
   TrendingUp,
 } from 'lucide-react'
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { addDays, format } from 'date-fns'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import PageTransition from '../../components/PageTransition'
 import {
@@ -47,11 +32,12 @@ import {
   statusTone,
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
+import { buildCalendar } from '../../lib/calendar'
+import type { CalendarEntryKind } from '../../lib/calendar'
 import { useBootstrap } from '../../lib/hooks'
 import { money, todayISO, fmtTime, fmtDate, invoiceBalance, invoiceStatus, sum, ageLabel } from '../../lib/helpers'
 import { revenueTrend } from '../../data/mockData'
-import type { DragEndEvent } from '@dnd-kit/core'
-import type { Child, WaitlistProspect } from '../../types'
+import type { Child } from '../../types'
 
 interface AttendanceTally {
   date: string
@@ -63,40 +49,15 @@ interface AttendanceTrendPoint extends AttendanceTally {
   label: string
 }
 
-interface SortableWaitlistRowProps {
-  item: WaitlistProspect
-  index: number
-}
-
-function SortableWaitlistRow({ item, index }: SortableWaitlistRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
-  return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center gap-3 rounded-xl border bg-white px-3.5 py-3 ${
-        isDragging ? 'border-[#4F77D9] shadow-lg' : 'border-slate-200'
-      }`}
-    >
-      <button
-        {...attributes}
-        {...listeners}
-        className="cursor-grab rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
-        aria-label={`Reorder ${item.childName}`}
-      >
-        <GripVertical size={16} />
-      </button>
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#4F77D9]/10 font-display text-xs font-extrabold text-[#39569f]">
-        {index + 1}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold text-slate-900">{item.childName}</p>
-        <p className="truncate text-xs text-slate-500">
-          {item.ageGroup} · {item.requested} · {item.note}
-        </p>
-      </div>
-    </li>
-  )
+/** Short labels for the dashboard's calendar strip. */
+const CALENDAR_KIND_LABEL: Record<CalendarEntryKind, string> = {
+  closure: 'Closed',
+  early_close: 'Closing early',
+  activity: 'Activity',
+  reminder: 'Reminder',
+  schedule_exception: 'Schedule change',
+  birthday: 'Birthday',
+  payment_due: 'Payment due',
 }
 
 export default function AdminDashboard() {
@@ -111,8 +72,7 @@ export default function AdminDashboard() {
   const announcements = useStore((s) => s.announcements)
   const threads = useStore((s) => s.threads)
   const leads = useStore((s) => s.leads)
-  const waitlist = useStore((s) => s.waitlist)
-  const setWaitlist = useStore((s) => s.setWaitlist)
+  const calendarEvents = useStore((s) => s.calendarEvents)
   const checkIn = useStore((s) => s.checkIn)
   const checkOut = useStore((s) => s.checkOut)
   const markAbsent = useStore((s) => s.markAbsent)
@@ -153,20 +113,18 @@ export default function AdminDashboard() {
       .map((d) => ({ ...d, label: fmtDate(d.date, 'MMM d') }))
   }, [attendance])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  /** Next two months of the Family Calendar, trimmed to what fits a card. */
+  const upcoming = useMemo(
+    () =>
+      buildCalendar({
+        events: calendarEvents,
+        children,
+        invoices,
+        from: todayISO(),
+        to: format(addDays(new Date(), 60), 'yyyy-MM-dd'),
+      }).slice(0, 5),
+    [calendarEvents, children, invoices],
   )
-
-  const onDragEnd = (event: DragEndEvent) => {
-    const { active: a, over } = event
-    if (!over || a.id === over.id) return
-    const oldIndex = waitlist.findIndex((w) => w.id === a.id)
-    const newIndex = waitlist.findIndex((w) => w.id === over.id)
-    if (oldIndex < 0 || newIndex < 0) return
-    setWaitlist(arrayMove(waitlist, oldIndex, newIndex))
-    pushToast({ title: 'Waitlist reordered', description: 'The new priority order was saved.' })
-  }
 
   const doCheckIn = (child: Child) => {
     checkIn(child.id)
@@ -324,34 +282,54 @@ export default function AdminDashboard() {
           )}
         </Card>
 
-        {/* Waitlist */}
+        {/* Family Calendar */}
         <Card className="p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="font-display text-lg font-bold text-slate-900">Waitlist priority</h2>
-              <p className="text-xs text-slate-500">Drag to reorder. Order is saved instantly.</p>
+              <h2 className="font-display text-lg font-bold text-slate-900">Family Calendar</h2>
+              <p className="text-xs text-slate-500">Closures, activities and reminders coming up.</p>
             </div>
-            <Badge tone="amber">{waitlist.length} waiting</Badge>
+            {upcoming.length > 0 && <Badge tone="blue">{upcoming.length} ahead</Badge>}
           </div>
 
-          {waitlist.length === 0 ? (
+          {upcoming.length === 0 ? (
             <div className="mt-5">
-              <EmptyState icon={Users} title="Waitlist is empty" description="New inquiries land here once you add them." />
+              <EmptyState
+                icon={CalendarDays}
+                title="Nothing coming up"
+                description="Add a closure, an early pickup day, or a reminder for families."
+              />
             </div>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={waitlist.map((w) => w.id)} strategy={verticalListSortingStrategy}>
-                <ul className="mt-5 space-y-2.5">
-                  {waitlist.map((item, i) => (
-                    <SortableWaitlistRow key={item.id} item={item} index={i} />
-                  ))}
-                </ul>
-              </SortableContext>
-            </DndContext>
+            <ul className="mt-5 space-y-2.5">
+              {upcoming.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3"
+                >
+                  <span className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-[#4F77D9]/10">
+                    <span className="font-display text-sm font-extrabold leading-none text-[#39569f]">
+                      {fmtDate(entry.date, 'd')}
+                    </span>
+                    <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-[#39569f]/70">
+                      {fmtDate(entry.date, 'MMM')}
+                    </span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-slate-900">{entry.title}</p>
+                    <p className="truncate text-xs text-slate-500">
+                      {CALENDAR_KIND_LABEL[entry.kind]}
+                      {entry.closesAt ? ` · ends ${fmtTime(entry.closesAt)}` : ''}
+                      {entry.endsOn ? ` · through ${fmtDate(entry.endsOn, 'MMM d')}` : ''}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )}
 
-          <Button as={Link} to="/admin/families" variant="ghost" className="mt-4 w-full">
-            Manage inquiries <ArrowRight size={15} />
+          <Button as={Link} to="/admin/calendar" variant="ghost" className="mt-4 w-full">
+            Open the calendar <ArrowRight size={15} />
           </Button>
         </Card>
       </div>

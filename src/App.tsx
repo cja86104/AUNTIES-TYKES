@@ -14,7 +14,7 @@ import Home from './pages/public/Home'
 
 /*
  * Everything else is split by route. Without this the public marketing site
- * ships the whole admin console — recharts, dnd-kit and all — to a parent who
+ * ships the whole admin console — recharts and all — to a parent who
  * only wanted to read the tuition page.
  */
 const ParentPortalGuide = lazy(() => import('./pages/public/ParentPortalGuide'))
@@ -30,6 +30,7 @@ const AdminEnrollments = lazy(() => import('./pages/admin/AdminEnrollments'))
 const AdminFamilies = lazy(() => import('./pages/admin/AdminFamilies'))
 const AdminFamilyDetail = lazy(() => import('./pages/admin/AdminFamilyDetail'))
 const AdminChildren = lazy(() => import('./pages/admin/AdminChildren'))
+const AdminCalendar = lazy(() => import('./pages/admin/AdminCalendar'))
 const AdminChildDetail = lazy(() => import('./pages/admin/AdminChildDetail'))
 const AdminAttendance = lazy(() => import('./pages/admin/AdminAttendance'))
 const AdminDailyLogs = lazy(() => import('./pages/admin/AdminDailyLogs'))
@@ -91,6 +92,7 @@ function AnimatedRoutes() {
             <Route path="/admin/families" element={<AdminFamilies />} />
             <Route path="/admin/families/:id" element={<AdminFamilyDetail />} />
             <Route path="/admin/children" element={<AdminChildren />} />
+            <Route path="/admin/calendar" element={<AdminCalendar />} />
             <Route path="/admin/children/:id" element={<AdminChildDetail />} />
             <Route path="/admin/attendance" element={<AdminAttendance />} />
             <Route path="/admin/daily-logs" element={<AdminDailyLogs />} />

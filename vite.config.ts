@@ -17,7 +17,6 @@ export default defineConfig({
           'vendor-motion': ['framer-motion'],
           'vendor-markdown': ['react-markdown'],
           'vendor-forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
-          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
         },
       },
     },

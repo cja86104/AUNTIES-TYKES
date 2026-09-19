@@ -3,6 +3,7 @@ import { Outlet, NavLink, useLocation, useNavigate, Link } from 'react-router-do
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   LayoutDashboard,
+  CalendarDays,
   ClipboardList,
   Users,
   Baby,
@@ -26,6 +27,7 @@ const nav = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/families', label: 'Families', icon: Users },
   { to: '/admin/children', label: 'Children', icon: Baby },
+  { to: '/admin/calendar', label: 'Family Calendar', icon: CalendarDays },
   { to: '/admin/attendance', label: 'Attendance', icon: ClipboardCheck },
   { to: '/admin/daily-logs', label: 'Daily Logs', icon: NotebookPen },
   { to: '/admin/billing', label: 'Billing', icon: Wallet },
