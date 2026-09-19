@@ -177,7 +177,7 @@ export default function ParentDocuments() {
                   transition={{ delay: Math.min(i * 0.04, 0.3) }}
                   className="flex flex-wrap items-center gap-3 px-5 py-4"
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#EAF0FC] to-white text-[#4F77D9]">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#E8F3EE] to-white text-[#3F8570]">
                     <FileText size={19} />
                   </span>
 

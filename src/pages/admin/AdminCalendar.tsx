@@ -269,7 +269,7 @@ export default function AdminCalendar() {
                             type="button"
                             onClick={() => openEdit(source)}
                             aria-label={`Edit ${entry.title}`}
-                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#4F77D9]"
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#3F8570]"
                           >
                             <Pencil size={15} />
                           </button>
@@ -385,7 +385,7 @@ export default function AdminCalendar() {
               type="checkbox"
               checked={draft.visibleToParents}
               onChange={(e) => set('visibleToParents', e.target.checked)}
-              className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#4F77D9]"
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#3F8570]"
             />
             <span>
               <span className="block text-sm font-semibold text-slate-800">Show this to families</span>

@@ -10,7 +10,7 @@ export default function PublicFooter() {
       <div className="mx-auto grid max-w-7xl gap-12 px-5 py-14 lg:grid-cols-4 lg:px-8">
         <div className="lg:col-span-2">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4F77D9] to-[#5DC4A6]">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3F8570] to-[#D98B9B]">
               <span className="font-display text-lg font-black text-white">AT</span>
             </span>
             <span className="font-display text-xl font-extrabold text-slate-900">Aunties Tykes</span>
@@ -29,7 +29,7 @@ export default function PublicFooter() {
               ['/login', 'Parent portal login'],
             ].map(([to, label]) => (
               <li key={to}>
-                <Link to={to} className="text-slate-600 transition hover:text-[#4F77D9]">
+                <Link to={to} className="text-slate-600 transition hover:text-[#3F8570]">
                   {label}
                 </Link>
               </li>
@@ -41,17 +41,17 @@ export default function PublicFooter() {
           <h4 className="font-display text-sm font-bold uppercase tracking-wider text-slate-900">Visit & contact</h4>
           <ul className="mt-4 space-y-3.5 text-sm text-slate-600">
             <li className="flex gap-2.5">
-              <MapPin size={16} className="mt-0.5 shrink-0 text-[#4F77D9]" />
+              <MapPin size={16} className="mt-0.5 shrink-0 text-[#3F8570]" />
               {settings.address}
             </li>
             <li className="flex gap-2.5">
-              <Mail size={16} className="mt-0.5 shrink-0 text-[#4F77D9]" />
-              <a className="transition hover:text-[#4F77D9]" href={`mailto:${settings.email}`}>
+              <Mail size={16} className="mt-0.5 shrink-0 text-[#3F8570]" />
+              <a className="transition hover:text-[#3F8570]" href={`mailto:${settings.email}`}>
                 {settings.email}
               </a>
             </li>
             <li className="flex gap-2.5">
-              <Clock size={16} className="mt-0.5 shrink-0 text-[#4F77D9]" />
+              <Clock size={16} className="mt-0.5 shrink-0 text-[#3F8570]" />
               {settings.hours}
             </li>
           </ul>

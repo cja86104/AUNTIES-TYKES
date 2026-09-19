@@ -93,7 +93,7 @@ function GuideCard({ item, open, onToggle }: GuideCardProps) {
         className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
       >
         <span className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4F77D9]/10 text-[#4F77D9]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3F8570]/10 text-[#3F8570]">
             <Icon size={18} />
           </span>
           <span className="font-display text-base font-bold text-slate-900">{item.title}</span>
@@ -126,7 +126,7 @@ export default function ParentPortalGuide() {
     <PageTransition>
       <section className="px-5 pb-10 pt-10 lg:px-8 lg:pt-16">
         <div className="mx-auto max-w-4xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#4F77D9]/30 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#39569f] backdrop-blur">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#3F8570]/30 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#1F4A3D] backdrop-blur">
             <LayoutDashboard size={14} /> Parent portal
           </span>
           <h1 className="mt-6 font-display text-4xl font-black leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
@@ -164,7 +164,7 @@ export default function ParentPortalGuide() {
 
       <section className="px-5 py-10 lg:px-8">
         <Reveal>
-          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-[#5DC4A6]/30 bg-gradient-to-br from-[#FDF1DC] via-white to-[#E6F6F0] px-6 py-14 text-center sm:px-14">
+          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-[#D98B9B]/30 bg-gradient-to-br from-[#FDF1DC] via-white to-[#FBEEF1] px-6 py-14 text-center sm:px-14">
             <div className="at-grid-dots absolute inset-0 opacity-20" aria-hidden="true" />
             <div className="relative">
               <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold leading-tight text-slate-900 sm:text-4xl">

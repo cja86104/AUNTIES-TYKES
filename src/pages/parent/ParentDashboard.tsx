@@ -56,7 +56,7 @@ export default function ParentDashboard() {
   return (
     <PageTransition>
       <div className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#4F77D9]">
+        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#3F8570]">
           {fmtDate(today, 'EEEE, MMMM d')}
         </p>
         <h1 className="mt-1.5 font-display text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
@@ -149,7 +149,7 @@ export default function ParentDashboard() {
                       <div className="min-w-0 flex-1">
                         <Link
                           to={`/parent/children/${child.id}`}
-                          className="font-display text-sm font-bold text-slate-900 transition hover:text-[#4F77D9]"
+                          className="font-display text-sm font-bold text-slate-900 transition hover:text-[#3F8570]"
                         >
                           {child.name}
                         </Link>
@@ -231,7 +231,7 @@ export default function ParentDashboard() {
               <div className="border-t border-slate-100 px-5 py-3">
                 <Link
                   to="/parent/messages"
-                  className="inline-flex items-center gap-1 text-sm font-semibold text-[#4F77D9] hover:underline"
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-[#3F8570] hover:underline"
                 >
                   {t('dashboard.allAnnouncements')} <ArrowRight size={14} />
                 </Link>

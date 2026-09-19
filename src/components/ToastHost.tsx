@@ -4,9 +4,9 @@ import { useStore } from '../store/useStore'
 
 const icons = { success: CheckCircle2, error: AlertTriangle, info: Info }
 const rings = {
-  success: 'border-[#5DC4A6]/50 text-[#2E8C72]',
+  success: 'border-[#D98B9B]/50 text-[#2E8C72]',
   error: 'border-rose-300 text-rose-600',
-  info: 'border-[#4F77D9]/40 text-[#39569f]',
+  info: 'border-[#3F8570]/40 text-[#1F4A3D]',
 }
 
 export default function ToastHost() {

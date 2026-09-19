@@ -63,8 +63,8 @@ import type {
 
 /** Avatar gradients cycled through as children are added. */
 const CHILD_HUES = [
-  'from-[#4F77D9] to-[#7DA0F0]',
-  'from-[#5DC4A6] to-[#8FE0C9]',
+  'from-[#3F8570] to-[#7DA0F0]',
+  'from-[#D98B9B] to-[#8FE0C9]',
   'from-[#F5B942] to-[#F9D28A]',
   'from-[#E86A6A] to-[#F49C9C]',
   'from-[#8B6ED9] to-[#B49CEE]',

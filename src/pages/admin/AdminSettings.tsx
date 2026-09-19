@@ -99,7 +99,7 @@ export default function AdminSettings() {
         }
       />
 
-      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#4F77D9]/30 bg-[#4F77D9]/5 p-4 text-sm text-[#39569f]">
+      <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#3F8570]/30 bg-[#3F8570]/5 p-4 text-sm text-[#1F4A3D]">
         <Info size={18} className="mt-0.5 shrink-0" />
         <p>
           These fields are live. Changing a rate here updates the tuition estimator on the public{' '}
@@ -125,7 +125,7 @@ export default function AdminSettings() {
       {tab === 'business' && (
         <Card className="p-6">
           <div className="mb-5 flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#4F77D9]/10 text-[#4F77D9]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#3F8570]/10 text-[#3F8570]">
               <Building2 size={19} />
             </span>
             <div>
@@ -182,7 +182,7 @@ export default function AdminSettings() {
       {tab === 'rates' && (
         <Card className="p-6">
           <div className="mb-5 flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#5DC4A6]/15 text-[#2E8C72]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D98B9B]/15 text-[#2E8C72]">
               <Calculator size={19} />
             </span>
             <div>

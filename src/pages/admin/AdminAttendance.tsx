@@ -99,7 +99,7 @@ export default function AdminAttendance() {
       </div>
 
       {!isToday && (
-        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-[#4F77D9]/30 bg-[#4F77D9]/5 p-4 text-sm text-[#39569f]">
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-[#3F8570]/30 bg-[#3F8570]/5 p-4 text-sm text-[#1F4A3D]">
           <Info size={18} className="mt-0.5 shrink-0" />
           <p>
             You are viewing <strong className="font-semibold">{fmtDate(date, 'EEEE, MMMM d')}</strong>. Check-in and
@@ -143,7 +143,7 @@ export default function AdminAttendance() {
                   <div className="min-w-0 flex-1">
                     <Link
                       to={`/admin/children/${child.id}`}
-                      className="truncate font-display text-sm font-bold text-slate-900 transition hover:text-[#4F77D9]"
+                      className="truncate font-display text-sm font-bold text-slate-900 transition hover:text-[#3F8570]"
                     >
                       {child.name}
                     </Link>

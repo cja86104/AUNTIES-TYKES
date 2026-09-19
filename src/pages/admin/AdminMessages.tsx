@@ -165,10 +165,10 @@ export default function AdminMessages() {
                     <button
                       onClick={() => setActiveThreadId(t.id)}
                       className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition ${
-                        isActive ? 'bg-[#4F77D9]/8' : 'hover:bg-slate-50'
+                        isActive ? 'bg-[#3F8570]/8' : 'hover:bg-slate-50'
                       }`}
                     >
-                      <Avatar name={familyName(t.familyId)} size="sm" hue="from-[#F5B942] to-[#5DC4A6]" />
+                      <Avatar name={familyName(t.familyId)} size="sm" hue="from-[#F5B942] to-[#D98B9B]" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-display text-sm font-bold text-slate-900">{t.subject}</span>
                         <span className="block truncate text-xs text-slate-500">{familyName(t.familyId)}</span>
@@ -209,7 +209,7 @@ export default function AdminMessages() {
                       <Avatar
                         name={m.authorName}
                         size="sm"
-                        hue={mine ? 'from-[#4F77D9] to-[#5DC4A6]' : 'from-[#F5B942] to-[#F9D28A]'}
+                        hue={mine ? 'from-[#3F8570] to-[#D98B9B]' : 'from-[#F5B942] to-[#F9D28A]'}
                       />
                       <div className={`max-w-[80%] ${mine ? 'text-right' : ''}`}>
                         <p className="text-xs font-semibold text-slate-500">
@@ -217,7 +217,7 @@ export default function AdminMessages() {
                         </p>
                         <p
                           className={`mt-1 inline-block rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-                            mine ? 'bg-[#4F77D9] text-white' : 'bg-slate-100 text-slate-800'
+                            mine ? 'bg-[#3F8570] text-white' : 'bg-slate-100 text-slate-800'
                           }`}
                         >
                           {m.body}

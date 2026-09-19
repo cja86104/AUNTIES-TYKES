@@ -55,11 +55,11 @@ export default function ParentLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FBFAF7]">
+    <div className="min-h-screen bg-[#FCF7EA]">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
           <Link to="/parent/dashboard" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F77D9] to-[#5DC4A6]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#3F8570] to-[#D98B9B]">
               <span className="font-display text-base font-black text-white">AT</span>
             </span>
             <span className="leading-tight">
@@ -73,7 +73,7 @@ export default function ParentLayout() {
               <p className="text-sm font-bold text-slate-900">{user?.name}</p>
               <p className="text-xs text-slate-500">{t('portal.familyAccount')}</p>
             </div>
-            <Avatar name={user?.name || 'Parent'} hue="from-[#F5B942] to-[#5DC4A6]" size="md" />
+            <Avatar name={user?.name || 'Parent'} hue="from-[#F5B942] to-[#D98B9B]" size="md" />
             <button
               onClick={doLogout}
               className="hidden rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-rose-300 hover:text-rose-600 sm:inline-flex sm:items-center sm:gap-1.5"
@@ -99,7 +99,7 @@ export default function ParentLayout() {
                 cx(
                   'flex items-center gap-2 rounded-t-xl border-b-2 px-3.5 py-2.5 text-sm font-semibold transition-all',
                   isActive
-                    ? 'border-[#4F77D9] text-[#4F77D9]'
+                    ? 'border-[#3F8570] text-[#3F8570]'
                     : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800',
                 )
               }
@@ -125,7 +125,7 @@ export default function ParentLayout() {
                     className={({ isActive }) =>
                       cx(
                         'flex items-center gap-2.5 rounded-xl px-3 py-3 text-sm font-semibold',
-                        isActive ? 'bg-[#4F77D9]/10 text-[#39569f]' : 'text-slate-700 hover:bg-slate-50',
+                        isActive ? 'bg-[#3F8570]/10 text-[#1F4A3D]' : 'text-slate-700 hover:bg-slate-50',
                       )
                     }
                   >

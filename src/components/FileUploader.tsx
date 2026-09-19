@@ -81,13 +81,13 @@ export default function FileUploader({
         className={cx(
           'flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-all duration-200',
           dragging
-            ? 'border-[#4F77D9] bg-[#4F77D9]/5 scale-[1.01]'
-            : 'border-slate-300 bg-slate-50/60 hover:border-[#4F77D9] hover:bg-[#4F77D9]/5',
+            ? 'border-[#3F8570] bg-[#3F8570]/5 scale-[1.01]'
+            : 'border-slate-300 bg-slate-50/60 hover:border-[#3F8570] hover:bg-[#3F8570]/5',
         )}
       >
         <motion.span
           animate={{ y: dragging ? -4 : 0 }}
-          className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#4F77D9] shadow-sm"
+          className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#3F8570] shadow-sm"
         >
           <UploadCloud size={24} />
         </motion.span>
@@ -125,7 +125,7 @@ export default function FileUploader({
                   <p className="truncate text-sm font-semibold text-slate-800">{item.name}</p>
                   <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <motion.div
-                      className={cx('h-full rounded-full', item.done ? 'bg-[#5DC4A6]' : 'bg-[#4F77D9]')}
+                      className={cx('h-full rounded-full', item.done ? 'bg-[#D98B9B]' : 'bg-[#3F8570]')}
                       animate={{ width: `${item.progress}%` }}
                       transition={{ duration: 0.2 }}
                     />

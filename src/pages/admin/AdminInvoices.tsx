@@ -252,13 +252,13 @@ export default function AdminInvoices() {
                     className="transition hover:bg-slate-50/70"
                   >
                     <td className="px-5 py-3.5">
-                      <Link to={`/admin/invoices/${inv.id}`} className="font-display font-bold text-slate-900 transition hover:text-[#4F77D9]">
+                      <Link to={`/admin/invoices/${inv.id}`} className="font-display font-bold text-slate-900 transition hover:text-[#3F8570]">
                         {inv.id}
                       </Link>
                       <p className="text-xs text-slate-500">{inv.period}</p>
                     </td>
                     <td className="px-5 py-3.5">
-                      <Link to={`/admin/families/${inv.familyId}`} className="text-slate-700 transition hover:text-[#4F77D9]">
+                      <Link to={`/admin/families/${inv.familyId}`} className="text-slate-700 transition hover:text-[#3F8570]">
                         {familyName(inv.familyId)}
                       </Link>
                     </td>
@@ -273,7 +273,7 @@ export default function AdminInvoices() {
                     <td className="px-5 py-3.5 text-right">
                       <Link
                         to={`/admin/invoices/${inv.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-[#4F77D9] hover:underline"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-[#3F8570] hover:underline"
                       >
                         Open <ArrowRight size={13} />
                       </Link>

@@ -116,8 +116,8 @@ export default function AdminEnrollments() {
         <StatCard icon={CheckCircle2} label="Approved" value={approvedCount} sub="Turned into family files" tone="green" />
       </div>
 
-      <Card className="mt-6 flex flex-wrap items-center gap-4 border-[#4F77D9]/25 bg-[#EAF0FC]/50 p-5">
-        <ShieldCheck size={22} className="shrink-0 text-[#39569f]" />
+      <Card className="mt-6 flex flex-wrap items-center gap-4 border-[#3F8570]/25 bg-[#E8F3EE]/50 p-5">
+        <ShieldCheck size={22} className="shrink-0 text-[#1F4A3D]" />
         <div className="min-w-0 flex-1">
           <p className="font-display text-sm font-bold text-slate-900">Send this to a new family</p>
           <p className="text-sm text-slate-600">
@@ -192,13 +192,13 @@ export default function AdminEnrollments() {
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Contact</p>
                     <p className="flex items-center gap-2 text-slate-700">
                       <Mail size={14} className="shrink-0 text-slate-400" />
-                      <a href={`mailto:${e.email}`} className="truncate hover:text-[#4F77D9] hover:underline">
+                      <a href={`mailto:${e.email}`} className="truncate hover:text-[#3F8570] hover:underline">
                         {e.email}
                       </a>
                     </p>
                     <p className="flex items-center gap-2 text-slate-700">
                       <Phone size={14} className="shrink-0 text-slate-400" />
-                      <a href={`tel:${e.phone}`} className="hover:text-[#4F77D9] hover:underline">
+                      <a href={`tel:${e.phone}`} className="hover:text-[#3F8570] hover:underline">
                         {e.phone}
                       </a>
                     </p>
@@ -327,7 +327,7 @@ export default function AdminEnrollments() {
           </>
         }
       >
-        <Card className="bg-[#E6F6F0]/60 p-4 text-sm text-[#1f6152]">
+        <Card className="bg-[#FBEEF1]/60 p-4 text-sm text-[#1f6152]">
           This creates the family file, adds{' '}
           {confirmApprove?.children.map((c) => c.name).join(' and ') || 'their children'} as enrolled, and issues a parent
           portal login you can hand over.

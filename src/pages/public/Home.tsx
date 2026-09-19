@@ -78,7 +78,7 @@ export default function Home() {
             </p>
             <p
               style={{ fontFamily: "'Caveat', cursive" }}
-              className="mt-6 text-3xl text-[#4F77D9] sm:text-4xl"
+              className="mt-6 text-3xl text-[#3F8570] sm:text-4xl"
             >
               — Mellissa
             </p>

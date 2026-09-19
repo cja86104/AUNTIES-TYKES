@@ -201,13 +201,13 @@ export default function AdminFamilies() {
 
                   <ul className="mt-5 flex-1 space-y-2 text-sm text-slate-600">
                     <li className="flex items-center gap-2 truncate">
-                      <Mail size={14} className="shrink-0 text-[#4F77D9]" /> {f.email}
+                      <Mail size={14} className="shrink-0 text-[#3F8570]" /> {f.email}
                     </li>
                     <li className="flex items-center gap-2">
-                      <Phone size={14} className="shrink-0 text-[#4F77D9]" /> {f.phone}
+                      <Phone size={14} className="shrink-0 text-[#3F8570]" /> {f.phone}
                     </li>
                     <li className="flex items-center gap-2">
-                      <CalendarCheck size={14} className="shrink-0 text-[#4F77D9]" /> Joined {fmtDate(f.joinedAt)}
+                      <CalendarCheck size={14} className="shrink-0 text-[#3F8570]" /> Joined {fmtDate(f.joinedAt)}
                     </li>
                   </ul>
 
@@ -298,7 +298,7 @@ export default function AdminFamilies() {
                 type="checkbox"
                 checked={withChild}
                 onChange={(e) => setWithChild(e.target.checked)}
-                className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#4F77D9]"
+                className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#3F8570]"
               />
               <span>
                 <span className="block text-sm font-semibold text-slate-800">Add their first child now</span>

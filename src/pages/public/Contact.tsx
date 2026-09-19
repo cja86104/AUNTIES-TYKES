@@ -77,7 +77,7 @@ export default function Contact() {
     <PageTransition>
       <section className="px-5 pb-8 pt-10 lg:px-8 lg:pt-16">
         <div className="mx-auto max-w-4xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#5DC4A6]/40 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#25705c] backdrop-blur">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#D98B9B]/40 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#7A3B47] backdrop-blur">
             <CalendarCheck size={14} /> Now welcoming new families
           </span>
           <h1 className="mt-6 font-display text-4xl font-black leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
@@ -100,7 +100,7 @@ export default function Contact() {
                   animate={{ opacity: 1, scale: 1 }}
                   className="flex flex-col items-center py-10 text-center"
                 >
-                  <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#5DC4A6]/15 text-[#2E8C72]">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#D98B9B]/15 text-[#2E8C72]">
                     <CheckCircle2 size={30} />
                   </span>
                   <h2 className="mt-5 font-display text-2xl font-extrabold text-slate-900">Thank you — it's in.</h2>
@@ -119,7 +119,7 @@ export default function Contact() {
                 </motion.div>
               ) : (
                 <>
-                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#5DC4A6]/40 bg-[#E6F6F0]/50 p-4">
+                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D98B9B]/40 bg-[#FBEEF1]/50 p-4">
                   <p className="text-sm text-slate-700">
                     <strong className="font-semibold text-slate-900">Already spoken with Mellissa?</strong> Skip ahead and
                     fill out the enrollment form.
@@ -204,17 +204,17 @@ export default function Contact() {
                   <h3 className="font-display text-lg font-bold text-slate-900">Visit us</h3>
                   <ul className="mt-4 space-y-3.5 text-sm text-slate-600">
                     <li className="flex gap-2.5">
-                      <MapPin size={17} className="mt-0.5 shrink-0 text-[#4F77D9]" />
+                      <MapPin size={17} className="mt-0.5 shrink-0 text-[#3F8570]" />
                       {settings.address}
                     </li>
                     <li className="flex gap-2.5">
-                      <Mail size={17} className="mt-0.5 shrink-0 text-[#4F77D9]" />
-                      <a className="transition hover:text-[#4F77D9]" href={`mailto:${settings.email}`}>
+                      <Mail size={17} className="mt-0.5 shrink-0 text-[#3F8570]" />
+                      <a className="transition hover:text-[#3F8570]" href={`mailto:${settings.email}`}>
                         {settings.email}
                       </a>
                     </li>
                     <li className="flex gap-2.5">
-                      <Clock size={17} className="mt-0.5 shrink-0 text-[#4F77D9]" />
+                      <Clock size={17} className="mt-0.5 shrink-0 text-[#3F8570]" />
                       {settings.hours}
                     </li>
                   </ul>

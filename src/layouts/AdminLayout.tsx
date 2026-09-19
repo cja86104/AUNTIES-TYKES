@@ -17,6 +17,7 @@ import {
   LogOut,
   Menu,
   ExternalLink,
+  Heart,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { setPortalLanguage } from '../i18n'
@@ -67,12 +68,12 @@ export default function AdminLayout() {
   const SidebarInner = (
     <div className="flex h-full flex-col">
       <Link to="/" className="flex items-center gap-3 px-5 py-5">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F77D9] to-[#5DC4A6]">
-          <span className="font-display text-base font-black text-white">AT</span>
+        <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#D98B9B] to-[#3F8570] shadow-[0_6px_16px_-6px_rgba(217,139,155,0.7)]">
+          <Heart size={18} className="fill-white text-white" />
         </span>
         <span className="leading-tight">
-          <span className="block font-display text-base font-extrabold text-white">Aunties Tykes</span>
-          <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">Admin console</span>
+          <span className="block font-script text-2xl font-semibold text-white">Aunties Tykes</span>
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50">Home care console</span>
         </span>
       </Link>
 
@@ -117,7 +118,7 @@ export default function AdminLayout() {
   )
 
   return (
-    <div className="min-h-screen bg-[#F5F4F0]">
+    <div className="min-h-screen bg-[#F7F1E4]">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-[#1F2537] lg:block">{SidebarInner}</aside>
 
       <AnimatePresence>
@@ -149,7 +150,7 @@ export default function AdminLayout() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setOpen(true)}
-                className="rounded-xl border border-slate-300 p-2 text-slate-600 transition hover:border-[#4F77D9] hover:text-[#4F77D9] lg:hidden"
+                className="rounded-xl border border-slate-300 p-2 text-slate-600 transition hover:border-[#3F8570] hover:text-[#3F8570] lg:hidden"
                 aria-label="Open navigation"
               >
                 <Menu size={18} />
@@ -164,7 +165,7 @@ export default function AdminLayout() {
                 <p className="text-sm font-bold text-slate-900">{user?.name}</p>
                 <p className="text-xs text-slate-500">{user?.title || 'Administrator'}</p>
               </div>
-              <Avatar name={user?.name || 'Admin'} hue="from-[#4F77D9] to-[#5DC4A6]" size="md" />
+              <Avatar name={user?.name || 'Admin'} hue="from-[#3F8570] to-[#D98B9B]" size="md" />
               <button
                 onClick={doLogout}
                 className="rounded-xl border border-slate-300 p-2 text-slate-500 transition hover:border-rose-300 hover:text-rose-600"

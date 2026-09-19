@@ -95,7 +95,7 @@ export default function ParentBilling() {
       </div>
 
       {lastPayment && (
-        <Card className="mt-6 flex flex-wrap items-center gap-4 border-[#5DC4A6]/40 bg-[#E6F6F0]/50 p-5">
+        <Card className="mt-6 flex flex-wrap items-center gap-4 border-[#D98B9B]/40 bg-[#FBEEF1]/50 p-5">
           <CheckCircle2 size={22} className="shrink-0 text-[#2E8C72]" />
           <div className="min-w-0 flex-1">
             <p className="font-display text-sm font-bold text-slate-900">

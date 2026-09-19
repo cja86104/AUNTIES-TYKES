@@ -51,16 +51,16 @@ export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }:
     <div>
       <Link
         to={backTo}
-        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#4F77D9]"
+        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#3F8570]"
       >
         <ArrowLeft size={15} /> {t('invoiceView.backToInvoices')}
       </Link>
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <Card className="overflow-hidden">
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-br from-[#EAF0FC] to-white px-6 py-6">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 bg-gradient-to-br from-[#E8F3EE] to-white px-6 py-6">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#39569f]">{t('invoiceView.invoice')}</p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#1F4A3D]">{t('invoiceView.invoice')}</p>
               <h1 className="font-display text-2xl font-extrabold text-slate-900">{invoice.id}</h1>
               <p className="mt-1 text-sm text-slate-600">{invoice.period}</p>
             </div>

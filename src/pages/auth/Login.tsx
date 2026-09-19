@@ -94,17 +94,17 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#FBFAF7]">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#FCF7EA]">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <span className="at-blob left-[-6rem] top-[-6rem] h-80 w-80 bg-[#4F77D9]/25" />
+        <span className="at-blob left-[-6rem] top-[-6rem] h-80 w-80 bg-[#3F8570]/25" />
         <span className="at-blob right-[-4rem] top-[10rem] h-72 w-72 bg-[#F5B942]/30" style={{ animationDelay: '2s' }} />
-        <span className="at-blob left-[30%] bottom-[-6rem] h-72 w-72 bg-[#5DC4A6]/25" style={{ animationDelay: '4s' }} />
+        <span className="at-blob left-[30%] bottom-[-6rem] h-72 w-72 bg-[#D98B9B]/25" style={{ animationDelay: '4s' }} />
       </div>
 
       <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 py-8 lg:px-8">
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#4F77D9]"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#3F8570]"
         >
           <ArrowLeft size={15} /> Back to auntiestykes.com
         </Link>
@@ -112,7 +112,7 @@ export default function Login() {
         <div className="grid flex-1 items-center gap-10 py-10 lg:grid-cols-[1fr_1fr]">
           <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#4F77D9] to-[#5DC4A6]">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3F8570] to-[#D98B9B]">
                 <span className="font-display text-lg font-black text-white">AT</span>
               </span>
               <div>
@@ -140,7 +140,7 @@ export default function Login() {
                 />
               </div>
               <div className="flex items-center gap-2.5 px-5 py-4 text-xs font-semibold text-slate-500">
-                <ShieldCheck size={15} className="text-[#5DC4A6]" />
+                <ShieldCheck size={15} className="text-[#D98B9B]" />
                 {DEMO_MODE
                   ? 'Demo build — data lives only in this browser.'
                   : 'Your family portal — daily reports, invoices, and documents.'}
@@ -210,7 +210,7 @@ export default function Login() {
                       key={d.email}
                       type="button"
                       onClick={() => fill(d)}
-                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-[#4F77D9] hover:bg-[#4F77D9]/5"
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-[#3F8570] hover:bg-[#3F8570]/5"
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-bold text-slate-900">{d.label}</span>
@@ -229,7 +229,7 @@ export default function Login() {
                 <p className="mt-8 border-t border-slate-200 pt-6 text-xs leading-relaxed text-slate-500">
                   Accounts are created by Aunties Tykes — there is no sign-up. If you need a login or have forgotten your
                   password, call us at{' '}
-                  <a href={`tel:${settings.phone}`} className="font-semibold text-[#4F77D9] hover:underline">
+                  <a href={`tel:${settings.phone}`} className="font-semibold text-[#3F8570] hover:underline">
                     {settings.phone}
                   </a>
                   .

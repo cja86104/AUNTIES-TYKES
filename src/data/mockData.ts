@@ -146,7 +146,7 @@ export const children: Child[] = [
     allergies: ['Strawberries (mild hives)'],
     medications: [],
     notes: 'Naps best with the yellow blanket. Loves the sensory bin.',
-    hue: 'from-[#4F77D9] to-[#7DA0F0]',
+    hue: 'from-[#3F8570] to-[#7DA0F0]',
   },
   {
     id: 'c2',
@@ -161,7 +161,7 @@ export const children: Child[] = [
     allergies: [],
     medications: ['Albuterol inhaler (as needed, on file)'],
     notes: 'Writing his name independently. Big helper at cleanup.',
-    hue: 'from-[#5DC4A6] to-[#8FE0C9]',
+    hue: 'from-[#D98B9B] to-[#8FE0C9]',
   },
   {
     id: 'c3',

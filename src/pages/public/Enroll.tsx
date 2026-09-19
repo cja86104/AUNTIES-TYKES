@@ -147,7 +147,7 @@ export default function Enroll() {
             animate={{ opacity: 1, y: 0 }}
             className="mx-auto max-w-2xl text-center"
           >
-            <span className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-[#E6F6F0] to-[#EAF0FC] text-[#2E8C72]">
+            <span className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-[#FBEEF1] to-[#E8F3EE] text-[#2E8C72]">
               <CheckCircle2 size={38} />
             </span>
             <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
@@ -162,15 +162,15 @@ export default function Enroll() {
               <h2 className="font-display text-base font-bold text-slate-900">What happens next</h2>
               <ol className="mt-4 space-y-3 text-sm text-slate-600">
                 <li className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#4F77D9]/10 text-xs font-bold text-[#39569f]">1</span>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3F8570]/10 text-xs font-bold text-[#1F4A3D]">1</span>
                   She reviews your form and confirms a spot in the right age group.
                 </li>
                 <li className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#4F77D9]/10 text-xs font-bold text-[#39569f]">2</span>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3F8570]/10 text-xs font-bold text-[#1F4A3D]">2</span>
                   You get a parent portal login for daily reports, invoices, and documents.
                 </li>
                 <li className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#4F77D9]/10 text-xs font-bold text-[#39569f]">3</span>
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#3F8570]/10 text-xs font-bold text-[#1F4A3D]">3</span>
                   We schedule a gentle first week — usually two half days to start.
                 </li>
               </ol>
@@ -216,9 +216,9 @@ export default function Enroll() {
                     <span
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-all ${
                         state === 'current'
-                          ? 'bg-[#4F77D9] text-white shadow-[0_10px_24px_-12px_rgba(79,119,217,0.9)]'
+                          ? 'bg-[#3F8570] text-white shadow-[0_10px_24px_-12px_rgba(79,119,217,0.9)]'
                           : state === 'done'
-                            ? 'bg-[#5DC4A6]/20 text-[#25705c]'
+                            ? 'bg-[#D98B9B]/20 text-[#7A3B47]'
                             : 'bg-slate-100 text-slate-400'
                       }`}
                     >
@@ -528,16 +528,16 @@ export default function Enroll() {
                       </dl>
                     </div>
 
-                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#4F77D9]">
+                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#3F8570]">
                       <input
                         type="checkbox"
                         checked={acknowledged}
                         onChange={(e) => setAcknowledged(e.target.checked)}
-                        className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#4F77D9]"
+                        className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#3F8570]"
                       />
                       <span className="text-sm text-slate-700">
                         I have read the{' '}
-                        <Link to="/tuition-policies" className="font-semibold text-[#4F77D9] hover:underline">
+                        <Link to="/tuition-policies" className="font-semibold text-[#3F8570] hover:underline">
                           parent handbook
                         </Link>{' '}
                         — including the sick policy, late pickup fee, and holiday closures — and the information above is

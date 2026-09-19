@@ -92,7 +92,7 @@ export default function ParentCalendar() {
                           </p>
                         )}
                         {entry.closesAt && (
-                          <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-[#39569f]">
+                          <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold text-[#1F4A3D]">
                             <Clock size={13} /> {t('calendar.careEndsAt', { time: fmtTime(entry.closesAt) })}
                           </p>
                         )}

@@ -62,13 +62,13 @@ export default function ParentChildDetail() {
     <PageTransition>
       <Link
         to="/parent/children"
-        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#4F77D9]"
+        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#3F8570]"
       >
         <ArrowLeft size={15} /> {t('childDetail.backToChildren')}
       </Link>
 
       <Card className="overflow-hidden">
-        <div className="flex flex-wrap items-center gap-5 bg-gradient-to-br from-[#EAF0FC] to-white px-6 py-6">
+        <div className="flex flex-wrap items-center gap-5 bg-gradient-to-br from-[#E8F3EE] to-white px-6 py-6">
           <Avatar name={child.name} hue={child.hue} size="xl" />
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
@@ -137,7 +137,7 @@ export default function ParentChildDetail() {
                 </div>
               </div>
               {child.notes && (
-                <div className="flex items-start gap-2.5 rounded-xl bg-[#E6F6F0] p-3.5 text-[#1f6152]">
+                <div className="flex items-start gap-2.5 rounded-xl bg-[#FBEEF1] p-3.5 text-[#1f6152]">
                   <Sparkles size={16} className="mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider">{t('childDetail.notesLabel')}</p>
@@ -149,7 +149,7 @@ export default function ParentChildDetail() {
 
             <p className="mt-5 text-xs text-slate-500">
               {t('childDetail.outOfDate')}{' '}
-              <Link to="/parent/messages" className="font-semibold text-[#4F77D9] hover:underline">
+              <Link to="/parent/messages" className="font-semibold text-[#3F8570] hover:underline">
                 {t('childDetail.sendNote')}
               </Link>{' '}
               {t('childDetail.andWeUpdate')}

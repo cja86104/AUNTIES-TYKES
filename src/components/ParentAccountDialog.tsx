@@ -140,7 +140,7 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
           </Card>
 
           {linkedChildren.length > 0 && (
-            <div className="rounded-2xl bg-[#E6F6F0]/60 p-4">
+            <div className="rounded-2xl bg-[#FBEEF1]/60 p-4">
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#1f6152]">
                 <Baby size={13} /> This account can see
               </p>

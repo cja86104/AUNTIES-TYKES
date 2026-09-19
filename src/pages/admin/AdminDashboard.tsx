@@ -15,6 +15,7 @@ import {
   CalendarDays,
   CalendarClock,
   TrendingUp,
+  Heart,
 } from 'lucide-react'
 import { addDays, format } from 'date-fns'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
@@ -170,7 +171,12 @@ export default function AdminDashboard() {
   return (
     <PageTransition>
       <PageHeader
-        title={`Good day, ${user?.name.split(' ')[0] ?? 'there'}`}
+        title={
+          <span className="inline-flex items-center gap-2.5">
+            <Heart size={22} className="fill-[#D98B9B] text-[#D98B9B]" />
+            Good day, {user?.name.split(' ')[0] ?? 'there'}
+          </span>
+        }
         description={`${fmtDate(today, 'EEEE, MMMM d')} · ${presentCount} here now, ${absentCount} out, ${
           rows.length - presentCount - outCount - absentCount
         } still expected.`}
@@ -248,7 +254,7 @@ export default function AdminDashboard() {
                     <div className="min-w-0 flex-1">
                       <Link
                         to={`/admin/children/${child.id}`}
-                        className="truncate font-display text-sm font-bold text-slate-900 transition hover:text-[#4F77D9]"
+                        className="truncate font-display text-sm font-bold text-slate-900 transition hover:text-[#3F8570]"
                       >
                         {child.name}
                       </Link>
@@ -307,11 +313,11 @@ export default function AdminDashboard() {
                   key={entry.id}
                   className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3"
                 >
-                  <span className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-[#4F77D9]/10">
-                    <span className="font-display text-sm font-extrabold leading-none text-[#39569f]">
+                  <span className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-[#3F8570]/10">
+                    <span className="font-display text-sm font-extrabold leading-none text-[#1F4A3D]">
                       {fmtDate(entry.date, 'd')}
                     </span>
-                    <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-[#39569f]/70">
+                    <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-[#1F4A3D]/70">
                       {fmtDate(entry.date, 'MMM')}
                     </span>
                   </span>
@@ -351,12 +357,12 @@ export default function AdminDashboard() {
               <AreaChart data={revenueTrend} margin={{ left: -18, right: 6, top: 6, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gBilled" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4F77D9" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#4F77D9" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#3F8570" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#3F8570" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="gCollected" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#5DC4A6" stopOpacity={0.45} />
-                    <stop offset="100%" stopColor="#5DC4A6" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="#D98B9B" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="#D98B9B" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eceae5" vertical={false} />
@@ -366,8 +372,8 @@ export default function AdminDashboard() {
                   formatter={(v, n) => [money(Number(v)), n === 'billed' ? 'Billed' : 'Collected']}
                   contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
                 />
-                <Area type="monotone" dataKey="billed" stroke="#4F77D9" strokeWidth={2} fill="url(#gBilled)" />
-                <Area type="monotone" dataKey="collected" stroke="#5DC4A6" strokeWidth={2} fill="url(#gCollected)" />
+                <Area type="monotone" dataKey="billed" stroke="#3F8570" strokeWidth={2} fill="url(#gBilled)" />
+                <Area type="monotone" dataKey="collected" stroke="#D98B9B" strokeWidth={2} fill="url(#gCollected)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -427,7 +433,7 @@ export default function AdminDashboard() {
         <Card className="p-5">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-slate-900">Recent conversations</h2>
-            <MessageSquare size={17} className="text-[#4F77D9]" />
+            <MessageSquare size={17} className="text-[#3F8570]" />
           </div>
           <ul className="mt-4 space-y-3">
             {recentThreads.map((t) => {
@@ -437,7 +443,7 @@ export default function AdminDashboard() {
                 <li key={t.id}>
                   <Link
                     to="/admin/messages"
-                    className="block rounded-xl border border-slate-200 p-3.5 transition hover:border-[#4F77D9] hover:bg-[#4F77D9]/5"
+                    className="block rounded-xl border border-slate-200 p-3.5 transition hover:border-[#3F8570] hover:bg-[#3F8570]/5"
                   >
                     <p className="truncate text-sm font-bold text-slate-900">{t.subject}</p>
                     <p className="truncate text-xs text-slate-500">
@@ -455,7 +461,7 @@ export default function AdminDashboard() {
         <Card className="p-5">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-lg font-bold text-slate-900">New inquiries</h2>
-            <Users size={17} className="text-[#5DC4A6]" />
+            <Users size={17} className="text-[#D98B9B]" />
           </div>
           <ul className="mt-4 space-y-3">
             {leads.slice(0, 3).map((l) => (

@@ -101,7 +101,7 @@ export default function AdminChildDetail() {
     <PageTransition>
       <Link
         to="/admin/children"
-        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#4F77D9]"
+        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#3F8570]"
       >
         <ArrowLeft size={15} /> Back to children
       </Link>
@@ -281,7 +281,7 @@ export default function AdminChildDetail() {
           {family && (
             <Card className="p-5">
               <div className="flex items-center gap-2">
-                <Users size={17} className="text-[#4F77D9]" />
+                <Users size={17} className="text-[#3F8570]" />
                 <h2 className="font-display text-lg font-bold text-slate-900">Family</h2>
               </div>
               <p className="mt-3 font-display text-base font-bold text-slate-900">{family.name}</p>

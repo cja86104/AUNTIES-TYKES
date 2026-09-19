@@ -102,7 +102,7 @@ export default function AdminFamilyDetail() {
     <PageTransition>
       <Link
         to="/admin/families"
-        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#4F77D9]"
+        className="mb-5 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#3F8570]"
       >
         <ArrowLeft size={15} /> Back to families
       </Link>
@@ -143,7 +143,7 @@ export default function AdminFamilyDetail() {
                   <li key={k.id}>
                     <Link
                       to={`/admin/children/${k.id}`}
-                      className="flex h-full items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-[#4F77D9] hover:bg-[#4F77D9]/5"
+                      className="flex h-full items-start gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-[#3F8570] hover:bg-[#3F8570]/5"
                     >
                       <Avatar name={k.name} hue={k.hue} size="md" />
                       <div className="min-w-0">
@@ -238,17 +238,17 @@ export default function AdminFamilyDetail() {
             <h2 className="font-display text-lg font-bold text-slate-900">Contact</h2>
             <ul className="mt-4 space-y-3 text-sm text-slate-600">
               <li className="flex gap-2.5 break-all">
-                <Mail size={16} className="mt-0.5 shrink-0 text-[#4F77D9]" />
-                <a href={`mailto:${family.email}`} className="transition hover:text-[#4F77D9]">
+                <Mail size={16} className="mt-0.5 shrink-0 text-[#3F8570]" />
+                <a href={`mailto:${family.email}`} className="transition hover:text-[#3F8570]">
                   {family.email}
                 </a>
               </li>
               <li className="flex gap-2.5">
-                <Phone size={16} className="mt-0.5 shrink-0 text-[#4F77D9]" />
+                <Phone size={16} className="mt-0.5 shrink-0 text-[#3F8570]" />
                 {family.phone}
               </li>
               <li className="flex gap-2.5">
-                <MapPin size={16} className="mt-0.5 shrink-0 text-[#4F77D9]" />
+                <MapPin size={16} className="mt-0.5 shrink-0 text-[#3F8570]" />
                 {family.address}
               </li>
             </ul>

@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --at-primary: #4f77d9;
+  --at-primary: #3f8570;
   --at-secondary: #f5b942;
-  --at-accent: #5dc4a6;
+  --at-accent: #d98b9b;
   --at-ink: #2b2f3a;
 }
 
@@ -22,12 +22,12 @@ body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--at-ink);
-  background-color: #fbfaf7;
+  background-color: #fcf7ea;
 }
 
 h1, h2, h3, h4, h5, .font-display {
-  font-family: 'Nunito', 'Inter', system-ui, sans-serif;
-  letter-spacing: -0.02em;
+  font-family: 'Playfair Display', Georgia, serif;
+  letter-spacing: -0.01em;
 }
 
 ::selection {
@@ -67,7 +67,7 @@ h1, h2, h3, h4, h5, .font-display {
 }
 
 .at-grid-dots {
-  background-image: radial-gradient(rgba(79, 119, 217, 0.16) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(63, 133, 112, 0.16) 1px, transparent 1px);
   background-size: 22px 22px;
 }
 

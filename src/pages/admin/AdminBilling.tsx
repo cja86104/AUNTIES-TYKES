@@ -75,7 +75,7 @@ export default function AdminBilling() {
   }, [invoices])
 
   const agingRows = [
-    { label: 'Not yet due', value: aging.current, tone: 'bg-[#5DC4A6]' },
+    { label: 'Not yet due', value: aging.current, tone: 'bg-[#D98B9B]' },
     { label: '1–30 days late', value: aging.late30, tone: 'bg-[#F5B942]' },
     { label: '31–60 days late', value: aging.late60, tone: 'bg-[#E8994A]' },
     { label: '60+ days late', value: aging.late60plus, tone: 'bg-rose-500' },
@@ -133,7 +133,7 @@ export default function AdminBilling() {
                   <div className="min-w-0 flex-1">
                     <Link
                       to={`/admin/families/${family.id}`}
-                      className="font-display text-sm font-bold text-slate-900 transition hover:text-[#4F77D9]"
+                      className="font-display text-sm font-bold text-slate-900 transition hover:text-[#3F8570]"
                     >
                       {family.name}
                     </Link>
@@ -196,7 +196,7 @@ export default function AdminBilling() {
                     </div>
                     <Link
                       to={`/admin/invoices/${p.invoiceId}`}
-                      className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#4F77D9] hover:underline"
+                      className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#3F8570] hover:underline"
                     >
                       {p.invoiceId} <ArrowRight size={12} />
                     </Link>

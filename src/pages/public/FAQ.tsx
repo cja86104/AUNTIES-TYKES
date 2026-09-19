@@ -22,7 +22,7 @@ export default function FAQ() {
     <PageTransition>
       <section className="px-5 pb-8 pt-10 lg:px-8 lg:pt-16">
         <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#4F77D9]/30 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#39569f] backdrop-blur">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[#3F8570]/30 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#1F4A3D] backdrop-blur">
             <HelpCircle size={14} /> Parent FAQ
           </span>
           <h1 className="mt-6 font-display text-4xl font-black leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
@@ -114,9 +114,9 @@ export default function FAQ() {
               <div className="space-y-3">
                 <a
                   href={`mailto:${settings.email}`}
-                  className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#4F77D9] hover:bg-[#4F77D9]/5"
+                  className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#3F8570] hover:bg-[#3F8570]/5"
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#5DC4A6]/15 text-[#25705c]">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D98B9B]/15 text-[#7A3B47]">
                     <Mail size={18} />
                   </span>
                   <span>

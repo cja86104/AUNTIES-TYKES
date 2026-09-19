@@ -22,7 +22,7 @@ export function RequireRole({ role, children }: RequireRoleProps) {
   if (!ready) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center" role="status" aria-live="polite">
-        <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-slate-200 border-t-[#4F77D9]" />
+        <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-slate-200 border-t-[#3F8570]" />
       </div>
     )
   }
