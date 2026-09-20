@@ -20,6 +20,7 @@ import {
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { fmtDate, nowISO, uid } from '../../lib/helpers'
+import { useSectionSeen } from '../../lib/unread'
 
 interface NewThreadErrors {
   subject?: string
@@ -33,6 +34,9 @@ export default function ParentMessages() {
   const sendThreadMessage = useStore((s) => s.sendThreadMessage)
   const startThread = useStore((s) => s.startThread)
   const pushToast = useStore((s) => s.pushToast)
+  const seen = useSectionSeen('messages')
+  // `t` is shadowed by the thread loop variable below, so read this up here.
+  const newLabel = t('common.new')
 
   const threads = useMemo(
     () =>
@@ -129,11 +133,14 @@ export default function ParentMessages() {
                       <h3 className="font-display text-base font-bold text-slate-900">{a.title}</h3>
                       <p className="mt-0.5 text-xs text-slate-500">{fmtDate(a.date, 'EEEE, MMMM d')}</p>
                     </div>
-                    {a.audience !== 'all' && (
-                      <Badge tone="violet">
-                        <Users size={12} /> {t('messages.justForYou')}
-                      </Badge>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {seen.isNew(a.date) && <Badge tone="green">{t('common.new')}</Badge>}
+                      {a.audience !== 'all' && (
+                        <Badge tone="violet">
+                          <Users size={12} /> {t('messages.justForYou')}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <div className="md px-5 py-4 text-sm">
                     <ReactMarkdown>{a.body}</ReactMarkdown>
@@ -164,13 +171,17 @@ export default function ParentMessages() {
               {threads.map((t) => {
                 const isActive = activeThread?.id === t.id
                 const last = t.messages[t.messages.length - 1]
+                const unread = t.messages.some((m) => m.from === 'admin' && seen.isNew(m.at))
                 return (
                   <li key={t.id}>
                     <button
                       onClick={() => setActiveThreadId(t.id)}
                       className={`w-full px-4 py-3.5 text-left transition ${isActive ? 'bg-[#3F8570]/8' : 'hover:bg-slate-50'}`}
                     >
-                      <span className="block truncate font-display text-sm font-bold text-slate-900">{t.subject}</span>
+                      <span className="flex items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate font-display text-sm font-bold text-slate-900">{t.subject}</span>
+                        {unread && <Badge tone="violet">{newLabel}</Badge>}
+                      </span>
                       <span className="block text-xs text-slate-500">{fmtDate(t.updatedAt)}</span>
                       {last && <span className="mt-0.5 block truncate text-xs text-slate-400">{last.body}</span>}
                     </button>

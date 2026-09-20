@@ -29,6 +29,7 @@ import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
 import { bytes, fmtDate } from '../../lib/helpers'
 import { downloadDocument, removeDocumentFile } from '../../lib/storage'
+import { useSectionSeen } from '../../lib/unread'
 import { documentCategories } from '../../data/mockData'
 import type { DocumentCategory, DocumentRecord, UploadedFileMeta } from '../../types'
 
@@ -38,6 +39,8 @@ export default function AdminDocuments() {
   const deleteDocument = useStore((s) => s.deleteDocument)
   const toggleDocVisibility = useStore((s) => s.toggleDocVisibility)
   const pushToast = useStore((s) => s.pushToast)
+  const user = useStore((s) => s.user)
+  const seen = useSectionSeen('documents')
 
   const [tab, setTab] = useState<'all' | DocumentCategory>('all')
   const [query, setQuery] = useState('')
@@ -243,6 +246,7 @@ export default function AdminDocuments() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  {d.uploadedBy !== user?.name && seen.isNew(d.uploadedAt) && <Badge tone="violet">New</Badge>}
                   {d.requiresAck && (
                     <Badge tone="amber">
                       <ShieldCheck size={12} /> Ack required

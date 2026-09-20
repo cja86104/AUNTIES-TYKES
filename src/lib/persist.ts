@@ -59,7 +59,7 @@ import type {
   User,
   WaitlistProspect,
 } from '../types'
-import type { PaymentRow, ThreadMessageRow } from './database.types'
+import type { PaymentRow, SectionName, ThreadMessageRow } from './database.types'
 
 /** Everything the store caches, as hydrated from the database. */
 export interface HydratedData {
@@ -77,6 +77,8 @@ export interface HydratedData {
   waitlist: WaitlistProspect[]
   calendarEvents: CalendarEvent[]
   acknowledgements: string[]
+  /** Last time this person opened each section. Missing = never opened. */
+  sectionViews: Partial<Record<SectionName, string>>
   settings: Settings | null
 }
 
@@ -161,6 +163,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     leads,
     waitlist,
     calendarEvents,
+    sectionViews,
     settings,
   ] = await Promise.all([
     run(supabase.from('profiles').select('*')),
@@ -182,6 +185,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     run(supabase.from('leads').select('*')),
     run(supabase.from('waitlist_prospects').select('*')),
     run(supabase.from('calendar_events').select('*')),
+    run(supabase.from('section_views').select('*')),
     supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
   ])
 
@@ -203,6 +207,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     waitlist: waitlist.map(toWaitlistProspect),
     calendarEvents: calendarEvents.map(toCalendarEvent),
     acknowledgements: acks.map((a) => `${a.profile_id}:${a.document_id}`),
+    sectionViews: Object.fromEntries(sectionViews.map((v) => [v.section, v.seen_at])),
     settings: settings.data ? toSettings(settings.data) : null,
   }
 }
@@ -296,6 +301,15 @@ export const persist = {
     run(supabase.from('thread_messages').upsert(fromThreadMessage(message, threadId, authorId)).select()),
 
   lead: (lead: Lead) => run(supabase.from('leads').upsert(fromLead(lead)).select()),
+
+  /** Moves this person's "last looked at" marker for one section to now. */
+  sectionView: (section: SectionName, profileId: string, seenAt: string) =>
+    run(
+      supabase
+        .from('section_views')
+        .upsert({ profile_id: profileId, section, seen_at: seenAt })
+        .select(),
+    ),
 
   calendarEvent: (event: CalendarEvent, createdBy: string | null) =>
     run(supabase.from('calendar_events').upsert(fromCalendarEvent(event, createdBy)).select()),

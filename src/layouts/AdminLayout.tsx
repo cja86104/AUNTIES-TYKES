@@ -23,8 +23,17 @@ import { useStore } from '../store/useStore'
 import { setPortalLanguage } from '../i18n'
 import { Avatar } from '../components/ui'
 import { cx } from '../lib/helpers'
+import { useUnreadCounts, type UnreadCounts } from '../lib/unread'
 
-const nav = [
+interface NavItem {
+  to: string
+  label: string
+  icon: typeof LayoutDashboard
+  /** Which unread count, if any, shows as a badge on this row. */
+  badge?: keyof UnreadCounts
+}
+
+const nav: NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/families', label: 'Families', icon: Users },
   { to: '/admin/children', label: 'Children', icon: UserRound },
@@ -33,8 +42,8 @@ const nav = [
   { to: '/admin/daily-logs', label: 'Daily Logs', icon: NotebookPen },
   { to: '/admin/billing', label: 'Billing', icon: Wallet },
   { to: '/admin/invoices', label: 'Invoices', icon: ReceiptText },
-  { to: '/admin/documents', label: 'Documents', icon: FolderOpen },
-  { to: '/admin/messages', label: 'Messages / Announcements', icon: MessageSquare },
+  { to: '/admin/documents', label: 'Documents', icon: FolderOpen, badge: 'documents' },
+  { to: '/admin/messages', label: 'Messages / Announcements', icon: MessageSquare, badge: 'messages' },
   { to: '/admin/enrollments', label: 'Future Arrivals', icon: ClipboardList },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
@@ -45,6 +54,7 @@ export default function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [open, setOpen] = useState(false)
+  const unread = useUnreadCounts()
 
   useEffect(() => {
     setOpen(false)
@@ -78,7 +88,9 @@ export default function AdminLayout() {
       </Link>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4" aria-label="Admin">
-        {nav.map((n) => (
+        {nav.map((n) => {
+          const count = n.badge ? unread[n.badge] : 0
+          return (
           <NavLink
             key={n.to}
             to={n.to}
@@ -97,11 +109,21 @@ export default function AdminLayout() {
                   className={cx('shrink-0 transition', isActive ? 'text-[#F5B942]' : 'group-hover:text-white')}
                 />
                 {n.label}
-                {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#F5B942]" />}
+                {count > 0 ? (
+                  <span
+                    className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#F5B942] px-1.5 text-xs font-bold text-[#1F2537]"
+                    aria-label={`${count} new`}
+                  >
+                    {count}
+                  </span>
+                ) : (
+                  isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#F5B942]" />
+                )}
               </>
             )}
           </NavLink>
-        ))}
+          )
+        })}
       </nav>
 
       <div className="border-t border-white/10 p-3">

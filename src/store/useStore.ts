@@ -24,6 +24,7 @@ import {
   signIn,
   signOut,
 } from '../lib/persist'
+import type { SectionName } from '../lib/database.types'
 import type {
   Announcement,
   ApprovalResult,
@@ -106,6 +107,12 @@ interface DataSlice {
   calendarEvents: CalendarEvent[]
   /** `${userId}:${documentId}` pairs for documents a parent has acknowledged. */
   acknowledgements: string[]
+  /**
+   * When the signed-in person last opened each section. Anything stamped later
+   * than this is new to them. Only ever holds the current user's markers —
+   * RLS returns nobody else's.
+   */
+  sectionViews: Partial<Record<SectionName, string>>
 }
 
 export type LoginResult = { ok: true; user: SessionUser } | { ok: false; error: string }
@@ -148,6 +155,12 @@ export interface StoreState extends DataSlice {
   deleteDocument: (id: string) => void
   toggleDocVisibility: (id: string) => void
   acknowledgeDocument: (docId: string) => void
+  /**
+   * Records that the signed-in person has now looked at a section, so its
+   * "new" markers clear. Silent: no toast, and a failure must not interrupt
+   * reading the page.
+   */
+  markSectionSeen: (section: SectionName) => void
 
   addAnnouncement: (announcement: NewAnnouncement) => void
   sendThreadMessage: (threadId: string, message: NewThreadMessage) => void
@@ -222,6 +235,7 @@ const emptyData: DataSlice = {
   waitlist: [],
   calendarEvents: [],
   acknowledgements: [],
+  sectionViews: {},
 }
 
 const demoData: DataSlice = {
@@ -241,6 +255,7 @@ const demoData: DataSlice = {
   // The demo has no seeded calendar; live data comes from Supabase.
   calendarEvents: [],
   acknowledgements: [],
+  sectionViews: {},
 }
 
 const initialData: DataSlice = DEMO_MODE ? demoData : emptyData
@@ -280,6 +295,7 @@ function snapshot(state: StoreState): DataSlice {
     waitlist: state.waitlist,
     calendarEvents: state.calendarEvents,
     acknowledgements: state.acknowledgements,
+    sectionViews: state.sectionViews,
   }
 }
 
@@ -346,6 +362,7 @@ export const useStore = create<StoreState>()((set, get) => {
       waitlist: data.waitlist,
       calendarEvents: data.calendarEvents,
       acknowledgements: data.acknowledgements,
+      sectionViews: data.sectionViews,
       ...(data.settings ? { settings: data.settings } : {}),
     })
   }
@@ -578,7 +595,7 @@ export const useStore = create<StoreState>()((set, get) => {
             category: 'Forms' as const,
             visibleToParents: false,
             uploadedBy: s.user?.name ?? 'Aunties Tykes',
-            uploadedAt: todayISO(),
+            uploadedAt: nowISO(),
             url: '#',
             requiresAck: false,
             ...doc,
@@ -621,10 +638,23 @@ export const useStore = create<StoreState>()((set, get) => {
       ),
 
     /* --------------------------- communications --------------------------- */
+    markSectionSeen: (section) => {
+      const profileId = authorId(get())
+      if (!profileId) return
+      const seenAt = nowISO()
+      set((state) => ({ sectionViews: { ...state.sectionViews, [section]: seenAt } }))
+      if (DEMO_MODE) return
+      // Not routed through commit(): this is a side effect of reading a page,
+      // not an edit the person made, so a failed write gets no error toast.
+      void persist.sectionView(section, profileId, seenAt).catch(() => {
+        /* the marker simply stays where it was; the page still works */
+      })
+    },
+
     addAnnouncement: (announcement) =>
       commit(
         (s) => ({
-          announcements: [{ date: todayISO(), ...announcement, id: uid('an') }, ...s.announcements],
+          announcements: [{ date: nowISO(), ...announcement, id: uid('an') }, ...s.announcements],
         }),
         (s) => {
           const created = s.announcements[0]

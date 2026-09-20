@@ -20,6 +20,7 @@ import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { bytes, fmtDate } from '../../lib/helpers'
 import { downloadDocument } from '../../lib/storage'
+import { useSectionSeen } from '../../lib/unread'
 import { documentCategories } from '../../data/mockData'
 import type { DocumentCategory, DocumentRecord, UploadedFileMeta } from '../../types'
 
@@ -30,6 +31,7 @@ export default function ParentDocuments() {
   const acknowledgeDocument = useStore((s) => s.acknowledgeDocument)
   const addDocument = useStore((s) => s.addDocument)
   const pushToast = useStore((s) => s.pushToast)
+  const seen = useSectionSeen('documents')
 
   const [tab, setTab] = useState<'all' | DocumentCategory>('all')
   const [query, setQuery] = useState('')
@@ -205,6 +207,7 @@ export default function ParentDocuments() {
                     </p>
                   </div>
 
+                  {!mine && seen.isNew(d.uploadedAt) && <Badge tone="violet">{t('common.new')}</Badge>}
                   {d.requiresAck &&
                     (acked ? (
                       <Badge tone="green">

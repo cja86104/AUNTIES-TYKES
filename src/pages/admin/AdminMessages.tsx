@@ -19,6 +19,7 @@ import {
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { fmtDate, nowISO, uid } from '../../lib/helpers'
+import { useSectionSeen } from '../../lib/unread'
 
 interface AnnouncementErrors {
   title?: string
@@ -40,6 +41,7 @@ export default function AdminMessages() {
   const sendThreadMessage = useStore((s) => s.sendThreadMessage)
   const startThread = useStore((s) => s.startThread)
   const pushToast = useStore((s) => s.pushToast)
+  const seen = useSectionSeen('messages')
 
   const [tab, setTab] = useState<'announcements' | 'threads'>('announcements')
   const [open, setOpen] = useState(false)
@@ -226,6 +228,7 @@ export default function AdminMessages() {
               {sortedThreads.map((t) => {
                 const isActive = activeThread?.id === t.id
                 const last = t.messages[t.messages.length - 1]
+                const unread = t.messages.some((m) => m.from === 'parent' && seen.isNew(m.at))
                 return (
                   <li key={t.id}>
                     <button
@@ -236,7 +239,10 @@ export default function AdminMessages() {
                     >
                       <Avatar name={familyName(t.familyId)} size="sm" hue="from-[#F5B942] to-[#D98B9B]" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-display text-sm font-bold text-slate-900">{t.subject}</span>
+                        <span className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate font-display text-sm font-bold text-slate-900">{t.subject}</span>
+                          {unread && <Badge tone="violet">New</Badge>}
+                        </span>
                         <span className="block truncate text-xs text-slate-500">{familyName(t.familyId)}</span>
                         {last && <span className="mt-0.5 block truncate text-xs text-slate-400">{last.body}</span>}
                       </span>

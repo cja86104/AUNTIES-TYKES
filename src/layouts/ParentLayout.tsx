@@ -18,16 +18,25 @@ import { useStore } from '../store/useStore'
 import { Avatar } from '../components/ui'
 import { cx } from '../lib/helpers'
 import { setPortalLanguage } from '../i18n'
+import { useUnreadCounts, type UnreadCounts } from '../lib/unread'
 
-const nav = [
+interface NavItem {
+  to: string
+  labelKey: string
+  icon: typeof LayoutDashboard
+  /** Which unread count, if any, shows as a badge on this row. */
+  badge?: keyof UnreadCounts
+}
+
+const nav: NavItem[] = [
   { to: '/parent/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
   { to: '/parent/children', labelKey: 'nav.myChildren', icon: UserRound },
   { to: '/parent/daily-reports', labelKey: 'nav.dailyReports', icon: NotebookPen },
   { to: '/parent/attendance', labelKey: 'nav.attendance', icon: ClipboardCheck },
   { to: '/parent/calendar', labelKey: 'nav.calendar', icon: CalendarDays },
   { to: '/parent/billing', labelKey: 'nav.billing', icon: Wallet },
-  { to: '/parent/documents', labelKey: 'nav.documents', icon: FolderOpen },
-  { to: '/parent/messages', labelKey: 'nav.messages', icon: MessageSquare },
+  { to: '/parent/documents', labelKey: 'nav.documents', icon: FolderOpen, badge: 'documents' },
+  { to: '/parent/messages', labelKey: 'nav.messages', icon: MessageSquare, badge: 'messages' },
 ]
 
 export default function ParentLayout() {
@@ -37,6 +46,7 @@ export default function ParentLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [open, setOpen] = useState(false)
+  const unread = useUnreadCounts()
 
   useEffect(() => {
     setOpen(false)
@@ -105,6 +115,14 @@ export default function ParentLayout() {
               }
             >
               <n.icon size={16} /> {t(n.labelKey)}
+              {n.badge && unread[n.badge] > 0 && (
+                <span
+                  className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#D98B9B] px-1.5 text-xs font-bold text-white"
+                  aria-label={`${unread[n.badge]} new`}
+                >
+                  {unread[n.badge]}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -130,6 +148,14 @@ export default function ParentLayout() {
                     }
                   >
                     <n.icon size={17} /> {t(n.labelKey)}
+                    {n.badge && unread[n.badge] > 0 && (
+                      <span
+                        className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#D98B9B] px-1.5 text-xs font-bold text-white"
+                        aria-label={`${unread[n.badge]} new`}
+                      >
+                        {unread[n.badge]}
+                      </span>
+                    )}
                   </NavLink>
                 ))}
                 <button

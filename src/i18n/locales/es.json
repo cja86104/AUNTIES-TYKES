@@ -1,4 +1,7 @@
 {
+  "common": {
+    "new": "Nuevo"
+  },
   "nav": {
     "dashboard": "Panel",
     "myChildren": "Mis hijos",

@@ -18,6 +18,8 @@ export type ChildStatusDb = 'active' | 'waitlist'
 export type AttendanceStatusDb = 'present' | 'absent' | 'expected' | 'checked-out'
 export type DocumentCategoryDb = 'Handbooks' | 'Policies' | 'Forms' | 'Menus' | 'Calendars'
 export type EnrollmentStatusDb = 'pending' | 'approved' | 'declined'
+/** Sections that carry a "new since you last looked" marker. */
+export type SectionName = 'documents' | 'messages'
 export type CalendarEventKindDb =
   | 'closure'
   | 'early_close'
@@ -139,6 +141,13 @@ export type DocumentAcknowledgementRow = {
   document_id: string
   profile_id: string
   acknowledged_at: string
+}
+
+/** When this person last opened a section; anything newer is new to them. */
+export type SectionViewRow = {
+  profile_id: string
+  section: SectionName
+  seen_at: string
 }
 
 export type AnnouncementRow = {
@@ -270,6 +279,7 @@ export type Database = {
       payments: Table<PaymentRow, 'invoice_id' | 'amount'>
       documents: Table<DocumentRow, 'title'>
       document_acknowledgements: Table<DocumentAcknowledgementRow, 'document_id' | 'profile_id'>
+      section_views: Table<SectionViewRow, 'profile_id' | 'section'>
       announcements: Table<AnnouncementRow, 'title'>
       threads: Table<ThreadRow, 'family_id' | 'subject'>
       thread_messages: Table<ThreadMessageRow, 'thread_id' | 'from_role' | 'body'>

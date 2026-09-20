@@ -1,4 +1,7 @@
 {
+  "common": {
+    "new": "Mới"
+  },
   "nav": {
     "dashboard": "Trang chủ",
     "myChildren": "Con của tôi",
