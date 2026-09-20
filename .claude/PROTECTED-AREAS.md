@@ -3,39 +3,19 @@
 ## Why this exists
 
 The admin console and parent portal were built, verified, and **walked link by
-link by the owner**, who signed off on them. Landing page work is now happening
-alongside. This file and `.claude/settings.json` exist so that work cannot drift
-into finished code.
+link by the owner**, who signed off on them. Landing page work happened
+alongside, and this file plus `.claude/settings.json` existed so that work
+could not drift into finished code.
 
-A landing page restyle has no business touching an invoice ledger.
+**Update (2026-09-20): the 🛑 Locked tier has been lifted.** The owner asked
+for it explicitly — active work has moved on to a full admin/parent portal
+production audit and mobile/Safari fixes, so admin and parent files need to be
+editable again. `deny` in `.claude/settings.json` is now empty. The ⚠️ Shared
+tier stays in force below, since the shared-component trap (a landing-page
+restyle bleeding into every button in the admin console) doesn't go away just
+because the lock did.
 
-## Three tiers
-
-### 🛑 Locked — `deny` in settings.json
-
-Claude Code will refuse `Edit`/`Write` on these. Not a suggestion — a block.
-
-```
-src/pages/admin/**              13 admin pages
-src/pages/parent/**              9 parent portal pages
-src/pages/auth/**                login
-src/layouts/AdminLayout.tsx      admin shell
-src/layouts/ParentLayout.tsx     parent shell
-src/store/**                     zustand store — the whole data layer
-src/types.ts                     domain types
-src/lib/useFamilyScope.ts        SECURITY BOUNDARY
-src/components/ProtectedRoute.tsx
-src/components/InvoiceView.tsx
-src/components/DailyLogCard.tsx
-src/components/FamilyForm.tsx
-src/components/ChildForm.tsx
-src/components/ParentAccountDialog.tsx
-src/components/FileUploader.tsx
-```
-
-`useFamilyScope.ts` deserves special mention: it is the single place family data
-is filtered. It is why the Brooks family cannot open the Okafors' invoice by
-editing a URL. Nothing about a landing page requires changing it.
+## Two tiers (as of the update above)
 
 ### ⚠️ Shared — `ask` in settings.json
 
@@ -59,25 +39,37 @@ page-local classes — do not repurpose an existing one.
 
 ```
 src/pages/public/**              Home, About, Programs, Tuition, Gallery, FAQ, Contact, Enroll
+src/pages/admin/**                13 admin pages (lock lifted)
+src/pages/parent/**               9 parent portal pages (lock lifted)
+src/pages/auth/**                 login (lock lifted)
+src/layouts/AdminLayout.tsx       admin shell (lock lifted)
+src/layouts/ParentLayout.tsx      parent shell (lock lifted)
+src/store/**                      zustand store — the whole data layer (lock lifted)
+src/types.ts                      domain types (lock lifted)
+src/lib/useFamilyScope.ts         SECURITY BOUNDARY — still treat with care (lock lifted)
+src/components/ProtectedRoute.tsx (lock lifted)
+src/components/InvoiceView.tsx    (lock lifted)
+src/components/DailyLogCard.tsx   (lock lifted)
+src/components/FamilyForm.tsx     (lock lifted)
+src/components/ChildForm.tsx      (lock lifted)
+src/components/ParentAccountDialog.tsx (lock lifted)
+src/components/FileUploader.tsx   (lock lifted)
 src/components/PublicNav.tsx
 src/components/PublicFooter.tsx
 src/layouts/PublicLayout.tsx
-src/lib/seo.ts                   page titles and descriptions
-src/lib/config.ts                DEMO_MODE flag
+src/lib/seo.ts                    page titles and descriptions
+src/lib/config.ts                 SEARCH_INDEXABLE flag
 index.html · public/**
 ```
 
-## If you actually need to change a locked file
+`useFamilyScope.ts` deserves special mention regardless of lock status: it is
+the single place family data is filtered. It is why the Brooks family cannot
+open the Okafors' invoice by editing a URL. Change it carefully and re-verify
+`useFamilyScope.ts`'s tests/usage and the matching Postgres RLS policies
+together — they're meant to move as a pair.
 
-1. **Stop. Ask the owner.** Say which file and why.
-2. Do not edit `.claude/settings.json` to unblock yourself. Removing your own
-   guardrail is not permission.
-3. If approved, make the smallest possible change and re-run the full check:
-   `npm run lint && npm run typecheck && npm run build`, then walk the affected
-   portal screens by hand.
+## Re-locking later
 
-## Lifting the lock later
-
-When portal work resumes, delete the relevant lines from the `deny` array in
-`.claude/settings.json`. Keep the `ask` tier — the shared-component trap does not
-go away.
+If admin/parent work is signed off again and unrelated (e.g. landing-page-only)
+work resumes, restore a `deny` array in `.claude/settings.json` with the paths
+listed above under "lock lifted" and reinstate the 🛑 tier in this file.
