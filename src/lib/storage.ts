@@ -65,13 +65,37 @@ export async function uploadDocument(file: File, storagePath: string): Promise<v
   if (error) throw new Error(error.message)
 }
 
-/** A signed URL valid for one minute — long enough to click, not to share. */
-export async function documentDownloadUrl(storagePath: string): Promise<string> {
+/**
+ * A signed URL valid for one minute — long enough to click, not to share.
+ *
+ * `download` is what makes Storage answer with `Content-Disposition:
+ * attachment`. Without it the URL just renders the file in the tab, which is
+ * how a click here used to dump people on a raw Supabase page.
+ */
+async function documentDownloadUrl(storagePath: string, fileName?: string): Promise<string> {
   const { data, error } = await supabase.storage
     .from(DOCUMENTS_BUCKET)
-    .createSignedUrl(storagePath, 60)
+    .createSignedUrl(storagePath, 60, { download: fileName ?? true })
   if (error || !data) throw new Error(error?.message ?? 'Could not prepare that download.')
   return data.signedUrl
+}
+
+/**
+ * Saves the file to the visitor's downloads.
+ *
+ * A plain anchor click rather than window.open: by the time the signed URL
+ * comes back the click's user gesture has expired, and popup blockers stop
+ * window.open at that point. Because the response is an attachment the page
+ * does not navigate, so no target is needed and no blank tab flashes up.
+ */
+export async function downloadDocument(storagePath: string, fileName?: string): Promise<void> {
+  const url = await documentDownloadUrl(storagePath, fileName)
+  const link = document.createElement('a')
+  link.href = url
+  link.rel = 'noopener'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
 }
 
 export async function removeDocumentFile(storagePath: string): Promise<void> {

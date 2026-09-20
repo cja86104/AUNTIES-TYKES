@@ -19,7 +19,7 @@ import {
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
-import { fmtDate, todayISO, uid } from '../../lib/helpers'
+import { fmtDate, nowISO, uid } from '../../lib/helpers'
 
 interface NewThreadErrors {
   subject?: string
@@ -75,7 +75,7 @@ export default function ParentMessages() {
           id: uid('msg'),
           from: 'parent',
           authorName,
-          at: todayISO(),
+          at: nowISO(),
           body: body.trim(),
         },
       ],

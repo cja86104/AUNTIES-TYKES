@@ -173,8 +173,11 @@ export async function hydrateAll(): Promise<HydratedData> {
     run(supabase.from('documents').select('*')),
     run(supabase.from('document_acknowledgements').select('*')),
     run(supabase.from('announcements').select('*')),
-    run(supabase.from('threads').select('*')),
-    run(supabase.from('thread_messages').select('*')),
+    // Ordered explicitly: PostgREST returns rows in no guaranteed order, and
+    // groupBy below preserves whatever order it gets, so an unordered read
+    // hands a thread its messages shuffled.
+    run(supabase.from('threads').select('*').order('updated_at', { ascending: false })),
+    run(supabase.from('thread_messages').select('*').order('at', { ascending: true })),
     run(supabase.from('enrollments').select('*')),
     run(supabase.from('leads').select('*')),
     run(supabase.from('waitlist_prospects').select('*')),

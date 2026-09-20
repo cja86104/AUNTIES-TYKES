@@ -28,7 +28,7 @@ import {
 import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
 import { bytes, fmtDate } from '../../lib/helpers'
-import { documentDownloadUrl, removeDocumentFile } from '../../lib/storage'
+import { downloadDocument, removeDocumentFile } from '../../lib/storage'
 import { documentCategories } from '../../data/mockData'
 import type { DocumentCategory, DocumentRecord, UploadedFileMeta } from '../../types'
 
@@ -121,10 +121,7 @@ export default function AdminDocuments() {
       })
       return
     }
-    void documentDownloadUrl(doc.storagePath)
-      .then((url) => {
-        window.open(url, '_blank', 'noopener,noreferrer')
-      })
+    void downloadDocument(doc.storagePath, doc.fileName)
       .catch((error: unknown) => {
         pushToast({
           tone: 'error',

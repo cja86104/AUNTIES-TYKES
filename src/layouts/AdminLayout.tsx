@@ -34,7 +34,7 @@ const nav = [
   { to: '/admin/billing', label: 'Billing', icon: Wallet },
   { to: '/admin/invoices', label: 'Invoices', icon: ReceiptText },
   { to: '/admin/documents', label: 'Documents', icon: FolderOpen },
-  { to: '/admin/messages', label: 'Messages', icon: MessageSquare },
+  { to: '/admin/messages', label: 'Messages / Announcements', icon: MessageSquare },
   { to: '/admin/enrollments', label: 'Future Arrivals', icon: ClipboardList },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]

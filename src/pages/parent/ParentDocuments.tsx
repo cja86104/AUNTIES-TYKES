@@ -19,7 +19,7 @@ import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { bytes, fmtDate } from '../../lib/helpers'
-import { documentDownloadUrl } from '../../lib/storage'
+import { downloadDocument } from '../../lib/storage'
 import { documentCategories } from '../../data/mockData'
 import type { DocumentCategory, DocumentRecord, UploadedFileMeta } from '../../types'
 
@@ -87,10 +87,7 @@ export default function ParentDocuments() {
       })
       return
     }
-    void documentDownloadUrl(doc.storagePath)
-      .then((url) => {
-        window.open(url, '_blank', 'noopener,noreferrer')
-      })
+    void downloadDocument(doc.storagePath, doc.fileName)
       .catch(() => {
         pushToast({
           tone: 'error',

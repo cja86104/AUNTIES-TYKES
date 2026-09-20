@@ -18,10 +18,16 @@ import {
   Textarea,
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
-import { fmtDate } from '../../lib/helpers'
+import { fmtDate, nowISO, uid } from '../../lib/helpers'
 
 interface AnnouncementErrors {
   title?: string
+  body?: string
+}
+
+interface ThreadErrors {
+  family?: string
+  subject?: string
   body?: string
 }
 
@@ -32,6 +38,7 @@ export default function AdminMessages() {
   const user = useStore((s) => s.user)
   const addAnnouncement = useStore((s) => s.addAnnouncement)
   const sendThreadMessage = useStore((s) => s.sendThreadMessage)
+  const startThread = useStore((s) => s.startThread)
   const pushToast = useStore((s) => s.pushToast)
 
   const [tab, setTab] = useState<'announcements' | 'threads'>('announcements')
@@ -43,6 +50,13 @@ export default function AdminMessages() {
 
   const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id ?? null)
   const [reply, setReply] = useState('')
+
+  /** The "start a conversation with one family" composer. */
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [toFamily, setToFamily] = useState('')
+  const [threadSubject, setThreadSubject] = useState('')
+  const [threadBody, setThreadBody] = useState('')
+  const [threadErrors, setThreadErrors] = useState<ThreadErrors>({})
 
   const familyName = (id: string) => families.find((f) => f.id === id)?.name ?? 'Unknown family'
 
@@ -75,6 +89,44 @@ export default function AdminMessages() {
     })
   }
 
+  /**
+   * Opens a thread the family can answer. An announcement is one-way and goes
+   * to everyone; this is the other half — a conversation with one family that
+   * either side can start.
+   */
+  const startConversation = () => {
+    const next: ThreadErrors = {}
+    if (!toFamily) next.family = 'Choose which family this goes to'
+    if (!threadSubject.trim()) next.subject = 'Give it a subject'
+    if (threadBody.trim().length < 5) next.body = 'Write at least a sentence'
+    setThreadErrors(next)
+    if (Object.keys(next).length) return
+
+    const recipient = familyName(toFamily)
+    startThread({
+      familyId: toFamily,
+      subject: threadSubject.trim(),
+      messages: [
+        {
+          id: uid('msg'),
+          from: 'admin',
+          authorName: user?.name ?? 'Aunties Tykes',
+          at: nowISO(),
+          body: threadBody.trim(),
+        },
+      ],
+    })
+    setComposeOpen(false)
+    setToFamily('')
+    setThreadSubject('')
+    setThreadBody('')
+    setThreadErrors({})
+    setTab('threads')
+    // Clearing the selection lets the list fall through to the newest thread.
+    setActiveThreadId(null)
+    pushToast({ title: 'Message sent', description: `${recipient} will see it in their portal.` })
+  }
+
   const sendReply = () => {
     if (!activeThread || !reply.trim()) return
     sendThreadMessage(activeThread.id, {
@@ -89,12 +141,17 @@ export default function AdminMessages() {
   return (
     <PageTransition>
       <PageHeader
-        title="Messages"
-        description="Post announcements to every family, or answer a family directly."
+        title="Messages & Announcements"
+        description="Announcements go to every family. A message is a conversation with one family, and either of you can start it."
         actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus size={16} /> New announcement
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setComposeOpen(true)}>
+              <Plus size={16} /> New message
+            </Button>
+            <Button onClick={() => setOpen(true)}>
+              <Megaphone size={16} /> New announcement
+            </Button>
+          </>
         }
       />
 
@@ -102,7 +159,7 @@ export default function AdminMessages() {
         <Tabs
           tabs={[
             { value: 'announcements', label: 'Announcements', count: announcements.length },
-            { value: 'threads', label: 'Family threads', count: threads.length },
+            { value: 'threads', label: 'Messages', count: threads.length },
           ]}
           value={tab}
           onChange={(v) => setTab(v as 'announcements' | 'threads')}
@@ -149,7 +206,16 @@ export default function AdminMessages() {
           </div>
         )
       ) : sortedThreads.length === 0 ? (
-        <EmptyState icon={Inbox} title="No family threads yet" description="When a family writes in, the conversation appears here." />
+        <EmptyState
+          icon={Inbox}
+          title="No messages yet"
+          description="Start a conversation with a family, or wait for one to write in."
+          action={
+            <Button onClick={() => setComposeOpen(true)}>
+              <Plus size={16} /> New message
+            </Button>
+          }
+        />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
           <Card className="overflow-hidden">
@@ -251,6 +317,53 @@ export default function AdminMessages() {
           )}
         </div>
       )}
+
+      <Modal
+        open={composeOpen}
+        onClose={() => setComposeOpen(false)}
+        title="New message"
+        description="Goes to one family as a conversation they can reply to."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setComposeOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={startConversation}>
+              <Send size={16} /> Send message
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Field label="To" error={threadErrors.family}>
+            <Select value={toFamily} onChange={(e) => setToFamily(e.target.value)} invalid={Boolean(threadErrors.family)}>
+              <option value="">Choose a family…</option>
+              {families.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Subject" error={threadErrors.subject}>
+            <Input
+              value={threadSubject}
+              invalid={Boolean(threadErrors.subject)}
+              onChange={(e) => setThreadSubject(e.target.value)}
+              placeholder="Thursday pickup"
+            />
+          </Field>
+          <Field label="Message" error={threadErrors.body}>
+            <Textarea
+              rows={6}
+              value={threadBody}
+              invalid={Boolean(threadErrors.body)}
+              onChange={(e) => setThreadBody(e.target.value)}
+              placeholder="Just a heads up that we're heading to the park Thursday morning — sunscreen would help!"
+            />
+          </Field>
+        </div>
+      </Modal>
 
       <Modal
         open={open}

@@ -13,7 +13,7 @@ import {
   leads as mLeads,
   waitlistProspects,
 } from '../data/mockData'
-import { uid, nowTime, todayISO } from '../lib/helpers'
+import { uid, nowISO, nowTime, todayISO } from '../lib/helpers'
 import { DEMO_MODE } from '../lib/config'
 import {
   createParentLogin as createParentLoginRequest,
@@ -638,8 +638,8 @@ export const useStore = create<StoreState>()((set, get) => {
             t.id === threadId
               ? {
                   ...t,
-                  updatedAt: todayISO(),
-                  messages: [...t.messages, { at: todayISO(), ...message, id: uid('msg') }],
+                  updatedAt: nowISO(),
+                  messages: [...t.messages, { at: nowISO(), ...message, id: uid('msg') }],
                 }
               : t,
           ),
@@ -656,11 +656,18 @@ export const useStore = create<StoreState>()((set, get) => {
     startThread: (thread) =>
       commit(
         (s) => ({
-          threads: [{ updatedAt: todayISO(), messages: [], ...thread, id: uid('thr') }, ...s.threads],
+          threads: [{ updatedAt: nowISO(), messages: [], ...thread, id: uid('thr') }, ...s.threads],
         }),
-        (s) => {
+        async (s) => {
           const created = s.threads[0]
-          return created ? persist.thread(created) : Promise.resolve()
+          if (!created) return
+          // The thread row first: the message rows reference it. Persisting
+          // only the thread — as this did — left the opening message in the
+          // cache alone, so it vanished on reload and the owner never saw it.
+          await persist.thread(created)
+          for (const message of created.messages) {
+            await persist.threadMessage(message, created.id, authorId(s))
+          }
         },
       ),
 

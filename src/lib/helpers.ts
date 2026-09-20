@@ -43,6 +43,15 @@ export function todayISO(): string {
   return format(new Date(), 'yyyy-MM-dd')
 }
 
+/**
+ * A full timestamp. Use this wherever two records made on the same day have to
+ * stay in order — messages, thread activity. todayISO() is date-only, so
+ * everything written on one day ties, and the order comes back scrambled.
+ */
+export function nowISO(): string {
+  return new Date().toISOString()
+}
+
 export function ageLabel(dob: string | Date | null | undefined): string {
   const d = safeDate(dob)
   if (!d) return '—'
