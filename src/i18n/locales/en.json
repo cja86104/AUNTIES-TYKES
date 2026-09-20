@@ -62,12 +62,12 @@
     "noReportsDesc": "Daily reports appear here once Auntie Melissa posts them — meals, naps, and how the day went.",
     "quickActions": "Quick actions",
     "viewDailyReports": "View daily reports",
-    "payAmount": "Pay {{amount}}",
     "viewBilling": "View billing",
     "readAnnouncements": "Read announcements",
     "formsDocuments": "Forms & documents",
     "latestAnnouncement": "Latest announcement",
-    "allAnnouncements": "All announcements"
+    "allAnnouncements": "All announcements",
+    "balanceAmount": "Balance {{amount}}"
   },
   "attendance": {
     "title": "Attendance",
@@ -101,7 +101,6 @@
   "billing": {
     "title": "Billing",
     "description": "Your statements, what is still owed, and every payment we have recorded.",
-    "payAmount": "Pay {{amount}}",
     "statBalance": "Balance due",
     "statBalanceSubOwed": "Across your open statements",
     "statBalanceSubClear": "Nothing owed — thank you!",
@@ -132,7 +131,8 @@
     "paidInFull": "Paid in full",
     "due": "Due",
     "lineItems": "Line items",
-    "viewStatement": "View statement"
+    "viewStatement": "View statement",
+    "balanceAmount": "Balance {{amount}}"
   },
   "childDetail": {
     "notFoundTitle": "We couldn't find that child",
@@ -287,29 +287,28 @@
     "memo": "Memo: ",
     "settleInvoice": "Settle this invoice",
     "paidInFull": "Paid in full",
-    "payDescParent": "Payments are demo-only in this preview — no card is charged and nothing leaves your browser.",
+    "payDescParent": "Payments are arranged directly with Aunties Tykes — there is no online payment in the portal. Your balance is shown here so you always know where you stand.",
     "payDescAdmin": "Record a check, cash, or transfer you received outside the portal.",
     "paidThanks": "Thank you! Nothing is owed on this statement.",
-    "payAmount": "Pay {{amount}}",
     "recordPayment": "Record a payment",
     "printSave": "Print / save PDF",
     "paymentHistory": "Payment history",
     "noPayments": "No payments recorded yet.",
-    "payInvoiceTitle": "Pay invoice",
     "recordPaymentTitle": "Record payment",
     "modalDesc": "{{id}} · balance {{amount}}",
     "amountUsd": "Amount (USD)",
     "method": "Method",
-    "disclaimer": "This preview build has no payment processor connected, so nothing is actually charged. The amount is applied to the demo ledger so you can see how the flow feels.",
     "cancel": "Cancel",
     "apply": "Apply {{amount}}",
     "toastErrorTitle": "Enter a payment amount",
     "toastErrorDesc": "The amount must be greater than zero.",
-    "toastSubmittedTitle": "Payment submitted",
     "toastRecordedTitle": "Payment recorded",
     "toastPaymentDesc": "{{amount}} applied to {{id}}{{partial}}",
     "partialSuffix": " (partial)",
-    "ref": "Ref {{ref}}"
+    "ref": "Ref {{ref}}",
+    "recordNote": "This records a payment you have already received. It does not charge anyone — no card or bank details are collected or stored here.",
+    "reference": "Reference",
+    "referenceHint": "Check number or transfer confirmation. Optional."
   },
   "dailyLogCard": {
     "meals": "Meals",

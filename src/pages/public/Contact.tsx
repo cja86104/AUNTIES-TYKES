@@ -62,7 +62,7 @@ export default function Contact() {
       reset()
       pushToast({
         title: 'Inquiry sent',
-        description: 'Mellissa will reply within one business day.',
+        description: 'Melissa will reply within one business day.',
       })
     } catch {
       pushToast({
@@ -121,7 +121,7 @@ export default function Contact() {
                 <>
                   <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D98B9B]/40 bg-[#FBEEF1]/50 p-4">
                   <p className="text-sm text-slate-700">
-                    <strong className="font-semibold text-slate-900">Already spoken with Mellissa?</strong> Skip ahead and
+                    <strong className="font-semibold text-slate-900">Already spoken with Melissa?</strong> Skip ahead and
                     fill out the enrollment form.
                   </p>
                   <Button as={Link} to="/enroll" size="sm" variant="accent">
@@ -179,7 +179,7 @@ export default function Contact() {
                       {isSubmitting ? 'Sending…' : 'Send inquiry'} <Send size={17} />
                     </Button>
                     <p className="text-xs text-slate-500">
-                      This demo stores your inquiry locally so you can see it appear in the admin console.
+                      Your inquiry goes straight to Aunties Tykes — no account needed.
                     </p>
                   </div>
                 </form>

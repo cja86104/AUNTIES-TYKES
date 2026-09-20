@@ -151,9 +151,9 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
           )}
 
           <p className="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-            <strong className="font-semibold">Share this securely.</strong> This preview build has no email sending
-            connected, so nothing was sent automatically — pass it along by text or in person. The password is not shown
-            again after you close this.
+            <strong className="font-semibold">Share this securely.</strong> The portal does not send email, so nothing
+            was delivered automatically — pass these along by text or in person. The password is not shown again after
+            you close this.
           </p>
         </div>
       </Modal>

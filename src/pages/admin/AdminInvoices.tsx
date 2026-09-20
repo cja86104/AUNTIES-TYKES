@@ -291,7 +291,7 @@ export default function AdminInvoices() {
         onClose={() => setOpen(false)}
         wide
         title="Create an invoice"
-        description="Bill a family for tuition, fees, or extras. Nothing is charged — this posts to the demo ledger."
+        description="Bill a family for tuition, fees, or extras. This creates the statement the family sees in their portal; payment is collected outside the app and recorded on the invoice."
         footer={
           <>
             <Button variant="ghost" onClick={() => setOpen(false)}>

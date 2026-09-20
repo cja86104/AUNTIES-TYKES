@@ -62,12 +62,12 @@
     "noReportsDesc": "Báo cáo hằng ngày sẽ hiện ở đây khi Auntie Melissa đăng — bữa ăn, giấc ngủ và ngày hôm đó thế nào.",
     "quickActions": "Thao tác nhanh",
     "viewDailyReports": "Xem báo cáo hằng ngày",
-    "payAmount": "Thanh toán {{amount}}",
     "viewBilling": "Xem hóa đơn",
     "readAnnouncements": "Đọc thông báo",
     "formsDocuments": "Biểu mẫu & tài liệu",
     "latestAnnouncement": "Thông báo mới nhất",
-    "allAnnouncements": "Tất cả thông báo"
+    "allAnnouncements": "Tất cả thông báo",
+    "balanceAmount": "Số dư {{amount}}"
   },
   "attendance": {
     "title": "Điểm danh",
@@ -101,7 +101,6 @@
   "billing": {
     "title": "Hóa đơn",
     "description": "Các hóa đơn, số tiền còn nợ và mọi khoản thanh toán chúng tôi đã ghi nhận.",
-    "payAmount": "Thanh toán {{amount}}",
     "statBalance": "Số dư cần thanh toán",
     "statBalanceSubOwed": "Tổng các hóa đơn đang mở",
     "statBalanceSubClear": "Không còn nợ — cảm ơn bạn!",
@@ -132,7 +131,8 @@
     "paidInFull": "Đã thanh toán đủ",
     "due": "Hạn",
     "lineItems": "Số mục",
-    "viewStatement": "Xem hóa đơn"
+    "viewStatement": "Xem hóa đơn",
+    "balanceAmount": "Số dư {{amount}}"
   },
   "childDetail": {
     "notFoundTitle": "Không tìm thấy thông tin con bạn",
@@ -287,29 +287,28 @@
     "memo": "Ghi chú: ",
     "settleInvoice": "Thanh toán hóa đơn này",
     "paidInFull": "Đã thanh toán đủ",
-    "payDescParent": "Thanh toán chỉ mang tính minh họa trong bản xem trước này — không có khoản phí nào bị trừ và không có gì rời khỏi trình duyệt của bạn.",
+    "payDescParent": "Việc thanh toán được sắp xếp trực tiếp với Aunties Tykes — cổng thông tin không nhận thanh toán trực tuyến. Số dư của bạn được hiển thị ở đây để bạn luôn nắm rõ.",
     "payDescAdmin": "Ghi nhận một khoản thanh toán bằng séc, tiền mặt hoặc chuyển khoản nhận ngoài cổng thông tin.",
     "paidThanks": "Cảm ơn bạn! Không còn khoản nào trên hóa đơn này.",
-    "payAmount": "Thanh toán {{amount}}",
     "recordPayment": "Ghi nhận thanh toán",
     "printSave": "In / lưu PDF",
     "paymentHistory": "Lịch sử thanh toán",
     "noPayments": "Chưa có khoản thanh toán nào.",
-    "payInvoiceTitle": "Thanh toán hóa đơn",
     "recordPaymentTitle": "Ghi nhận thanh toán",
     "modalDesc": "{{id}} · số dư {{amount}}",
     "amountUsd": "Số tiền (USD)",
     "method": "Phương thức",
-    "disclaimer": "Bản xem trước này chưa kết nối cổng thanh toán, nên không có khoản phí nào thực sự bị trừ. Số tiền được áp dụng vào sổ sách demo để bạn xem quy trình hoạt động như thế nào.",
     "cancel": "Hủy",
     "apply": "Áp dụng {{amount}}",
     "toastErrorTitle": "Nhập số tiền thanh toán",
     "toastErrorDesc": "Số tiền phải lớn hơn không.",
-    "toastSubmittedTitle": "Đã gửi thanh toán",
     "toastRecordedTitle": "Đã ghi nhận thanh toán",
     "toastPaymentDesc": "{{amount}} đã áp dụng cho {{id}}{{partial}}",
     "partialSuffix": " (một phần)",
-    "ref": "Mã tham chiếu {{ref}}"
+    "ref": "Mã tham chiếu {{ref}}",
+    "recordNote": "Mục này ghi nhận khoản thanh toán bạn đã nhận. Không hề thu tiền của ai — không có thông tin thẻ hay ngân hàng nào được thu thập hoặc lưu tại đây.",
+    "reference": "Mã tham chiếu",
+    "referenceHint": "Số séc hoặc xác nhận chuyển khoản. Không bắt buộc."
   },
   "dailyLogCard": {
     "meals": "Bữa ăn",

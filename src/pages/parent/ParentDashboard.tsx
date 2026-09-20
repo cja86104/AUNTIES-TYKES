@@ -207,7 +207,7 @@ export default function ParentDashboard() {
                 variant="outline"
                 className="w-full justify-start"
               >
-                <CreditCard size={16} /> {outstanding > 0 ? t('dashboard.payAmount', { amount: money(outstanding) }) : t('dashboard.viewBilling')}
+                <CreditCard size={16} /> {outstanding > 0 ? t('dashboard.balanceAmount', { amount: money(outstanding) }) : t('dashboard.viewBilling')}
               </Button>
               <Button as={Link} to="/parent/messages" variant="outline" className="w-full justify-start">
                 <Megaphone size={16} /> {t('dashboard.readAnnouncements')}

@@ -175,7 +175,7 @@ We provide all meals and snacks, so lunch boxes aren't needed.`,
           key: 'questions',
           title: 'Questions anytime',
           icon: MessageCircle,
-          body: `This page covers the basics, but every family is different. Reach out through the contact page anytime — Mellissa answers those personally, usually the same day.`,
+          body: `This page covers the basics, but every family is different. Reach out through the contact page anytime — Melissa answers those personally, usually the same day.`,
         },
       ],
     },
@@ -259,7 +259,7 @@ We provide all meals and snacks, so lunch boxes aren't needed.`,
         </Reveal>
       </section>
 
-      {/* A note from Mellissa */}
+      {/* A note from Melissa */}
       <section className="px-5 py-20 lg:px-8">
         <Reveal>
           <div className="mx-auto max-w-5xl text-center">
@@ -274,7 +274,7 @@ We provide all meals and snacks, so lunch boxes aren't needed.`,
               style={{ fontFamily: "'Caveat', cursive" }}
               className="mt-6 text-3xl text-[#3F8570] sm:text-4xl"
             >
-              — Mellissa
+              — Melissa
             </p>
           </div>
         </Reveal>

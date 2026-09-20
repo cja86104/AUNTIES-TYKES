@@ -201,7 +201,6 @@ export interface StoreState extends DataSlice {
   updateRates: (patch: Partial<Rates>) => void
   updatePolicies: (patch: Partial<Policies>) => void
 
-  resetDemoData: () => void
 }
 
 /** Live mode starts empty and fills from Supabase; nothing is seeded. */
@@ -946,10 +945,6 @@ export const useStore = create<StoreState>()((set, get) => {
         (s) => ({ settings: { ...s.settings, policies: { ...s.settings.policies, ...patch } } }),
         (s) => persist.settings(s.settings),
       ),
-
-    resetDemoData: () => {
-      commit(() => ({ ...initialData }))
-    },
   }
 })
 

@@ -55,7 +55,7 @@ export default function ParentBilling() {
         actions={
           nextInvoice ? (
             <Button as={Link} to={`/parent/invoices/${nextInvoice.id}`}>
-              <Wallet size={16} /> {t('billing.payAmount', { amount: money(invoiceBalance(nextInvoice)) })}
+              <Wallet size={16} /> {t('billing.balanceAmount', { amount: money(invoiceBalance(nextInvoice)) })}
             </Button>
           ) : undefined
         }
@@ -178,7 +178,7 @@ export default function ParentBilling() {
                     variant={balance > 0 ? 'primary' : 'outline'}
                     className="w-full"
                   >
-                    {balance > 0 ? t('billing.payAmount', { amount: money(balance) }) : t('billing.viewStatement')}
+                    {balance > 0 ? t('billing.balanceAmount', { amount: money(balance) }) : t('billing.viewStatement')}
                   </Button>
                 </div>
               </Card>

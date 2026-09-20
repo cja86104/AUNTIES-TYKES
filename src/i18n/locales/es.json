@@ -62,12 +62,12 @@
     "noReportsDesc": "Los reportes diarios aparecen aquí cuando Auntie Melissa los publica: comidas, siestas y cómo fue el día.",
     "quickActions": "Acciones rápidas",
     "viewDailyReports": "Ver reportes diarios",
-    "payAmount": "Pagar {{amount}}",
     "viewBilling": "Ver facturación",
     "readAnnouncements": "Leer avisos",
     "formsDocuments": "Formularios y documentos",
     "latestAnnouncement": "Último aviso",
-    "allAnnouncements": "Todos los avisos"
+    "allAnnouncements": "Todos los avisos",
+    "balanceAmount": "Saldo {{amount}}"
   },
   "attendance": {
     "title": "Asistencia",
@@ -101,7 +101,6 @@
   "billing": {
     "title": "Facturación",
     "description": "Tus estados de cuenta, lo que se debe y cada pago que hemos registrado.",
-    "payAmount": "Pagar {{amount}}",
     "statBalance": "Saldo pendiente",
     "statBalanceSubOwed": "En tus estados de cuenta abiertos",
     "statBalanceSubClear": "Nada pendiente — ¡gracias!",
@@ -132,7 +131,8 @@
     "paidInFull": "Pagado por completo",
     "due": "Vence",
     "lineItems": "Conceptos",
-    "viewStatement": "Ver estado de cuenta"
+    "viewStatement": "Ver estado de cuenta",
+    "balanceAmount": "Saldo {{amount}}"
   },
   "childDetail": {
     "notFoundTitle": "No pudimos encontrar a ese hijo/a",
@@ -287,29 +287,28 @@
     "memo": "Nota: ",
     "settleInvoice": "Liquidar esta factura",
     "paidInFull": "Pagado por completo",
-    "payDescParent": "Los pagos son solo de demostración en esta vista previa — no se cobra ninguna tarjeta y nada sale de tu navegador.",
+    "payDescParent": "Los pagos se coordinan directamente con Aunties Tykes — el portal no acepta pagos en línea. Tu saldo se muestra aquí para que siempre sepas cómo estás.",
     "payDescAdmin": "Registra un cheque, efectivo o transferencia recibida fuera del portal.",
     "paidThanks": "¡Gracias! No se debe nada en este estado de cuenta.",
-    "payAmount": "Pagar {{amount}}",
     "recordPayment": "Registrar un pago",
     "printSave": "Imprimir / guardar PDF",
     "paymentHistory": "Historial de pagos",
     "noPayments": "Aún no hay pagos registrados.",
-    "payInvoiceTitle": "Pagar factura",
     "recordPaymentTitle": "Registrar pago",
     "modalDesc": "{{id}} · saldo {{amount}}",
     "amountUsd": "Monto (USD)",
     "method": "Método",
-    "disclaimer": "Esta versión de vista previa no tiene un procesador de pagos conectado, así que no se realiza ningún cobro real. El monto se aplica al libro contable de demostración para que veas cómo se siente el proceso.",
     "cancel": "Cancelar",
     "apply": "Aplicar {{amount}}",
     "toastErrorTitle": "Ingresa un monto de pago",
     "toastErrorDesc": "El monto debe ser mayor que cero.",
-    "toastSubmittedTitle": "Pago enviado",
     "toastRecordedTitle": "Pago registrado",
     "toastPaymentDesc": "{{amount}} aplicado a {{id}}{{partial}}",
     "partialSuffix": " (parcial)",
-    "ref": "Ref. {{ref}}"
+    "ref": "Ref. {{ref}}",
+    "recordNote": "Esto registra un pago que ya recibiste. No se cobra a nadie: aquí no se recopilan ni se guardan datos de tarjetas ni bancarios.",
+    "reference": "Referencia",
+    "referenceHint": "Número de cheque o confirmación de transferencia. Opcional."
   },
   "dailyLogCard": {
     "meals": "Comidas",

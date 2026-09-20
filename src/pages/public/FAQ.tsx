@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Search, ChevronDown, HelpCircle, ArrowRight, Mail } from 'lucide-react'
 import PageTransition, { Reveal } from '../../components/PageTransition'
 import { Button, Card, Input, EmptyState, SectionHeading } from '../../components/ui'
-import { faqs } from '../../data/mockData'
+import { faqs } from '../../data/content'
 import { useStore } from '../../store/useStore'
 
 export default function FAQ() {
@@ -109,7 +109,7 @@ export default function FAQ() {
               <SectionHeading
                 eyebrow="Still wondering?"
                 title="Talk to a person, not a form letter"
-                description="Send a message and Mellissa will get back to you personally — usually the same day."
+                description="Send a message and Melissa will get back to you personally — usually the same day."
               />
               <div className="space-y-3">
                 <a

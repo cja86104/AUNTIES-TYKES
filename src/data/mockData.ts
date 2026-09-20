@@ -4,19 +4,12 @@ import type {
   AttendanceRecord,
   Child,
   DailyLog,
-  DocumentCategory,
   DocumentRecord,
-  Faq,
   Family,
-  GalleryItem,
   Invoice,
   Lead,
   LogPhoto,
-  Program,
-  RevenuePoint,
   Settings,
-  TeamMember,
-  Testimonial,
   Thread,
   User,
   WaitlistProspect,
@@ -245,7 +238,7 @@ function businessDaysBack(count: number): Date[] {
   return out
 }
 
-export const businessDays = businessDaysBack(14)
+const businessDays = businessDaysBack(14)
 const activeChildren = children.filter((c) => c.status === 'active')
 const inTimes = ['07:45', '08:02', '08:15', '08:30', '08:47']
 const outTimes = ['16:05', '16:20', '16:45', '17:05', '17:25']
@@ -445,8 +438,6 @@ export const documents: DocumentRecord[] = [
   { id: 'd8', title: 'Field Trip Permission — Museum of Life', category: 'Forms', size: 120_000, visibleToParents: true, uploadedBy: 'Rosalind Hayes', uploadedAt: iso(subDays(today, 4)), url: '#', requiresAck: false },
 ]
 
-export const documentCategories: DocumentCategory[] = ['Handbooks', 'Policies', 'Forms', 'Menus', 'Calendars']
-
 /* ---------------- announcements & threads --------------- */
 
 export const announcements: Announcement[] = [
@@ -519,140 +510,6 @@ export const threads: Thread[] = [
       { id: 'm6', from: 'admin', authorName: 'Rosalind Hayes', at: iso(subDays(today, 8)), body: 'Yes — sibling priority holds her spot. I will send the enrollment packet December 1st.' },
     ],
   },
-]
-
-/* ---------------- marketing content --------------- */
-
-export const programs: Program[] = [
-  {
-    id: 'infants',
-    name: 'Infants',
-    ages: '6 weeks – 17 months',
-    hours: '7:00 AM – 5:45 PM',
-    ratio: '1 caregiver : 3 infants',
-    spots: 'Waitlist · next opening January',
-    slot: 11,
-    image: 'https://images.unsplash.com/photo-1602887627273-85fff2433015?auto=format&fit=crop&w=900&q=80',
-    summary: 'Slow mornings, held bottles, and a rhythm that follows your baby — not a clock on the wall.',
-    routine: [
-      'Arrival snuggles and a hand-off chat with you',
-      'Tummy time, mirrors, and floor exploration',
-      'Bottle & nap on your baby’s own schedule',
-      'Stroller walk to the mailbox (weather permitting)',
-      'Sensory basket play and lullaby wind-down',
-    ],
-    highlights: ['Written log for every bottle, nap, and diaper', 'Safe-sleep certified cribs', 'Baby sign language introduced'],
-  },
-  {
-    id: 'toddlers',
-    name: 'Toddlers',
-    ages: '18 months – 2 years',
-    hours: '7:00 AM – 5:45 PM',
-    ratio: '1 caregiver : 4 toddlers',
-    spots: '1 part-time spot open',
-    slot: 12,
-    image: 'https://images.unsplash.com/photo-1600880291319-1a7499c191e8?auto=format&fit=crop&w=900&q=80',
-    summary: 'Big feelings, small bodies. We teach words for emotions and let them climb, pour, and dump.',
-    routine: [
-      'Open play and breakfast together',
-      'Morning circle: songs, weather, names',
-      'Sensory table and messy art',
-      'Outdoor gross-motor time',
-      'Family-style lunch, then a real 90-minute nap',
-      'Afternoon snack, books, and free choice',
-    ],
-    highlights: ['Gentle potty learning on your timeline', 'Emotion-coaching language', 'Two outdoor blocks daily'],
-  },
-  {
-    id: 'preschool',
-    name: 'Preschool',
-    ages: '3 – 5 years',
-    hours: '7:00 AM – 5:45 PM',
-    ratio: '1 caregiver : 6 children',
-    spots: '2 full-time spots open',
-    slot: 13,
-    image: 'https://images.unsplash.com/photo-1777056491418-d4ff81a4ad92?auto=format&fit=crop&w=900&q=80',
-    summary: 'Getting ready for kindergarten without ever feeling like school: projects, questions, and a lot of dirt.',
-    routine: [
-      'Journal drawing and morning jobs',
-      'Letters, numbers, and story time',
-      'Project time (building, planting, cooking)',
-      'Outdoor exploration and bike path',
-      'Lunch, rest, then STEM or art choice',
-      'Closing circle: what we learned today',
-    ],
-    highlights: ['Name writing & letter sounds', 'Weekly cooking project', 'Show-and-tell Fridays'],
-  },
-]
-
-export const team: TeamMember[] = [
-  {
-    id: 'tm1',
-    name: 'Mellissa Allen',
-    role: 'Owner & Lead Teacher',
-    slot: 8,
-    image: 'https://placehold.co/560x560/EAF0FC/3960BE?text=Mellissa+Allen',
-    bio: "Mellissa's background, credentials, and the story behind Aunties Tykes go here — send over a few sentences and we'll drop them in exactly as you want them said.",
-    creds: ['Certifications — coming soon'],
-  },
-]
-
-export const galleryItems: GalleryItem[] = [
-  { id: 'g1', slot: 14, category: 'Classroom', title: 'The reading loft', src: 'https://images.unsplash.com/photo-1532789339108-2ebc484efbf1?auto=format&fit=crop&w=900&q=80' },
-  { id: 'g2', slot: 15, category: 'Classroom', title: 'Morning circle rug', src: 'https://images.unsplash.com/photo-1588075592446-265fd1e6e76f?auto=format&fit=crop&w=900&q=80' },
-  { id: 'g3', slot: 16, category: 'Outdoor', title: 'Bike path & garden beds', src: 'https://images.unsplash.com/photo-1768889828432-66e66768d53d?auto=format&fit=crop&w=900&q=80' },
-  { id: 'g4', slot: 17, category: 'Activities', title: 'Sensory corn bin', src: 'https://images.unsplash.com/photo-1567405258710-35a7015252c0?auto=format&fit=crop&w=900&q=80' },
-  { id: 'g5', slot: 18, category: 'Outdoor', title: 'Mud kitchen', src: 'https://images.unsplash.com/photo-1782248411886-60fbf8aced5d?auto=format&fit=crop&w=900&q=80' },
-  { id: 'g6', slot: 19, category: 'Activities', title: 'Friday cooking project', src: 'https://images.unsplash.com/photo-1758874960436-c97920a559cf?auto=format&fit=crop&w=900&q=80' },
-  { id: 'g7', slot: 20, category: 'Classroom', title: 'Nap nook', src: 'https://images.unsplash.com/photo-1672928499632-1d040212e3f4?auto=format&fit=crop&w=900&q=80' },
-  { id: 'g8', slot: 21, category: 'Activities', title: 'Easel painting', src: 'https://images.unsplash.com/photo-1777659261650-c710b00fa04a?auto=format&fit=crop&w=900&q=80' },
-  { id: 'g9', slot: 22, category: 'Outdoor', title: 'Fall leaf hunt', src: 'https://images.unsplash.com/photo-1788309836722-178be447341e?auto=format&fit=crop&w=900&q=80' },
-]
-
-export const testimonials: Testimonial[] = [
-  {
-    id: 'q1',
-    quote:
-      'We visited six other places. Aunties Tykes was the only one where the toddlers ran to the door to greet us. Mellissa sends a photo every single day, and I never wonder how my son is doing.',
-    name: 'Maya',
-    detail: 'mom to Ellie (2) and Miles (5)',
-  },
-  {
-    id: 'q2',
-    quote:
-      'Our daughter has a peanut allergy and I was terrified. Their protocol is tighter than my own kitchen. The peace of mind alone is worth it.',
-    name: 'Daniel',
-    detail: 'dad to Zion (3) and Amara (1)',
-  },
-  {
-    id: 'q3',
-    quote:
-      'Nico came home saying his letter sounds and singing in two languages. It feels like a tiny school run by someone who genuinely loves him.',
-    name: 'Sofia',
-    detail: 'mom to Nico (4)',
-  },
-]
-
-export const faqs: Faq[] = [
-  { q: 'What are your hours?', a: 'We are open Monday through Friday, 7:00 AM to 5:45 PM. Drop-off closes at 9:30 AM so we can start our morning rhythm without interruptions.' },
-  { q: 'What should we pack each day?', a: 'A labeled water bottle, two full changes of clothes (three during potty learning), diapers/wipes if needed, a crib sheet and small blanket for nap, and weather-appropriate outerwear. We provide all meals and snacks.' },
-  { q: 'Do you provide meals?', a: 'Yes. Breakfast, a hot lunch, and an afternoon snack are all included and posted on a monthly menu. We are a peanut-free house and can accommodate most dietary needs with a note from you.' },
-  { q: 'How does nap time work?', a: 'Infants sleep on their own schedule in safe-sleep certified cribs. Toddlers and preschoolers rest from about 12:45 to 2:30. Non-sleepers get quiet books and puzzles on their mat after 45 minutes.' },
-  { q: 'How do you handle potty training?', a: 'We follow your lead and start when your child shows readiness. Bathroom visits happen after meals and before nap, and accidents are treated as a normal part of learning.' },
-  { q: 'What is your sick policy?', a: 'Children need to stay home with a fever of 100.4°F or higher, vomiting or diarrhea, an undiagnosed rash, or draining eyes. They may return 24 hours after symptoms resolve without medication.' },
-  { q: 'Are you insured?', a: 'Yes — we carry liability insurance, and every adult in the home has a cleared background check plus current CPR and First Aid.' },
-  { q: 'How do we get updates during the day?', a: 'Every family gets a parent portal login for daily reports — meals, naps, diapers, mood, and activities. Announcements and invoices live there too.' },
-  { q: 'Is there a waitlist?', a: 'Usually, yes. We keep 12 spots total. Join the waitlist through the contact form and we will tell you honestly where you stand and when we expect an opening.' },
-  { q: 'Do you offer part-time care?', a: 'We offer part-time (three fixed days) and occasional drop-in care when a spot is available. Full-time families always get first choice of schedule.' },
-]
-
-export const revenueTrend: RevenuePoint[] = [
-  { month: 'Jun', collected: 8320, billed: 8800 },
-  { month: 'Jul', collected: 8940, billed: 8940 },
-  { month: 'Aug', collected: 7610, billed: 8100 },
-  { month: 'Sep', collected: 9180, billed: 9400 },
-  { month: 'Oct', collected: 9640, billed: 9880 },
-  { month: 'Nov', collected: 6120, billed: 9760 },
 ]
 
 export const leads: Lead[] = [

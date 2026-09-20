@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Settings as SettingsIcon,
   Building2,
   Calculator,
   ScrollText,
   Save,
-  RotateCcw,
   ExternalLink,
   Info,
 } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
-import { Button, Card, Field, Input, Modal, PageHeader, Select, Tabs, Textarea } from '../../components/ui'
+import { Button, Card, Field, Input, PageHeader, Select, Tabs, Textarea } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { money } from '../../lib/helpers'
 import type { Policies, Rates, Settings } from '../../types'
@@ -39,11 +37,9 @@ export default function AdminSettings() {
   const updateSettings = useStore((s) => s.updateSettings)
   const updateRates = useStore((s) => s.updateRates)
   const updatePolicies = useStore((s) => s.updatePolicies)
-  const resetDemoData = useStore((s) => s.resetDemoData)
   const pushToast = useStore((s) => s.pushToast)
 
   const [tab, setTab] = useState<'business' | 'rates' | 'policies'>('business')
-  const [confirmReset, setConfirmReset] = useState(false)
 
   const initialBusiness = useMemo<BusinessDraft>(() => {
     const { rates: _rates, policies: _policies, ...rest } = settings
@@ -54,7 +50,7 @@ export default function AdminSettings() {
   const [rates, setRates] = useState<Rates>(settings.rates)
   const [policies, setPolicies] = useState<Policies>(settings.policies)
 
-  // Re-sync the drafts whenever the stored settings change (including a demo reset).
+  // Re-sync the drafts whenever the stored settings change.
   useEffect(() => setBusiness(initialBusiness), [initialBusiness])
   useEffect(() => setRates(settings.rates), [settings.rates])
   useEffect(() => setPolicies(settings.policies), [settings.policies])
@@ -79,12 +75,6 @@ export default function AdminSettings() {
   const savePolicies = () => {
     updatePolicies(policies)
     pushToast({ title: 'Policies saved', description: 'Families see the new wording on the Parent Handbook page.' })
-  }
-
-  const doReset = () => {
-    resetDemoData()
-    setConfirmReset(false)
-    pushToast({ tone: 'info', title: 'Demo data reset', description: 'Every record is back to its starting state.' })
   }
 
   return (
@@ -277,47 +267,6 @@ export default function AdminSettings() {
         </Card>
       )}
 
-      <Card className="mt-8 border-rose-200 bg-rose-50/40 p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
-              <SettingsIcon size={19} />
-            </span>
-            <div>
-              <h2 className="font-display text-lg font-bold text-slate-900">Reset the demo</h2>
-              <p className="max-w-xl text-sm text-slate-600">
-                Puts every child, invoice, document, and message back to its starting state. Useful before showing the
-                site to someone new.
-              </p>
-            </div>
-          </div>
-          <Button variant="danger" onClick={() => setConfirmReset(true)}>
-            <RotateCcw size={16} /> Reset demo data
-          </Button>
-        </div>
-      </Card>
-
-      <Modal
-        open={confirmReset}
-        onClose={() => setConfirmReset(false)}
-        title="Reset all demo data?"
-        description="Every change made in this preview will be discarded."
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmReset(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={doReset}>
-              <RotateCcw size={16} /> Reset everything
-            </Button>
-          </>
-        }
-      >
-        <Card className="bg-rose-50/60 p-4 text-sm text-rose-900">
-          Attendance, daily reports, invoices, payments, documents, announcements, and any settings you edited all go
-          back to their original values.
-        </Card>
-      </Modal>
     </PageTransition>
   )
 }

@@ -72,7 +72,7 @@ const guideItems: GuideItem[] = [
     key: 'messages',
     title: 'Messages',
     icon: MessageSquare,
-    body: `Announcements from us, plus a direct line to Mellissa for anything day-to-day — she checks in between naps and after pickup.`,
+    body: `Announcements from us, plus a direct line to Melissa for anything day-to-day — she checks in between naps and after pickup.`,
   },
 ]
 

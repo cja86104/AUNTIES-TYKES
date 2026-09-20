@@ -17,7 +17,7 @@ import {
   TrendingUp,
   Heart,
 } from 'lucide-react'
-import { addDays, format } from 'date-fns'
+import { addDays, format, startOfMonth, subMonths } from 'date-fns'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import PageTransition from '../../components/PageTransition'
 import {
@@ -36,9 +36,8 @@ import { useStore } from '../../store/useStore'
 import { buildCalendar } from '../../lib/calendar'
 import type { CalendarEntryKind } from '../../lib/calendar'
 import { useBootstrap } from '../../lib/hooks'
-import { money, todayISO, fmtTime, fmtDate, invoiceBalance, invoiceStatus, sum, ageLabel } from '../../lib/helpers'
-import { revenueTrend } from '../../data/mockData'
-import type { Child } from '../../types'
+import { money, todayISO, fmtTime, fmtDate, safeDate, invoiceBalance, invoiceStatus, sum, ageLabel } from '../../lib/helpers'
+import type { Child, RevenuePoint } from '../../types'
 
 interface AttendanceTally {
   date: string
@@ -113,6 +112,50 @@ export default function AdminDashboard() {
       .slice(-10)
       .map((d) => ({ ...d, label: fmtDate(d.date, 'MMM d') }))
   }, [attendance])
+
+  /**
+   * Billed vs collected for the last six calendar months, derived from the
+   * invoices themselves.
+   *
+   * `billed` buckets an invoice by its issue date; `collected` buckets each
+   * payment by the date it was recorded, which is why a payment can land in a
+   * later month than the invoice it settles — that lag is the point of the
+   * chart. Months with no activity stay in the series as zeros so the x-axis
+   * is always six evenly spaced months rather than a gap-free line that
+   * implies continuous billing.
+   */
+  const revenueTrend = useMemo<RevenuePoint[]>(() => {
+    const thisMonth = startOfMonth(new Date())
+    const buckets = new Map<string, RevenuePoint>()
+    const order: string[] = []
+    for (let i = 5; i >= 0; i -= 1) {
+      const d = subMonths(thisMonth, i)
+      const key = format(d, 'yyyy-MM')
+      order.push(key)
+      buckets.set(key, { month: format(d, 'MMM'), billed: 0, collected: 0 })
+    }
+
+    const bucketFor = (value: string | null | undefined): RevenuePoint | undefined => {
+      const d = safeDate(value)
+      return d ? buckets.get(format(d, 'yyyy-MM')) : undefined
+    }
+
+    invoices.forEach((inv) => {
+      const issued = bucketFor(inv.issuedAt)
+      if (issued) issued.billed += Number(inv.amount) || 0
+      ;(inv.payments || []).forEach((pay) => {
+        const paidIn = bucketFor(pay.date)
+        if (paidIn) paidIn.collected += Number(pay.amount) || 0
+      })
+    })
+
+    return order.map((k) => buckets.get(k)).filter((p): p is RevenuePoint => p !== undefined)
+  }, [invoices])
+
+  const hasRevenueActivity = useMemo(
+    () => revenueTrend.some((p) => p.billed > 0 || p.collected > 0),
+    [revenueTrend],
+  )
 
   /** Next two months of the Family Calendar, trimmed to what fits a card. */
   const upcoming = useMemo(
@@ -353,6 +396,17 @@ export default function AdminDashboard() {
             </Badge>
           </div>
           <div className="mt-5 h-64">
+            {!hasRevenueActivity ? (
+              <div className="flex h-full items-center">
+                <div className="w-full">
+                  <EmptyState
+                    icon={Wallet}
+                    title="No billing yet"
+                    description="Once you issue invoices and record payments, six months of billed vs collected shows up here."
+                  />
+                </div>
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={revenueTrend} margin={{ left: -18, right: 6, top: 6, bottom: 0 }}>
                 <defs>
@@ -376,6 +430,7 @@ export default function AdminDashboard() {
                 <Area type="monotone" dataKey="collected" stroke="#D98B9B" strokeWidth={2} fill="url(#gCollected)" />
               </AreaChart>
             </ResponsiveContainer>
+            )}
           </div>
         </Card>
 

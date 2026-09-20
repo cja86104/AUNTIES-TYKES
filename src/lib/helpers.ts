@@ -120,3 +120,18 @@ export function bytes(n: number | null | undefined): string {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
   return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }
+
+/**
+ * True when a settings field still holds its seeded "not filled in yet" marker.
+ *
+ * `phone`, `email` and `hours` are seeded as the literal text
+ * `TBD — add before launch` (supabase/migrations/0002) rather than as
+ * plausible-looking values, so an unfilled field is impossible to miss. They
+ * render publicly, and some of them build `tel:` and `mailto:` links — this
+ * guard is what keeps a dead link from shipping while the real value is still
+ * outstanding.
+ */
+export function isPlaceholder(value: string | null | undefined): boolean {
+  if (!value) return true
+  return /^TBD\b/i.test(value.trim())
+}

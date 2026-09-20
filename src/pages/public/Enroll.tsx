@@ -115,26 +115,24 @@ export default function Enroll() {
   const submit = () => {
     if (!validateStep3()) return
     setSubmitting(true)
-    window.setTimeout(() => {
-      submitEnrollment({
-        familyName: familyName.trim(),
-        primaryContact: primaryContact.trim(),
-        relation,
-        email: email.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        secondary,
-        emergency: emergency.filter((c) => c.name.trim() && c.phone.trim()),
-        children: children.map((c) => ({ ...c, name: c.name.trim() })),
-        notes: notes.trim(),
-        // The handbook step was removed from the form; nothing is acknowledged.
-        acknowledgedHandbook: false,
-      })
-      setSubmitting(false)
-      setDone(true)
-      pushToast({ title: 'Enrollment sent', description: 'Mellissa will review it and get back to you.' })
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }, 700)
+    submitEnrollment({
+      familyName: familyName.trim(),
+      primaryContact: primaryContact.trim(),
+      relation,
+      email: email.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
+      secondary,
+      emergency: emergency.filter((c) => c.name.trim() && c.phone.trim()),
+      children: children.map((c) => ({ ...c, name: c.name.trim() })),
+      notes: notes.trim(),
+      // The handbook step was removed from the form; nothing is acknowledged.
+      acknowledgedHandbook: false,
+    })
+    setSubmitting(false)
+    setDone(true)
+    pushToast({ title: 'Enrollment sent', description: 'Melissa will review it and get back to you.' })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   if (done) {
@@ -486,7 +484,7 @@ export default function Enroll() {
                       </Button>
                     )}
 
-                    <Field label="Anything else for Mellissa?" hint="Optional.">
+                    <Field label="Anything else for Melissa?" hint="Optional.">
                       <Textarea
                         rows={3}
                         value={notes}

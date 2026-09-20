@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, CreditCard, Receipt, CheckCircle2, Printer } from 'lucide-react'
+import { ArrowLeft, CreditCard, Receipt, CheckCircle2, Printer, Info } from 'lucide-react'
 import { Card, Badge, Button, Modal, Field, Input, Select, statusTone } from './ui'
 import { useTranslation } from 'react-i18next'
 import { money, fmtDate, invoiceBalance, invoiceStatus } from '../lib/helpers'
@@ -15,11 +15,23 @@ export interface InvoiceViewProps {
   mode?: 'admin' | 'parent'
 }
 
+/**
+ * Payment methods the owner can record.
+ *
+ * These strings are persisted to `payments.method`, so they are deliberately
+ * NOT run through i18n — translating them would write a different value into
+ * the database depending on the admin's language and make the ledger
+ * unreadable. Every option here is a payment taken outside the app: there is
+ * no processor connected, so nothing in this component ever charges anyone.
+ */
+const PAYMENT_METHODS = ['Check', 'Cash', 'Bank transfer', 'Zelle', 'Card (in person)', 'Other'] as const
+
 export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }: InvoiceViewProps) {
   const { t } = useTranslation()
   const [payOpen, setPayOpen] = useState(false)
   const [amount, setAmount] = useState('')
-  const [method, setMethod] = useState('Card •••• 4242')
+  const [method, setMethod] = useState<string>(PAYMENT_METHODS[0])
+  const [reference, setReference] = useState('')
   const recordPayment = useStore((s) => s.recordPayment)
   const pushToast = useStore((s) => s.pushToast)
 
@@ -27,8 +39,15 @@ export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }:
   const status = invoiceStatus(invoice)
   const paid = (invoice.payments || []).reduce((s, p) => s + p.amount, 0)
 
+  // Recording a payment is an owner action only. A parent pressing a button
+  // here would write a payment row against an invoice with no money behind it,
+  // so the parent view reports the balance and stops there.
+  const canRecord = mode === 'admin'
+
   const openPay = () => {
     setAmount(String(balance.toFixed(2)))
+    setMethod(PAYMENT_METHODS[0])
+    setReference('')
     setPayOpen(true)
   }
 
@@ -39,10 +58,10 @@ export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }:
       pushToast({ tone: 'error', title: t('invoiceView.toastErrorTitle'), description: t('invoiceView.toastErrorDesc') })
       return
     }
-    recordPayment(invoice.id, { amount: value, method, ref: `DEMO-${Math.floor(Math.random() * 90000 + 10000)}` })
+    recordPayment(invoice.id, { amount: value, method, ref: reference.trim() })
     setPayOpen(false)
     pushToast({
-      title: mode === 'parent' ? t('invoiceView.toastSubmittedTitle') : t('invoiceView.toastRecordedTitle'),
+      title: t('invoiceView.toastRecordedTitle'),
       description: `${t('invoiceView.toastPaymentDesc', { amount: money(value), id: invoice.id, partial: value < balance ? t('invoiceView.partialSuffix') : '' })}.`,
     })
   }
@@ -146,14 +165,14 @@ export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }:
             </h3>
             <p className="mt-1.5 text-sm text-slate-600">
               {balance > 0
-                ? mode === 'parent'
-                  ? t('invoiceView.payDescParent')
-                  : t('invoiceView.payDescAdmin')
+                ? canRecord
+                  ? t('invoiceView.payDescAdmin')
+                  : t('invoiceView.payDescParent')
                 : t('invoiceView.paidThanks')}
             </p>
-            {balance > 0 && (
-              <Button onClick={openPay} className="mt-4 w-full" variant={mode === 'parent' ? 'primary' : 'accent'}>
-                <CreditCard size={16} /> {mode === 'parent' ? t('invoiceView.payAmount', { amount: money(balance) }) : t('invoiceView.recordPayment')}
+            {balance > 0 && canRecord && (
+              <Button onClick={openPay} className="mt-4 w-full" variant="accent">
+                <CreditCard size={16} /> {t('invoiceView.recordPayment')}
               </Button>
             )}
             <Button variant="outline" className="mt-2.5 w-full" onClick={() => window.print()}>
@@ -173,7 +192,7 @@ export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }:
                       <p className="text-xs text-slate-500">
                         {fmtDate(p.date)} · {p.method}
                       </p>
-                      <p className="text-xs text-slate-400">{t('invoiceView.ref', { ref: p.ref })}</p>
+                      {p.ref && <p className="text-xs text-slate-400">{t('invoiceView.ref', { ref: p.ref })}</p>}
                     </div>
                   </li>
                 ))}
@@ -187,36 +206,40 @@ export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }:
         </div>
       </div>
 
-      <Modal
-        open={payOpen}
-        onClose={() => setPayOpen(false)}
-        title={mode === 'parent' ? t('invoiceView.payInvoiceTitle') : t('invoiceView.recordPaymentTitle')}
-        description={t('invoiceView.modalDesc', { id: invoice.id, amount: money(balance) })}
-      >
-        <form onSubmit={submitPayment} className="space-y-4">
-          <Field label={t('invoiceView.amountUsd')}>
-            <Input type="number" step="0.01" min="0" max={balance} value={amount} onChange={(e) => setAmount(e.target.value)} required />
-          </Field>
-          <Field label={t('invoiceView.method')}>
-            <Select value={method} onChange={(e) => setMethod(e.target.value)}>
-              <option>Card •••• 4242</option>
-              <option>ACH transfer</option>
-              <option>Check</option>
-              <option>Cash</option>
-              <option>Zelle</option>
-            </Select>
-          </Field>
-          <p className="rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-500">
-            {t('invoiceView.disclaimer')}
-          </p>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setPayOpen(false)}>
-              {t('invoiceView.cancel')}
-            </Button>
-            <Button type="submit">{t('invoiceView.apply', { amount: money(Number(amount) || 0) })}</Button>
-          </div>
-        </form>
-      </Modal>
+      {canRecord && (
+        <Modal
+          open={payOpen}
+          onClose={() => setPayOpen(false)}
+          title={t('invoiceView.recordPaymentTitle')}
+          description={t('invoiceView.modalDesc', { id: invoice.id, amount: money(balance) })}
+        >
+          <form onSubmit={submitPayment} className="space-y-4">
+            <Field label={t('invoiceView.amountUsd')}>
+              <Input type="number" step="0.01" min="0" max={balance} value={amount} onChange={(e) => setAmount(e.target.value)} required />
+            </Field>
+            <Field label={t('invoiceView.method')}>
+              <Select value={method} onChange={(e) => setMethod(e.target.value)}>
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={t('invoiceView.reference')} hint={t('invoiceView.referenceHint')}>
+              <Input value={reference} onChange={(e) => setReference(e.target.value)} />
+            </Field>
+            <p className="flex items-start gap-2.5 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-500">
+              <Info size={15} className="mt-0.5 shrink-0" />
+              {t('invoiceView.recordNote')}
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setPayOpen(false)}>
+                {t('invoiceView.cancel')}
+              </Button>
+              <Button type="submit">{t('invoiceView.apply', { amount: money(Number(amount) || 0) })}</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }

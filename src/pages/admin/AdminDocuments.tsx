@@ -30,7 +30,7 @@ import { useStore } from '../../store/useStore'
 import { bytes, fmtDate } from '../../lib/helpers'
 import { downloadDocument, removeDocumentFile } from '../../lib/storage'
 import { useSectionSeen } from '../../lib/unread'
-import { documentCategories } from '../../data/mockData'
+import { documentCategories } from '../../data/content'
 import type { DocumentCategory, DocumentRecord, UploadedFileMeta } from '../../types'
 
 export default function AdminDocuments() {

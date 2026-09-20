@@ -4,11 +4,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion } from 'framer-motion'
-import { ArrowLeft, LogIn, ShieldCheck, AlertTriangle, Sparkles, KeyRound } from 'lucide-react'
-import { Button, Card, Field, Input, Badge } from '../../components/ui'
-import type { Tone } from '../../components/ui'
+import { ArrowLeft, LogIn, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { Button, Card, Field, Input } from '../../components/ui'
 import { useStore } from '../../store/useStore'
-import { DEMO_MODE } from '../../lib/config'
+import { isPlaceholder } from '../../lib/helpers'
 import type { Role } from '../../types'
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -30,19 +29,6 @@ function redirectTargetFrom(state: unknown): string | undefined {
   return typeof from === 'string' && from.startsWith('/') ? from : undefined
 }
 
-interface DemoAccount {
-  label: string
-  email: string
-  password: string
-  tone: Tone
-}
-
-const demos: DemoAccount[] = [
-  { label: 'Owner / Director', email: 'auntie@auntiestykes.com', password: 'tykes2024', tone: 'blue' },
-  { label: 'Parent (Brooks family)', email: 'maya@example.com', password: 'parent123', tone: 'green' },
-  { label: 'Parent (Okafor family)', email: 'daniel@example.com', password: 'parent123', tone: 'amber' },
-]
-
 export default function Login() {
   const user = useStore((s) => s.user)
   const login = useStore((s) => s.login)
@@ -55,7 +41,6 @@ export default function Login() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
 
@@ -71,9 +56,6 @@ export default function Login() {
 
   const onSubmit = async (values: LoginValues) => {
     setFormError('')
-    // The demo fakes latency so the pending state is visible; live mode gets
-    // its latency from the real Supabase round trip.
-    if (DEMO_MODE) await new Promise((r) => setTimeout(r, 600))
     const res = await login(values.email, values.password)
     if (!res.ok) {
       setFormError(res.error)
@@ -87,11 +69,10 @@ export default function Login() {
     navigate(destinationFor(res.user.role), { replace: true })
   }
 
-  const fill = (d: DemoAccount) => {
-    setValue('email', d.email, { shouldValidate: true })
-    setValue('password', d.password, { shouldValidate: true })
-    setFormError('')
-  }
+  // The phone number is seeded as a marked placeholder until the owner supplies
+  // it. Rendering `tel:TBD — add before launch` would ship a dead link, so the
+  // sentence drops the call-to-action until there is a real number behind it.
+  const phoneReady = !isPlaceholder(settings.phone)
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#FCF7EA]">
@@ -129,33 +110,16 @@ export default function Login() {
               house.
             </p>
 
-            <div className="mt-9 overflow-hidden rounded-2xl border border-slate-200 bg-white/80 backdrop-blur">
-              <div className="h-48 w-full overflow-hidden bg-slate-100">
-                <img
-                  data-aiwp-slot="5"
-                  src="https://placehold.co/900x480/EAF0FC/3960BE?text=Inside+the+parent+portal"
-                  alt="Preview of the Aunties Tykes parent portal"
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-              <div className="flex items-center gap-2.5 px-5 py-4 text-xs font-semibold text-slate-500">
-                <ShieldCheck size={15} className="text-[#D98B9B]" />
-                {DEMO_MODE
-                  ? 'Demo build — data lives only in this browser.'
-                  : 'Your family portal — daily reports, invoices, and documents.'}
-              </div>
+            <div className="mt-9 flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white/80 px-5 py-4 text-xs font-semibold text-slate-500 backdrop-blur">
+              <ShieldCheck size={15} className="shrink-0 text-[#D98B9B]" />
+              Your family portal — daily reports, invoices, and documents.
             </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
             <Card className="p-7 sm:p-9">
               <h2 className="font-display text-2xl font-extrabold text-slate-900">Sign in</h2>
-              <p className="mt-1.5 text-sm text-slate-500">
-                {DEMO_MODE
-                  ? 'Use your family email, or try a demo account below.'
-                  : 'Use the email and password Aunties Tykes gave you.'}
-              </p>
+              <p className="mt-1.5 text-sm text-slate-500">Use the email and password Aunties Tykes gave you.</p>
 
               <form
                 onSubmit={(e) => {
@@ -199,42 +163,20 @@ export default function Login() {
                 </Button>
               </form>
 
-              {DEMO_MODE ? (
-              <div className="mt-8 border-t border-slate-200 pt-6">
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                  <Sparkles size={14} className="text-[#F5B942]" /> Demo logins
-                </p>
-                <div className="mt-3.5 space-y-2.5">
-                  {demos.map((d) => (
-                    <button
-                      key={d.email}
-                      type="button"
-                      onClick={() => fill(d)}
-                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-[#3F8570] hover:bg-[#3F8570]/5"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-bold text-slate-900">{d.label}</span>
-                        <span className="block truncate text-xs text-slate-500">
-                          {d.email} · {d.password}
-                        </span>
-                      </span>
-                      <Badge tone={d.tone}>
-                        <KeyRound size={12} /> Use
-                      </Badge>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              ) : (
-                <p className="mt-8 border-t border-slate-200 pt-6 text-xs leading-relaxed text-slate-500">
-                  Accounts are created by Aunties Tykes — there is no sign-up. If you need a login or have forgotten your
-                  password, call us at{' '}
-                  <a href={`tel:${settings.phone}`} className="font-semibold text-[#3F8570] hover:underline">
-                    {settings.phone}
-                  </a>
-                  .
-                </p>
-              )}
+              <p className="mt-8 border-t border-slate-200 pt-6 text-xs leading-relaxed text-slate-500">
+                Accounts are created by Aunties Tykes — there is no sign-up.{' '}
+                {phoneReady ? (
+                  <>
+                    If you need a login or have forgotten your password, call us at{' '}
+                    <a href={`tel:${settings.phone}`} className="font-semibold text-[#3F8570] hover:underline">
+                      {settings.phone}
+                    </a>
+                    .
+                  </>
+                ) : (
+                  <>If you need a login or have forgotten your password, get in touch with us directly.</>
+                )}
+              </p>
             </Card>
           </motion.div>
         </div>

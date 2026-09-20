@@ -65,7 +65,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* A note from Mellissa */}
+      {/* A note from Melissa */}
       <section className="px-5 py-20 lg:px-8">
         <Reveal>
           <div className="mx-auto max-w-5xl text-center">
@@ -80,7 +80,7 @@ export default function Home() {
               style={{ fontFamily: "'Caveat', cursive" }}
               className="mt-6 text-3xl text-[#3F8570] sm:text-4xl"
             >
-              — Mellissa
+              — Melissa
             </p>
           </div>
         </Reveal>
