@@ -6,7 +6,7 @@ import {
   CalendarDays,
   ClipboardList,
   Users,
-  Baby,
+  UserRound,
   ClipboardCheck,
   NotebookPen,
   Wallet,
@@ -27,7 +27,7 @@ import { cx } from '../lib/helpers'
 const nav = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/families', label: 'Families', icon: Users },
-  { to: '/admin/children', label: 'Children', icon: Baby },
+  { to: '/admin/children', label: 'Children', icon: UserRound },
   { to: '/admin/calendar', label: 'Family Calendar', icon: CalendarDays },
   { to: '/admin/attendance', label: 'Attendance', icon: ClipboardCheck },
   { to: '/admin/daily-logs', label: 'Daily Logs', icon: NotebookPen },
@@ -68,8 +68,8 @@ export default function AdminLayout() {
   const SidebarInner = (
     <div className="flex h-full flex-col">
       <Link to="/" className="flex items-center gap-3 px-5 py-5">
-        <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#D98B9B] to-[#3F8570] shadow-[0_6px_16px_-6px_rgba(217,139,155,0.7)]">
-          <Heart size={18} className="fill-white text-white" />
+        <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#D98B9B] to-[#3F8570] shadow-control">
+          <Heart size={20} strokeWidth={1.75} className="fill-white text-white" />
         </span>
         <span className="leading-tight">
           <span className="block font-script text-2xl font-semibold text-white">Aunties Tykes</span>
@@ -84,14 +84,18 @@ export default function AdminLayout() {
             to={n.to}
             className={({ isActive }) =>
               cx(
-                'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all',
+                'group flex items-center gap-3 rounded-control px-3 py-2.5 text-sm font-semibold transition-all',
                 isActive ? 'bg-white/12 text-white' : 'text-white/60 hover:bg-white/8 hover:text-white',
               )
             }
           >
             {({ isActive }) => (
               <>
-                <n.icon size={17} className={cx('shrink-0 transition', isActive ? 'text-[#F5B942]' : 'group-hover:text-white')} />
+                <n.icon
+                  size={20}
+                  strokeWidth={1.75}
+                  className={cx('shrink-0 transition', isActive ? 'text-[#F5B942]' : 'group-hover:text-white')}
+                />
                 {n.label}
                 {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#F5B942]" />}
               </>
@@ -103,15 +107,15 @@ export default function AdminLayout() {
       <div className="border-t border-white/10 p-3">
         <Link
           to="/"
-          className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/60 transition hover:bg-white/8 hover:text-white"
+          className="flex items-center gap-2 rounded-control px-3 py-2.5 text-sm font-semibold text-white/60 transition hover:bg-white/8 hover:text-white"
         >
-          <ExternalLink size={16} /> View public site
+          <ExternalLink size={20} strokeWidth={1.75} /> View public site
         </Link>
         <button
           onClick={doLogout}
-          className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/60 transition hover:bg-rose-500/20 hover:text-rose-200"
+          className="mt-1 flex w-full items-center gap-2 rounded-control px-3 py-2.5 text-sm font-semibold text-white/60 transition hover:bg-rose-500/20 hover:text-rose-200"
         >
-          <LogOut size={16} /> Sign out
+          <LogOut size={20} strokeWidth={1.75} /> Sign out
         </button>
       </div>
     </div>
@@ -119,7 +123,7 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-[#F7F1E4]">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 bg-[#1F2537] lg:block">{SidebarInner}</aside>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[370px] bg-[#1F2537] lg:block">{SidebarInner}</aside>
 
       <AnimatePresence>
         {open && (
@@ -144,16 +148,16 @@ export default function AdminLayout() {
         )}
       </AnimatePresence>
 
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
+      <div className="lg:pl-[370px]">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
+          <div className="flex items-center justify-between gap-4 px-6 py-4 sm:px-8 lg:px-10">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setOpen(true)}
-                className="rounded-xl border border-slate-300 p-2 text-slate-600 transition hover:border-[#3F8570] hover:text-[#3F8570] lg:hidden"
+                className="rounded-control border border-slate-300 p-2 text-slate-600 transition hover:border-brand hover:text-brand lg:hidden"
                 aria-label="Open navigation"
               >
-                <Menu size={18} />
+                <Menu size={20} strokeWidth={1.75} />
               </button>
               <div>
                 <p className="font-display text-sm font-extrabold text-slate-900">Aunties Tykes — Admin</p>
@@ -168,16 +172,16 @@ export default function AdminLayout() {
               <Avatar name={user?.name || 'Admin'} hue="from-[#3F8570] to-[#D98B9B]" size="md" />
               <button
                 onClick={doLogout}
-                className="rounded-xl border border-slate-300 p-2 text-slate-500 transition hover:border-rose-300 hover:text-rose-600"
+                className="rounded-control border border-slate-300 p-2 text-slate-500 transition hover:border-rose-300 hover:text-rose-600"
                 aria-label="Sign out"
               >
-                <LogOut size={17} />
+                <LogOut size={20} strokeWidth={1.75} />
               </button>
             </div>
           </div>
         </header>
 
-        <main className="px-4 py-7 sm:px-6 lg:px-8">
+        <main className="px-6 py-10 sm:px-8 lg:px-12">
           <Outlet />
         </main>
       </div>

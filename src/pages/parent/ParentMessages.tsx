@@ -124,7 +124,7 @@ export default function ParentMessages() {
                 transition={{ delay: Math.min(i * 0.06, 0.35) }}
               >
                 <Card hover className="h-full overflow-hidden">
-                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-gradient-to-br from-[#FDF1DC] to-white px-5 py-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-[#FDF1DC] px-5 py-4">
                     <div className="min-w-0">
                       <h3 className="font-display text-base font-bold text-slate-900">{a.title}</h3>
                       <p className="mt-0.5 text-xs text-slate-500">{fmtDate(a.date, 'EEEE, MMMM d')}</p>
@@ -206,7 +206,7 @@ export default function ParentMessages() {
                       <Avatar
                         name={m.authorName}
                         size="sm"
-                        hue={mine ? 'from-[#F5B942] to-[#D98B9B]' : 'from-[#3F8570] to-[#7DA0F0]'}
+                        hue={mine ? 'from-[#F5B942] to-[#D98B9B]' : 'from-[#3F8570] to-[#D98B9B]'}
                       />
                       <div className={`max-w-[80%] ${mine ? 'text-right' : ''}`}>
                         <p className="text-xs font-semibold text-slate-500">

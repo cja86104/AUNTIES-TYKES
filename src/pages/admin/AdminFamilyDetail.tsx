@@ -6,7 +6,7 @@ import {
   Phone,
   MapPin,
   Users,
-  Baby,
+  UserRound,
   ReceiptText,
   MessageSquare,
   ArrowRight,
@@ -132,7 +132,7 @@ export default function AdminFamilyDetail() {
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg font-bold text-slate-900">Children</h2>
               <Badge tone="blue">
-                <Baby size={12} /> {kids.length}
+                <UserRound size={12} /> {kids.length}
               </Badge>
             </div>
             {kids.length === 0 ? (

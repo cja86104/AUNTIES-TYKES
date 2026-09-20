@@ -224,8 +224,11 @@
     "dropFile": "Drop your file here or browse",
     "toastThanksTitle": "Thanks — we got it",
     "toastThanksDesc": "{{title}} was sent to Auntie Melissa for your child's file.",
-    "toastDemoTitle": "Demo build — no file attached",
-    "toastDemoDesc": "{{title}} is a placeholder record in this preview.",
+    "toastUploadFailedTitle": "That file was not uploaded",
+    "toastNoFileTitle": "No file on this record",
+    "toastNoFileDesc": "{{title}} was shared without an attachment.",
+    "toastDownloadFailedTitle": "That download did not open",
+    "toastDownloadFailedDesc": "Check your connection and try again.",
     "toastAckTitle": "Thank you",
     "toastAckDesc": "We've noted that you read {{title}}."
   },

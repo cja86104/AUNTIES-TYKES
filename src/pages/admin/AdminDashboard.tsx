@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import {
-  Baby,
+  UserRound,
   Users,
   Wallet,
   ClipboardCheck,
@@ -173,7 +173,7 @@ export default function AdminDashboard() {
       <PageHeader
         title={
           <span className="inline-flex items-center gap-2.5">
-            <Heart size={22} className="fill-[#D98B9B] text-[#D98B9B]" />
+            <Heart size={22} strokeWidth={1.75} className="fill-[#D98B9B] text-[#D98B9B]" />
             Good day, {user?.name.split(' ')[0] ?? 'there'}
           </span>
         }
@@ -194,7 +194,7 @@ export default function AdminDashboard() {
 
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          icon={Baby}
+          icon={UserRound}
           label="Enrolled children"
           value={active.length}
           sub={`${children.filter((c) => c.status === 'waitlist').length} on the waitlist`}
@@ -242,7 +242,7 @@ export default function AdminDashboard() {
 
           {rows.length === 0 ? (
             <div className="p-5">
-              <EmptyState icon={Baby} title="No active children" description="Enroll a child to start tracking attendance." />
+              <EmptyState icon={UserRound} title="No active children" description="Enroll a child to start tracking attendance." />
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">

@@ -185,6 +185,8 @@ export interface DocumentRecord {
   category: DocumentCategory
   size?: number
   fileName?: string
+  /** Object key in the private `documents` bucket. Absent = no file behind it. */
+  storagePath?: string
   visibleToParents: boolean
   uploadedBy: string
   uploadedAt: string
@@ -192,11 +194,13 @@ export interface DocumentRecord {
   requiresAck: boolean
 }
 
-/** Metadata handed back by the demo FileUploader once a file "finishes". */
+/** Metadata handed back by FileUploader once a file is stored. */
 export interface UploadedFileMeta {
   title: string
   fileName: string
   size: number
+  /** Where the file actually landed. */
+  storagePath: string
 }
 
 /** Fields a caller supplies to the store; the rest are defaulted. */

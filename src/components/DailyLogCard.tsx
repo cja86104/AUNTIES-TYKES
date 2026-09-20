@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Utensils, Moon, Baby, Smile, Sparkles, NotebookPen } from 'lucide-react'
+import { Utensils, Moon, UserRound, Smile, Sparkles, NotebookPen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Card, Badge, Avatar } from './ui'
 import { fmtDay } from '../lib/helpers'
@@ -60,7 +60,7 @@ export default function DailyLogCard({ log, child, index = 0, actions }: DailyLo
         <div className="grid gap-5 p-5 sm:grid-cols-2">
           <Row icon={Utensils} label={t('dailyLogCard.meals')}>{log.meals}</Row>
           <Row icon={Moon} label={t('dailyLogCard.naps')}>{log.naps}</Row>
-          <Row icon={Baby} label={t('dailyLogCard.diapersPotty')}>{log.potty}</Row>
+          <Row icon={UserRound} label={t('dailyLogCard.diapersPotty')}>{log.potty}</Row>
           <Row icon={Sparkles} label={t('dailyLogCard.activities')}>{log.activities.join(' · ')}</Row>
           <div className="sm:col-span-2">
             <Row icon={NotebookPen} label={t('dailyLogCard.noteFrom', { author: log.author || t('dailyLogCard.defaultAuthor') })}>{log.notes || '—'}</Row>

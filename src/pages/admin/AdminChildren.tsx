@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Search, Baby, ArrowRight, ShieldAlert, Pill, CalendarCheck, UserPlus } from 'lucide-react'
+import { Search, UserRound, ArrowRight, ShieldAlert, Pill, CalendarCheck, UserPlus } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
   Card,
@@ -115,7 +115,7 @@ export default function AdminChildren() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          icon={Baby}
+          icon={UserRound}
           title="No children matched"
           description="Adjust the filter or clear your search."
           action={

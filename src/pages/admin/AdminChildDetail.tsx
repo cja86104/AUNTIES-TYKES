@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
-  Baby,
+  UserRound,
   ShieldAlert,
   Pill,
   StickyNote,
@@ -79,7 +79,7 @@ export default function AdminChildDetail() {
     return (
       <PageTransition>
         <EmptyState
-          icon={Baby}
+          icon={UserRound}
           title="Child not found"
           description="This profile may have been removed."
           action={

@@ -28,6 +28,7 @@ import {
 import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
 import { bytes, fmtDate } from '../../lib/helpers'
+import { documentDownloadUrl, removeDocumentFile } from '../../lib/storage'
 import { documentCategories } from '../../data/mockData'
 import type { DocumentCategory, DocumentRecord, UploadedFileMeta } from '../../types'
 
@@ -76,6 +77,7 @@ export default function AdminDocuments() {
       title: meta.title,
       fileName: meta.fileName,
       size: meta.size,
+      storagePath: meta.storagePath,
       category: uploadCategory,
       visibleToParents: uploadVisible,
       requiresAck: uploadRequiresAck,
@@ -86,19 +88,51 @@ export default function AdminDocuments() {
     })
   }
 
+  const onUploadError = (message: string) => {
+    pushToast({ tone: 'error', title: 'That file was not uploaded', description: message })
+  }
+
   const doDelete = () => {
     if (!confirmDelete) return
-    deleteDocument(confirmDelete.id)
-    pushToast({ tone: 'info', title: 'Document removed', description: `${confirmDelete.title} was deleted.` })
+    const { id, title, storagePath } = confirmDelete
+    // Drop the file first: a deleted row with a surviving object would leave
+    // the family able to fetch it straight from their own storage prefix.
+    if (storagePath) {
+      void removeDocumentFile(storagePath).catch((error: unknown) => {
+        pushToast({
+          tone: 'error',
+          title: 'The record went, the file stayed',
+          description:
+            error instanceof Error ? error.message : 'The stored file could not be removed.',
+        })
+      })
+    }
+    deleteDocument(id)
+    pushToast({ tone: 'info', title: 'Document removed', description: `${title} was deleted.` })
     setConfirmDelete(null)
   }
 
   const onDownload = (doc: DocumentRecord) => {
-    pushToast({
-      tone: 'info',
-      title: 'Demo build — no file attached',
-      description: `${doc.title} is a placeholder record. Real files download here once storage is connected.`,
-    })
+    if (!doc.storagePath) {
+      pushToast({
+        tone: 'info',
+        title: 'No file on this record',
+        description: `${doc.title} was filed without an attachment. Upload the file to replace it.`,
+      })
+      return
+    }
+    void documentDownloadUrl(doc.storagePath)
+      .then((url) => {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      })
+      .catch((error: unknown) => {
+        pushToast({
+          tone: 'error',
+          title: 'That download did not open',
+          description:
+            error instanceof Error ? error.message : 'Check your connection and try again.',
+        })
+      })
   }
 
   return (
@@ -130,7 +164,7 @@ export default function AdminDocuments() {
       <Card className="mt-6 p-5">
         <h2 className="font-display text-lg font-bold text-slate-900">Upload a document</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Choose where it files and who sees it, then drop the file. This preview keeps the record locally — no file leaves your browser.
+          Choose where it files and who sees it, then drop the file. Files are stored privately — only a signed-in account with permission can open one.
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -158,7 +192,7 @@ export default function AdminDocuments() {
         </div>
 
         <div className="mt-4">
-          <FileUploader onUploaded={onUploaded} />
+          <FileUploader prefix="admin" onUploaded={onUploaded} onError={onUploadError} />
         </div>
       </Card>
 
@@ -200,7 +234,7 @@ export default function AdminDocuments() {
                 transition={{ delay: Math.min(i * 0.04, 0.3) }}
                 className="flex flex-wrap items-center gap-3 px-5 py-4"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#E8F3EE] to-white text-[#3F8570]">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#3F8570]">
                   <FileText size={19} />
                 </span>
 

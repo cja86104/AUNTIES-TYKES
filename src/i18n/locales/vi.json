@@ -224,8 +224,11 @@
     "dropFile": "Kéo tệp vào đây hoặc chọn từ máy",
     "toastThanksTitle": "Cảm ơn — chúng tôi đã nhận được",
     "toastThanksDesc": "{{title}} đã được gửi cho Auntie Melissa để lưu vào hồ sơ con bạn.",
-    "toastDemoTitle": "Bản demo — không có tệp đính kèm",
-    "toastDemoDesc": "{{title}} là dữ liệu mẫu trong bản xem trước này.",
+    "toastUploadFailedTitle": "Tệp đó chưa được tải lên",
+    "toastNoFileTitle": "Mục này không có tệp đính kèm",
+    "toastNoFileDesc": "{{title}} được chia sẻ mà không có tệp đính kèm.",
+    "toastDownloadFailedTitle": "Không mở được tệp tải xuống",
+    "toastDownloadFailedDesc": "Vui lòng kiểm tra kết nối và thử lại.",
     "toastAckTitle": "Cảm ơn bạn",
     "toastAckDesc": "Chúng tôi đã ghi nhận rằng bạn đã đọc {{title}}."
   },

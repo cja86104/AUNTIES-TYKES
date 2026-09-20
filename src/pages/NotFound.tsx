@@ -25,7 +25,7 @@ export default function NotFound() {
         className="relative w-full max-w-2xl"
       >
         <Card className="p-8 text-center sm:p-12">
-          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#E8F3EE] to-[#FDF1DC] text-[#3F8570]">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E8F3EE] text-[#3F8570]">
             <Compass size={28} />
           </span>
           <p className="mt-6 font-display text-6xl font-black tracking-tight text-slate-900">404</p>

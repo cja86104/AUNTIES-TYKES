@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
-  Baby,
+  UserRound,
   AlertTriangle,
   Pill,
   NotebookPen,
@@ -32,7 +32,7 @@ export default function ParentChildDetail() {
     return (
       <PageTransition>
         <EmptyState
-          icon={Baby}
+          icon={UserRound}
           title={t('childDetail.notFoundTitle')}
           description={t('childDetail.notFoundDesc')}
           action={
@@ -68,7 +68,7 @@ export default function ParentChildDetail() {
       </Link>
 
       <Card className="overflow-hidden">
-        <div className="flex flex-wrap items-center gap-5 bg-gradient-to-br from-[#E8F3EE] to-white px-6 py-6">
+        <div className="flex flex-wrap items-center gap-5 bg-[#E8F3EE] px-6 py-6">
           <Avatar name={child.name} hue={child.hue} size="xl" />
           <div className="min-w-0 flex-1">
             <h1 className="font-display text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">

@@ -3,7 +3,7 @@ import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-do
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   LayoutDashboard,
-  Baby,
+  UserRound,
   NotebookPen,
   ClipboardCheck,
   CalendarDays,
@@ -21,7 +21,7 @@ import { setPortalLanguage } from '../i18n'
 
 const nav = [
   { to: '/parent/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
-  { to: '/parent/children', labelKey: 'nav.myChildren', icon: Baby },
+  { to: '/parent/children', labelKey: 'nav.myChildren', icon: UserRound },
   { to: '/parent/daily-reports', labelKey: 'nav.dailyReports', icon: NotebookPen },
   { to: '/parent/attendance', labelKey: 'nav.attendance', icon: ClipboardCheck },
   { to: '/parent/calendar', labelKey: 'nav.calendar', icon: CalendarDays },
@@ -56,7 +56,7 @@ export default function ParentLayout() {
 
   return (
     <div className="min-h-screen bg-[#FCF7EA]">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
           <Link to="/parent/dashboard" className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#3F8570] to-[#D98B9B]">

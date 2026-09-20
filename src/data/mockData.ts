@@ -146,7 +146,7 @@ export const children: Child[] = [
     allergies: ['Strawberries (mild hives)'],
     medications: [],
     notes: 'Naps best with the yellow blanket. Loves the sensory bin.',
-    hue: 'from-[#3F8570] to-[#7DA0F0]',
+    hue: 'from-[#3F8570] to-[#D98B9B]',
   },
   {
     id: 'c2',

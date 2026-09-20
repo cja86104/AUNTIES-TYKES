@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import {
-  Baby,
+  UserRound,
   Wallet,
   CalendarClock,
   Megaphone,
@@ -81,7 +81,7 @@ export default function ParentDashboard() {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            icon={Baby}
+            icon={UserRound}
             label={t('dashboard.statChildren')}
             value={activeKids.length}
             sub={kids.length > activeKids.length ? t('dashboard.statChildrenSubWaitlist', { count: kids.length - activeKids.length }) : t('dashboard.statChildrenSubEnrolled')}
@@ -128,7 +128,7 @@ export default function ParentDashboard() {
             {todayRows.length === 0 ? (
               <div className="p-5">
                 <EmptyState
-                  icon={Baby}
+                  icon={UserRound}
                   title={t('dashboard.noChildrenTitle')}
                   description={t('dashboard.noChildrenDesc')}
                 />
@@ -220,7 +220,7 @@ export default function ParentDashboard() {
 
           {latestAnnouncement && (
             <Card className="overflow-hidden">
-              <div className="border-b border-slate-100 bg-gradient-to-br from-[#FDF1DC] to-white px-5 py-4">
+              <div className="border-b border-slate-100 bg-[#FDF1DC] px-5 py-4">
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#8a6112]">{t('dashboard.latestAnnouncement')}</p>
                 <h3 className="mt-1 font-display text-base font-bold text-slate-900">{latestAnnouncement.title}</h3>
                 <p className="text-xs text-slate-500">{fmtDate(latestAnnouncement.date, 'EEEE, MMMM d')}</p>

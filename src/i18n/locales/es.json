@@ -224,8 +224,11 @@
     "dropFile": "Suelta tu archivo aquí o explóralo",
     "toastThanksTitle": "Gracias — lo recibimos",
     "toastThanksDesc": "{{title}} fue enviado a Auntie Melissa para el expediente de tu hijo/a.",
-    "toastDemoTitle": "Versión demo — sin archivo adjunto",
-    "toastDemoDesc": "{{title}} es un registro de ejemplo en esta vista previa.",
+    "toastUploadFailedTitle": "Ese archivo no se subió",
+    "toastNoFileTitle": "Este registro no tiene archivo",
+    "toastNoFileDesc": "{{title}} se compartió sin un archivo adjunto.",
+    "toastDownloadFailedTitle": "La descarga no se abrió",
+    "toastDownloadFailedDesc": "Revisa tu conexión e inténtalo de nuevo.",
     "toastAckTitle": "Gracias",
     "toastAckDesc": "Hemos registrado que leíste {{title}}."
   },

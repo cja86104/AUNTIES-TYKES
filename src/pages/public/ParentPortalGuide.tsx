@@ -7,7 +7,7 @@ import {
   ArrowRight,
   LayoutDashboard,
   LogIn,
-  Baby,
+  UserRound,
   NotebookPen,
   ClipboardCheck,
   Wallet,
@@ -41,7 +41,7 @@ const guideItems: GuideItem[] = [
   {
     key: 'myChildren',
     title: 'My Children',
-    icon: Baby,
+    icon: UserRound,
     body: `Each child's profile lives here — allergies, emergency contacts, and everything we keep on file. If anything's out of date, just send us a message and we'll fix it.`,
   },
   {
@@ -164,7 +164,7 @@ export default function ParentPortalGuide() {
 
       <section className="px-5 py-10 lg:px-8">
         <Reveal>
-          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-[#D98B9B]/30 bg-gradient-to-br from-[#FDF1DC] via-white to-[#FBEEF1] px-6 py-14 text-center sm:px-14">
+          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-[#D98B9B]/30 bg-[#FDF1DC] px-6 py-14 text-center sm:px-14">
             <div className="at-grid-dots absolute inset-0 opacity-20" aria-hidden="true" />
             <div className="relative">
               <h2 className="mx-auto max-w-2xl font-display text-3xl font-extrabold leading-tight text-slate-900 sm:text-4xl">

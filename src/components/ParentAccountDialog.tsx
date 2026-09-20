@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { KeyRound, Copy, Baby, ShieldCheck, Eye, EyeOff } from 'lucide-react'
+import { KeyRound, Copy, UserRound, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { Button, Card, Field, Input, Modal, Select, Badge } from './ui'
 import { useStore } from '../store/useStore'
 import type { Language, PortalCredentials } from '../types'
@@ -142,7 +142,7 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
           {linkedChildren.length > 0 && (
             <div className="rounded-2xl bg-[#FBEEF1]/60 p-4">
               <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#1f6152]">
-                <Baby size={13} /> This account can see
+                <UserRound size={13} /> This account can see
               </p>
               <p className="mt-1.5 text-sm text-slate-700">
                 {linkedChildren.map((c) => c.name).join(', ')} — their daily reports, attendance, invoices, and documents.
@@ -194,7 +194,7 @@ export default function ParentAccountDialog({ open, onClose, fixedFamilyId }: Pa
         {family && (
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-              <Baby size={13} /> Linked children
+              <UserRound size={13} /> Linked children
             </p>
             {linkedChildren.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-1.5">

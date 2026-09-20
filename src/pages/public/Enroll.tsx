@@ -147,7 +147,7 @@ export default function Enroll() {
             animate={{ opacity: 1, y: 0 }}
             className="mx-auto max-w-2xl text-center"
           >
-            <span className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-[#FBEEF1] to-[#E8F3EE] text-[#2E8C72]">
+            <span className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-[#FBEEF1] text-[#2E8C72]">
               <CheckCircle2 size={38} />
             </span>
             <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">

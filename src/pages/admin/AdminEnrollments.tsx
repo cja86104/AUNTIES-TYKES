@@ -8,7 +8,7 @@ import {
   Mail,
   Phone,
   MapPin,
-  Baby,
+  UserRound,
   ShieldCheck,
   Copy,
   
@@ -112,7 +112,7 @@ export default function AdminEnrollments() {
           sub={pendingCount === 0 ? 'Nothing needs you right now' : 'Families expecting to hear back'}
           tone={pendingCount > 0 ? 'amber' : 'green'}
         />
-        <StatCard icon={Baby} label="Children in those forms" value={childCount} sub="Across pending enrollments" tone="blue" />
+        <StatCard icon={UserRound} label="Children in those forms" value={childCount} sub="Across pending enrollments" tone="blue" />
         <StatCard icon={CheckCircle2} label="Approved" value={approvedCount} sub="Turned into family files" tone="green" />
       </div>
 

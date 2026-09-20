@@ -8,20 +8,19 @@ import { cx, initials } from '../lib/helpers'
 /* -------------------------------- Button --------------------------------- */
 
 const variants = {
-  primary:
-    'bg-[#3F8570] text-white shadow-[0_10px_24px_-12px_rgba(79,119,217,0.9)] hover:bg-[#356F5C] hover:-translate-y-0.5',
-  sunny: 'bg-[#F5B942] text-[#4a3a12] shadow-[0_10px_24px_-12px_rgba(245,185,66,0.9)] hover:bg-[#efad2b] hover:-translate-y-0.5',
-  accent: 'bg-[#D98B9B] text-[#0f3f33] shadow-[0_10px_24px_-12px_rgba(93,196,166,0.9)] hover:bg-[#C97686] hover:-translate-y-0.5',
-  outline: 'border border-slate-300 bg-white text-slate-700 hover:border-[#3F8570] hover:text-[#3F8570] hover:-translate-y-0.5',
+  primary: 'bg-brand text-white shadow-control hover:bg-brand-deep hover:-translate-y-0.5',
+  sunny: 'bg-sunny text-[#4a3a12] shadow-control hover:bg-sunny-deep hover:-translate-y-0.5',
+  accent: 'bg-rose text-[#3F1E27] shadow-control hover:bg-rose-deep hover:-translate-y-0.5',
+  outline: 'border border-slate-300 bg-white text-slate-700 hover:border-brand hover:text-brand hover:-translate-y-0.5',
   ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
   danger: 'bg-rose-600 text-white hover:bg-rose-700 hover:-translate-y-0.5',
   dark: 'bg-slate-900 text-white hover:bg-slate-800 hover:-translate-y-0.5',
 } as const
 
 const sizes = {
-  sm: 'text-sm px-3 py-1.5 gap-1.5 rounded-lg',
-  md: 'text-sm px-4 py-2.5 gap-2 rounded-xl',
-  lg: 'text-base px-6 py-3.5 gap-2.5 rounded-2xl',
+  sm: 'text-sm px-3 py-1.5 gap-1.5 rounded-chip',
+  md: 'text-sm px-4 py-2.5 gap-2 rounded-control',
+  lg: 'text-base px-6 py-3.5 gap-2.5 rounded-card',
 } as const
 
 export type ButtonVariant = keyof typeof variants
@@ -72,8 +71,8 @@ export function Card({ className = '', hover = false, children, ...rest }: CardP
   return (
     <div
       className={cx(
-        'rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]',
-        hover && 'transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-24px_rgba(16,24,40,0.28)] hover:border-slate-300',
+        'rounded-card border border-slate-200/80 bg-white shadow-card',
+        hover && 'transition-all duration-300 hover:-translate-y-1 hover:shadow-raised hover:border-slate-300',
         className,
       )}
       {...rest}
@@ -87,9 +86,9 @@ export function Card({ className = '', hover = false, children, ...rest }: CardP
 
 const tones = {
   neutral: 'bg-slate-100 text-slate-700',
-  blue: 'bg-[#3F8570]/10 text-[#1F4A3D]',
+  blue: 'bg-brand-tint text-brand-ink',
   green: 'bg-emerald-100 text-emerald-700',
-  amber: 'bg-[#F5B942]/20 text-[#8a6112]',
+  amber: 'bg-sunny-tint text-sunny-ink',
   rose: 'bg-rose-100 text-rose-700',
   violet: 'bg-violet-100 text-violet-700',
 } as const
@@ -130,7 +129,7 @@ export function statusTone(status: string | null | undefined): Tone {
 const fieldBase =
   'w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:ring-4'
 
-const normalRing = 'border-slate-300 focus:border-[#3F8570] focus:ring-[#3F8570]/15'
+const normalRing = 'border-slate-300 focus:border-brand focus:ring-brand/15'
 const invalidRing = 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
 
 export interface FieldProps {
@@ -296,8 +295,8 @@ export interface EmptyStateProps {
 export function EmptyState({ icon: Icon = Inbox, title, description, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center">
-      <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#E8F3EE] to-[#FBEEF1] text-[#3F8570]">
-        <Icon size={26} />
+      <div className="relative mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-tint text-brand">
+        <Icon size={24} strokeWidth={1.75} />
       </div>
       <h4 className="font-display text-lg font-bold text-slate-800">{title}</h4>
       {description && <p className="mt-1.5 max-w-sm text-sm text-slate-500">{description}</p>}
@@ -309,11 +308,11 @@ export function EmptyState({ icon: Icon = Inbox, title, description, action }: E
 /* -------------------------------- StatCard -------------------------------- */
 
 const statTones = {
-  blue: 'from-[#E8F3EE] to-white text-[#3F8570]',
-  amber: 'from-[#FDF1DC] to-white text-[#C98A18]',
-  green: 'from-emerald-50 to-white text-emerald-700',
-  rose: 'from-[#FDECEC] to-white text-[#C25252]',
-  violet: 'from-[#F4EEFD] to-white text-[#6F4CB8]',
+  blue: 'bg-brand-tint text-brand',
+  amber: 'bg-sunny-tint text-sunny-ink',
+  green: 'bg-emerald-50 text-emerald-700',
+  rose: 'bg-rose-50 text-rose-600',
+  violet: 'bg-[#F4EEFD] text-[#6F4CB8]',
 } as const
 
 export interface StatCardProps {
@@ -338,8 +337,8 @@ export function StatCard({ icon: Icon, label, value, sub, tone = 'blue', to, onC
           {sub && <p className="mt-1.5 text-xs text-slate-500">{sub}</p>}
         </div>
         {Icon && (
-          <span className={cx('flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br', statTones[tone])}>
-            <Icon size={20} />
+          <span className={cx('flex h-11 w-11 shrink-0 items-center justify-center rounded-full', statTones[tone])}>
+            <Icon size={20} strokeWidth={1.75} />
           </span>
         )}
       </div>
@@ -384,7 +383,7 @@ export interface AvatarProps {
   className?: string
 }
 
-export function Avatar({ name = '', hue = 'from-[#3F8570] to-[#7DA0F0]', size = 'md', className = '' }: AvatarProps) {
+export function Avatar({ name = '', hue = 'from-brand to-rose', size = 'md', className = '' }: AvatarProps) {
   return (
     <span
       aria-hidden="true"

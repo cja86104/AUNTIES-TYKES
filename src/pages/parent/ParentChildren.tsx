@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Baby, AlertTriangle, Pill, ArrowRight, CalendarDays, NotebookPen } from 'lucide-react'
+import { UserRound, AlertTriangle, Pill, ArrowRight, CalendarDays, NotebookPen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import { Avatar, Badge, Button, Card, EmptyState, PageHeader, statusTone } from '../../components/ui'
@@ -20,7 +20,7 @@ export default function ParentChildren() {
 
       {kids.length === 0 ? (
         <EmptyState
-          icon={Baby}
+          icon={UserRound}
           title={t('children.noChildrenTitle')}
           description={t('children.noChildrenDesc')}
           action={

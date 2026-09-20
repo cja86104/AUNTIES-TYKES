@@ -19,12 +19,13 @@ import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { bytes, fmtDate } from '../../lib/helpers'
+import { documentDownloadUrl } from '../../lib/storage'
 import { documentCategories } from '../../data/mockData'
 import type { DocumentCategory, DocumentRecord, UploadedFileMeta } from '../../types'
 
 export default function ParentDocuments() {
   const { t } = useTranslation()
-  const { user, documents } = useFamilyScope()
+  const { user, familyId, documents } = useFamilyScope()
   const acknowledgements = useStore((s) => s.acknowledgements)
   const acknowledgeDocument = useStore((s) => s.acknowledgeDocument)
   const addDocument = useStore((s) => s.addDocument)
@@ -61,6 +62,7 @@ export default function ParentDocuments() {
       title: meta.title,
       fileName: meta.fileName,
       size: meta.size,
+      storagePath: meta.storagePath,
       category: uploadCategory,
       visibleToParents: false,
       uploadedBy: user?.name ?? 'Parent',
@@ -72,12 +74,30 @@ export default function ParentDocuments() {
     })
   }
 
+  const onUploadError = (message: string) => {
+    pushToast({ tone: 'error', title: t('documents.toastUploadFailedTitle'), description: message })
+  }
+
   const onDownload = (doc: DocumentRecord) => {
-    pushToast({
-      tone: 'info',
-      title: t('documents.toastDemoTitle'),
-      description: t('documents.toastDemoDesc', { title: doc.title }),
-    })
+    if (!doc.storagePath) {
+      pushToast({
+        tone: 'info',
+        title: t('documents.toastNoFileTitle'),
+        description: t('documents.toastNoFileDesc', { title: doc.title }),
+      })
+      return
+    }
+    void documentDownloadUrl(doc.storagePath)
+      .then((url) => {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      })
+      .catch(() => {
+        pushToast({
+          tone: 'error',
+          title: t('documents.toastDownloadFailedTitle'),
+          description: t('documents.toastDownloadFailedDesc'),
+        })
+      })
   }
 
   const onAcknowledge = (doc: DocumentRecord) => {
@@ -177,7 +197,7 @@ export default function ParentDocuments() {
                   transition={{ delay: Math.min(i * 0.04, 0.3) }}
                   className="flex flex-wrap items-center gap-3 px-5 py-4"
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#E8F3EE] to-white text-[#3F8570]">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#3F8570]">
                     <FileText size={19} />
                   </span>
 
@@ -236,7 +256,12 @@ export default function ParentDocuments() {
         </div>
 
         <div className="mt-4">
-          <FileUploader onUploaded={onUploaded} label={t('documents.dropFile')} />
+          <FileUploader
+            prefix={`family/${familyId}`}
+            onUploaded={onUploaded}
+            onError={onUploadError}
+            label={t('documents.dropFile')}
+          />
         </div>
       </Card>
     </PageTransition>
