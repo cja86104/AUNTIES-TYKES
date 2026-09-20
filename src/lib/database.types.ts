@@ -43,6 +43,8 @@ export type FamilyRow = {
   joined_at: string
   notes: string
   created_at: string
+  /** NULL means "use the standard rate card in settings.rates". */
+  custom_weekly_rate: number | null
 }
 
 export type ProfileRow = {

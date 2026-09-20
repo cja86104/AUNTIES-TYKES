@@ -101,7 +101,13 @@ export default function AdminInvoices() {
   const setLine = (id: string, key: keyof Omit<DraftLine, 'id'>, value: string) =>
     setLines((ls) => ls.map((l) => (l.id === id ? { ...l, [key]: value } : l)))
 
-  /** Build tuition lines from the family's enrolled children and the current rate card. */
+  /**
+   * Build tuition lines from the family's enrolled children.
+   *
+   * A family with a `customWeeklyRate` on file (Families -> Edit details ->
+   * Billing) is billed that rate for every enrolled child instead of the
+   * published full-time/part-time price from the rate card in Settings.
+   */
   const prefillFromEnrollment = () => {
     if (!familyId) {
       setErrors((e) => ({ ...e, familyId: 'Choose a family first' }))
@@ -113,13 +119,17 @@ export default function AdminInvoices() {
       return
     }
     const rate = settings.rates
+    const family = families.find((f) => f.id === familyId)
+    const customRate = family?.customWeeklyRate
     const next: DraftLine[] = kids.map((c) => {
       const partTime = c.plan.toLowerCase().includes('part')
+      const weeklyRate = customRate != null ? customRate : partTime ? rate.partTime : rate.fullTime
+      const rateNote = customRate != null ? ' · family rate' : ''
       return {
         id: uid('line'),
-        label: `${c.name} — ${partTime ? 'Part-time' : 'Full-time'} tuition (4 weeks)`,
+        label: `${c.name} — ${partTime ? 'Part-time' : 'Full-time'} tuition (4 weeks)${rateNote}`,
         qty: '4',
-        unit: String(partTime ? rate.partTime : rate.fullTime),
+        unit: String(weeklyRate),
       }
     })
 

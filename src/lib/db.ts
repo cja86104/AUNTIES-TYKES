@@ -80,6 +80,7 @@ export function toFamily(row: FamilyRow): Family {
     emergency: row.emergency,
     joinedAt: row.joined_at,
     notes: row.notes,
+    customWeeklyRate: row.custom_weekly_rate ?? undefined,
   }
 }
 
@@ -298,6 +299,7 @@ export function fromFamily(family: Family): Ins<'families'> {
     emergency: family.emergency,
     joined_at: family.joinedAt,
     notes: family.notes,
+    custom_weekly_rate: family.customWeeklyRate ?? null,
   }
 }
 

@@ -55,6 +55,14 @@ export interface Family {
   emergency: Contact[]
   joinedAt: string
   notes: string
+  /**
+   * Weekly tuition rate agreed with this family, if it differs from the
+   * standard rate card in Settings. When set, invoice prefill bills every
+   * enrolled child in this family at this rate instead of the published
+   * full-time/part-time price. Undefined/absent means "use the standard
+   * rate card."
+   */
+  customWeeklyRate?: number
 }
 
 /* -------------------------------- children -------------------------------- */

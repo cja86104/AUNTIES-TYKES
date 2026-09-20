@@ -66,6 +66,7 @@ export default function AdminFamilyDetail() {
       secondary: family.secondary,
       emergency: family.emergency.length > 0 ? family.emergency : [{ name: '', relation: '', phone: '' }],
       notes: family.notes,
+      customWeeklyRate: family.customWeeklyRate,
     })
     setErrors({})
     setEditOpen(true)
@@ -169,8 +170,15 @@ export default function AdminFamilyDetail() {
 
           {/* Invoices */}
           <Card className="overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <h2 className="font-display text-lg font-bold text-slate-900">Billing history</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
+              <div>
+                <h2 className="font-display text-lg font-bold text-slate-900">Billing history</h2>
+                <p className="text-xs text-slate-500">
+                  {family.customWeeklyRate != null
+                    ? `Custom rate: ${money(family.customWeeklyRate)}/week per child`
+                    : 'Billed at the standard rate card'}
+                </p>
+              </div>
               <Badge tone={balance > 0 ? 'amber' : 'green'}>
                 {balance > 0 ? `${money(balance)} due` : 'Paid up'}
               </Badge>

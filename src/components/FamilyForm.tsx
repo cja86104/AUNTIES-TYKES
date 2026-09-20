@@ -21,6 +21,7 @@ export const emptyFamilyForm = (): FamilyFormValue => ({
   secondary: { name: '', relation: '', phone: '' },
   emergency: [{ name: '', relation: '', phone: '' }],
   notes: '',
+  customWeeklyRate: undefined,
 })
 
 export function validateFamilyForm(v: FamilyFormValue): Record<string, string> {
@@ -30,6 +31,9 @@ export function validateFamilyForm(v: FamilyFormValue): Record<string, string> {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email.trim())) e.email = 'Enter a valid email address'
   if (v.phone.trim().length < 7) e.phone = 'Enter a phone number'
   if (v.address.trim().length < 6) e.address = 'Enter a home address'
+  if (v.customWeeklyRate !== undefined && (Number.isNaN(v.customWeeklyRate) || v.customWeeklyRate < 0)) {
+    e.customWeeklyRate = 'Enter a rate of $0 or more, or leave it blank'
+  }
   return e
 }
 
@@ -97,6 +101,35 @@ export default function FamilyForm({ value, onChange, errors = {} }: FamilyFormP
             placeholder="218 Larkspur Lane, Durham, NC 27705"
           />
         </Field>
+      </div>
+
+      <div className="rounded-2xl bg-slate-50 p-4">
+        <p className="mb-1 text-sm font-semibold text-slate-700">Billing</p>
+        <p className="mb-3 text-xs text-slate-500">
+          Leave blank to bill this family at the standard rate card in Settings.
+        </p>
+        <div className="sm:max-w-xs">
+          <Field label="Custom weekly tuition rate" error={errors.customWeeklyRate} hint="Applies to every enrolled child in this family.">
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              value={value.customWeeklyRate === undefined ? '' : String(value.customWeeklyRate)}
+              invalid={Boolean(errors.customWeeklyRate)}
+              onChange={(e) => {
+                const raw = e.target.value
+                if (raw.trim() === '') {
+                  set('customWeeklyRate', undefined)
+                  return
+                }
+                const n = Number(raw)
+                set('customWeeklyRate', Number.isNaN(n) ? undefined : n)
+              }}
+              placeholder="e.g. 185"
+            />
+          </Field>
+        </div>
       </div>
 
       <div className="rounded-2xl bg-slate-50 p-4">
