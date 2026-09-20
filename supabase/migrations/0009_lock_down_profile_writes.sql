@@ -1,0 +1,36 @@
+-- ============================================================================
+-- Close a privilege hole in own_profile_update.
+--
+-- The policy read:
+--
+--   create policy own_profile_update on public.profiles
+--     for update to authenticated
+--     using (id = auth.uid())
+--     with check (id = auth.uid() and role = 'parent');
+--
+-- It correctly stopped a parent promoting themselves to admin, but `role` was
+-- the only column it pinned. Every other column stayed writable by the account
+-- itself — including family_id, which is the whole basis of tenant isolation:
+--
+--   update profiles set family_id = '<someone else>' where id = auth.uid();
+--
+-- current_family_id() reads that column, and every parent-side policy is built
+-- on current_family_id(). One row edit and that account reads the other
+-- family's children, attendance, invoices, documents and messages.
+--
+-- Nothing needs the policy. The browser only ever SELECTs from profiles
+-- (src/lib/persist.ts); the single write is the INSERT in
+-- api/create-parent-login.ts, which runs with the service-role key and is not
+-- subject to RLS. So the fix is to remove the policy rather than narrow it.
+--
+-- After this: the owner still manages profiles through admin_all, each person
+-- still reads their own row through own_profile_select, and no parent can
+-- write to profiles at all.
+--
+-- If a parent ever needs to edit their own name or language, do NOT restore
+-- this policy as it was. Add one that pins every column that grants access --
+-- at minimum id, role and family_id -- or route the change through a
+-- server-side endpoint the way account creation already goes.
+-- ============================================================================
+
+drop policy if exists own_profile_update on public.profiles;

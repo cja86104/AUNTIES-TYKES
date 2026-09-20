@@ -24,8 +24,22 @@ export interface PageSeo {
   description: string
 }
 
-/** Routes that must never be indexed, whatever `SITE.indexable` says. */
-export const PRIVATE_PREFIXES = ['/admin', '/parent', '/login', '/enroll'] as const
+/**
+ * Routes that must never be indexed, whatever `SITE.indexable` says.
+ *
+ * /tuition-policies and /faq are here because they were taken off the site:
+ * the pages and routes still exist so they can be put back, but nothing links
+ * to them and they should not turn up in search either. Remove them from this
+ * list when the links go back.
+ */
+export const PRIVATE_PREFIXES = [
+  '/admin',
+  '/parent',
+  '/login',
+  '/enroll',
+  '/tuition-policies',
+  '/faq',
+] as const
 
 export const DEFAULT_SEO: PageSeo = {
   title: 'Aunties Tykes — Family Portal | Camp Hill, PA Home Daycare',

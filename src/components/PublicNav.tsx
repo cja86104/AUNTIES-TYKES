@@ -9,8 +9,6 @@ import { cx } from '../lib/helpers'
 const links = [
   { to: '/', label: 'Home' },
   { to: '/parent-portal-guide', label: 'Portal Guide' },
-  { to: '/tuition-policies', label: 'Parent Handbook' },
-  { to: '/faq', label: 'FAQ' },
   { to: '/contact', label: 'Contact' },
 ]
 

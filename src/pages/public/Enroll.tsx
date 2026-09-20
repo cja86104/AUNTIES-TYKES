@@ -53,7 +53,6 @@ export default function Enroll() {
   const [children, setChildren] = useState<EnrollmentChildDraft[]>([blankChild()])
   const [emergency, setEmergency] = useState<Contact[]>([blankContact()])
   const [notes, setNotes] = useState('')
-  const [acknowledged, setAcknowledged] = useState(false)
 
   const setChild = (id: string, key: keyof EnrollmentChildDraft, value: string) =>
     setChildren((cs) => cs.map((c) => (c.id === id ? { ...c, [key]: value } : c)))
@@ -96,7 +95,6 @@ export default function Enroll() {
     const first = emergency[0]
     if (!first || first.name.trim().length < 2) e['emg-0-name'] = 'One emergency contact is required'
     if (!first || first.phone.trim().length < 7) e['emg-0-phone'] = 'Add a phone number'
-    if (!acknowledged) e.acknowledged = 'Please confirm you have read the parent handbook and policies'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -129,7 +127,8 @@ export default function Enroll() {
         emergency: emergency.filter((c) => c.name.trim() && c.phone.trim()),
         children: children.map((c) => ({ ...c, name: c.name.trim() })),
         notes: notes.trim(),
-        acknowledgedHandbook: acknowledged,
+        // The handbook step was removed from the form; nothing is acknowledged.
+        acknowledgedHandbook: false,
       })
       setSubmitting(false)
       setDone(true)
@@ -178,9 +177,6 @@ export default function Enroll() {
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Button as={Link} to="/" variant="outline">
                 Back to the site
-              </Button>
-              <Button as={Link} to="/faq">
-                Read common questions
               </Button>
             </div>
           </motion.div>
@@ -527,26 +523,6 @@ export default function Enroll() {
                         </div>
                       </dl>
                     </div>
-
-                    <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-[#3F8570]">
-                      <input
-                        type="checkbox"
-                        checked={acknowledged}
-                        onChange={(e) => setAcknowledged(e.target.checked)}
-                        className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#3F8570]"
-                      />
-                      <span className="text-sm text-slate-700">
-                        I have read the{' '}
-                        <Link to="/tuition-policies" className="font-semibold text-[#3F8570] hover:underline">
-                          parent handbook
-                        </Link>{' '}
-                        — including the sick policy, late pickup fee, and holiday closures — and the information above is
-                        accurate.
-                        {errors.acknowledged && (
-                          <span className="mt-1 block text-xs font-medium text-rose-600">{errors.acknowledged}</span>
-                        )}
-                      </span>
-                    </label>
                   </div>
                 )}
               </motion.div>
