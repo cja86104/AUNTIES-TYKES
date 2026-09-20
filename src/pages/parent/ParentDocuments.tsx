@@ -200,7 +200,10 @@ export default function ParentDocuments() {
                     <FileText size={19} />
                   </span>
 
-                  <div className="min-w-0 flex-1">
+                  {/* A minimum width rather than min-w-0: this row already wraps, so the
+                      badges and buttons move to a second line instead of starving the title
+                      down to an ellipsis at phone width. */}
+                  <div className="min-w-[10rem] flex-1">
                     <p className="truncate font-display text-sm font-bold text-slate-900">{d.title}</p>
                     <p className="truncate text-xs text-slate-500">
                       {d.category} · {bytes(d.size)} · {mine ? t('documents.youSentThis') : t('documents.shared')} {fmtDate(d.uploadedAt)}

@@ -14,7 +14,11 @@
     <meta name="theme-color" content="#3F8570" />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/og-image.png" />
+    <!-- Square, opaque and full-bleed: iOS applies its own mask, and renders any
+         transparency as black. /og-image.png is a 1200x630 social card, not an icon. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Aunties Tykes" />
 
     <!-- Social scrapers do not run JavaScript, so the shared-link preview is set statically here. -->
     <meta property="og:site_name" content="Aunties Tykes" />

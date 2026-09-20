@@ -126,8 +126,14 @@ export function statusTone(status: string | null | undefined): Tone {
 
 /* ------------------------------ Field inputs ------------------------------ */
 
+/**
+ * 16px on phones is deliberate: iOS Safari force-zooms the page whenever a
+ * focused text field computes under 16px, and every form in the app runs
+ * through here. `sm:text-sm` restores the 14px desktop sizing the design was
+ * drawn at, so the zoom fix costs nothing above 640px.
+ */
 const fieldBase =
-  'w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:ring-4'
+  'w-full rounded-xl border bg-white px-3.5 py-2.5 text-base text-slate-800 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:ring-4 sm:text-sm'
 
 const normalRing = 'border-slate-300 focus:border-brand focus:ring-brand/15'
 const invalidRing = 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'

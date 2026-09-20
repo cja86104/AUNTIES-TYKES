@@ -155,7 +155,10 @@ export default function ParentDashboard() {
                     className="flex flex-wrap items-center gap-3 px-5 py-4"
                   >
                     <Avatar name={child.name} hue={child.hue} size="md" />
-                    <div className="min-w-0 flex-1">
+                    {/* A minimum width rather than min-w-0: this row already wraps, so the
+                        times and status move to a second line instead of starving the child's
+                        name down to a few characters at phone width. */}
+                    <div className="min-w-[10rem] flex-1">
                       <Link
                         to={`/parent/children/${child.id}`}
                         className="font-display text-sm font-bold text-slate-900 transition hover:text-[#3F8570]"
