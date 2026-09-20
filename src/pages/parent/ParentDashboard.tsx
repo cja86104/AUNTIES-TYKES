@@ -74,8 +74,8 @@ export default function ParentDashboard() {
 
       {/*
         Mobile shows these top to bottom in source order: Quick actions,
-        Latest announcement, Latest daily report, Billing info, Today's
-        glance. Desktop (xl+) keeps the original two-column arrangement via
+        Latest announcement, Today's glance, Latest daily report, Billing
+        info. Desktop (xl+) keeps the original two-column arrangement via
         explicit grid placement, unaffected by the mobile source order.
       */}
       <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[1.4fr_1fr]">
@@ -125,53 +125,7 @@ export default function ParentDashboard() {
           </Card>
         )}
 
-        {/* Latest daily report — mobile #3, desktop left column / row 3 */}
-        <div className="xl:col-start-1 xl:row-start-3">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold text-slate-900">{t('dashboard.latestReport')}</h2>
-            <Button as={Link} to="/parent/daily-reports" size="sm" variant="ghost">
-              {t('dashboard.seeAll')} <ArrowRight size={14} />
-            </Button>
-          </div>
-          {latestLog ? (
-            <DailyLogCard log={latestLog} child={kids.find((k) => k.id === latestLog.childId)} />
-          ) : (
-            <EmptyState
-              icon={NotebookPen}
-              title={t('dashboard.noReportsTitle')}
-              description={t('dashboard.noReportsDesc')}
-            />
-          )}
-        </div>
-
-        {/* Billing info — mobile #4, desktop full-width row 1 */}
-        {isLoading ? (
-          <div className="grid gap-5 sm:grid-cols-2 xl:col-start-1 xl:col-span-2 xl:row-start-1">
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-        ) : (
-          <div className="grid gap-5 sm:grid-cols-2 xl:col-start-1 xl:col-span-2 xl:row-start-1">
-            <StatCard
-              icon={Wallet}
-              label={t('dashboard.statBalance')}
-              value={money(outstanding)}
-              sub={outstanding > 0 ? t('dashboard.statBalanceSubOwed') : t('dashboard.statBalanceSubClear')}
-              tone={outstanding > 0 ? 'amber' : 'green'}
-              to="/parent/billing"
-            />
-            <StatCard
-              icon={CalendarClock}
-              label={t('dashboard.statNextInvoice')}
-              value={nextInvoice ? fmtDate(nextInvoice.dueDate, 'MMM d') : '—'}
-              sub={nextInvoice ? t('dashboard.statNextInvoiceSub', { id: nextInvoice.id, amount: money(nextInvoice.amount) }) : t('dashboard.statNextInvoiceSubNone')}
-              tone="violet"
-              to={nextInvoice ? `/parent/invoices/${nextInvoice.id}` : '/parent/billing'}
-            />
-          </div>
-        )}
-
-        {/* Today's glance (attendance) — mobile #5, desktop left column / row 2 */}
+        {/* Today's glance (attendance) — mobile #3, desktop left column / row 2 */}
         <Card className="overflow-hidden xl:col-start-1 xl:row-start-2">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <h2 className="font-display text-lg font-bold text-slate-900">{t('dashboard.todayGlance')}</h2>
@@ -229,6 +183,53 @@ export default function ParentDashboard() {
             </ul>
           )}
         </Card>
+
+        {/* Latest daily report — mobile #4, desktop left column / row 3 */}
+        <div className="xl:col-start-1 xl:row-start-3">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold text-slate-900">{t('dashboard.latestReport')}</h2>
+            <Button as={Link} to="/parent/daily-reports" size="sm" variant="ghost">
+              {t('dashboard.seeAll')} <ArrowRight size={14} />
+            </Button>
+          </div>
+          {latestLog ? (
+            <DailyLogCard log={latestLog} child={kids.find((k) => k.id === latestLog.childId)} />
+          ) : (
+            <EmptyState
+              icon={NotebookPen}
+              title={t('dashboard.noReportsTitle')}
+              description={t('dashboard.noReportsDesc')}
+            />
+          )}
+        </div>
+
+        {/* Billing info — mobile #5, desktop full-width row 1 */}
+        {isLoading ? (
+          <div className="grid gap-5 sm:grid-cols-2 xl:col-start-1 xl:col-span-2 xl:row-start-1">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 xl:col-start-1 xl:col-span-2 xl:row-start-1">
+            <StatCard
+              icon={Wallet}
+              label={t('dashboard.statBalance')}
+              value={money(outstanding)}
+              sub={outstanding > 0 ? t('dashboard.statBalanceSubOwed') : t('dashboard.statBalanceSubClear')}
+              tone={outstanding > 0 ? 'amber' : 'green'}
+              to="/parent/billing"
+            />
+            <StatCard
+              icon={CalendarClock}
+              label={t('dashboard.statNextInvoice')}
+              value={nextInvoice ? fmtDate(nextInvoice.dueDate, 'MMM d') : '—'}
+              sub={nextInvoice ? t('dashboard.statNextInvoiceSub', { id: nextInvoice.id, amount: money(nextInvoice.amount) }) : t('dashboard.statNextInvoiceSubNone')}
+              tone="violet"
+              to={nextInvoice ? `/parent/invoices/${nextInvoice.id}` : '/parent/billing'}
+            />
+          </div>
+        )}
+
       </div>
     </PageTransition>
   )

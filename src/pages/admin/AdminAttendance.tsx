@@ -139,34 +139,38 @@ export default function AdminAttendance() {
                   transition={{ delay: Math.min(i * 0.04, 0.3) }}
                   className="flex flex-wrap items-center gap-3 px-5 py-4"
                 >
-                  <Avatar name={child.name} hue={child.hue} size="md" />
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      to={`/admin/children/${child.id}`}
-                      className="truncate font-display text-sm font-bold text-slate-900 transition hover:text-[#3F8570]"
-                    >
-                      {child.name}
-                    </Link>
-                    <p className="truncate text-xs text-slate-500">
-                      {child.ageGroup} · {ageLabel(child.dob)} · {child.plan}
-                    </p>
-                    {record?.note && <p className="mt-0.5 truncate text-xs italic text-slate-400">{record.note}</p>}
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <Avatar name={child.name} hue={child.hue} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        to={`/admin/children/${child.id}`}
+                        className="truncate font-display text-sm font-bold text-slate-900 transition hover:text-[#3F8570]"
+                      >
+                        {child.name}
+                      </Link>
+                      <p className="truncate text-xs text-slate-500">
+                        {child.ageGroup} · {ageLabel(child.dob)} · {child.plan}
+                      </p>
+                      {record?.note && <p className="mt-0.5 truncate text-xs italic text-slate-400">{record.note}</p>}
+                    </div>
+
+                    <div className="flex w-40 shrink-0 items-center justify-between gap-2 text-xs text-slate-600">
+                      <span>
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">In</span>
+                        {record?.checkIn ? fmtTime(record.checkIn) : '—'}
+                      </span>
+                      <span>
+                        <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Out</span>
+                        {record?.checkOut ? fmtTime(record.checkOut) : '—'}
+                      </span>
+                    </div>
+
+                    <Badge tone={statusTone(status)} className="shrink-0">
+                      {status}
+                    </Badge>
                   </div>
 
-                  <div className="flex w-40 shrink-0 items-center justify-between gap-2 text-xs text-slate-600">
-                    <span>
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">In</span>
-                      {record?.checkIn ? fmtTime(record.checkIn) : '—'}
-                    </span>
-                    <span>
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Out</span>
-                      {record?.checkOut ? fmtTime(record.checkOut) : '—'}
-                    </span>
-                  </div>
-
-                  <Badge tone={statusTone(status)}>{status}</Badge>
-
-                  <div className="flex gap-1.5">
+                  <div className="flex shrink-0 gap-1.5">
                     <Button
                       size="sm"
                       variant="outline"
