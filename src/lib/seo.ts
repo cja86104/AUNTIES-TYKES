@@ -1,12 +1,12 @@
 /**
  * Site-wide SEO configuration and the per-route metadata map.
  *
- * Indexability follows DEMO_MODE in src/lib/config.ts — see the launch
- * checklist there. While the site shows placeholder business information,
- * indexing it would put fake business details (address, contact info) into
- * Google under this domain, so it stays out of search results on purpose.
+ * Indexability follows SEARCH_INDEXABLE in src/lib/config.ts — see the notes
+ * there. While the business phone, email and hours are still the seeded
+ * `TBD — add before launch` placeholders, indexing would publish them under
+ * this domain, so the site stays out of search results on purpose.
  */
-import { DEMO_MODE } from './config'
+import { SEARCH_INDEXABLE } from './config'
 
 export const SITE = {
   name: 'Aunties Tykes',
@@ -15,8 +15,8 @@ export const SITE = {
   locale: 'en_US',
   ogImage: '/og-image.png',
   twitterCard: 'summary_large_image',
-  /** Driven by DEMO_MODE — never set this directly. */
-  indexable: !DEMO_MODE,
+  /** Driven by SEARCH_INDEXABLE — never set this directly. */
+  indexable: SEARCH_INDEXABLE,
 } as const
 
 export interface PageSeo {

@@ -1,87 +1,77 @@
 # Aunties Tykes — Project Context
 
 Marketing site + private portals for a small home daycare in Camp Hill, PA.
-Built by Allen Code Co as a **build-to-sell** product. Version 1 is a complete,
-wired demo with realistic placeholder data, shared with the owner for approval.
+Built by Allen Code Co as a **build-to-sell** product.
 
----
-
-## 🛑 PROTECTED AREAS — DO NOT EDIT
-
-**The admin portal and parent portal are FINISHED, TESTED, and SIGNED OFF.**
-The owner walked every link and approved them. Current work is on the **public
-landing page only**.
-
-Do not edit, refactor, reformat, "improve", or rename anything under:
-
-| Path | What it is |
-|---|---|
-| `src/pages/admin/**` | Admin console — 13 pages |
-| `src/pages/parent/**` | Parent portal — 9 pages |
-| `src/layouts/AdminLayout.tsx` | Admin shell + nav |
-| `src/layouts/ParentLayout.tsx` | Parent shell + nav |
-| `src/pages/auth/Login.tsx` | Auth entry point |
-| `src/store/useStore.ts` | Entire data layer |
-| `src/types.ts` | Domain types |
-| `src/lib/useFamilyScope.ts` | **Security boundary** — family data isolation |
-| `src/components/ProtectedRoute.tsx` | Route guards |
-| `src/components/InvoiceView.tsx` | Billing UI |
-| `src/components/DailyLogCard.tsx` | Daily report UI |
-| `src/components/FamilyForm.tsx` | Family add/edit |
-| `src/components/ChildForm.tsx` | Child add/edit |
-| `src/components/ParentAccountDialog.tsx` | Account creation |
-| `src/components/FileUploader.tsx` | Upload UI |
-
-These paths are also blocked in `.claude/settings.json`. If a task genuinely
-requires touching one, **stop and ask the owner first** — do not work around the
-deny rule. See `.claude/PROTECTED-AREAS.md`.
-
-### ⚠️ Shared — changing these affects the portals too
-
-`src/components/ui.tsx` · `src/index.css` · `tailwind.config.js` · `src/lib/helpers.ts`
-
-The design system is used by *both* the public site and the portals. Restyling a
-Button here changes every admin screen. Prefer adding new classes on the public
-pages over altering shared components. These are set to **ask** in settings.
-
-### ✅ Free to edit (landing page work)
-
-`src/pages/public/**` · `src/components/PublicNav.tsx` · `src/components/PublicFooter.tsx`
-`src/layouts/PublicLayout.tsx` · `src/lib/seo.ts` · `index.html` · `public/**`
+**This app is live-wired.** It runs on Supabase — real Auth, real tables with
+RLS, real file storage. The demo dataset, the `DEMO_MODE` flag and the
+localStorage data layer have all been removed. There is no seeded data and no
+demo login: every account is created by the owner in the admin console.
 
 ---
 
 ## Stack
 
 - **Vite 5 + React 18 + TypeScript** (strict, zero suppressions)
+- **Supabase** — Auth, Postgres + RLS, private Storage bucket for documents
 - **Tailwind CSS 3.4** — v3 deliberately; the design was built against v3 defaults
-- **zustand** store persisted to `localStorage`
+- **zustand** — in-memory write-through cache over Supabase (no persistence)
 - **react-router-dom 6** — `BrowserRouter` + `vercel.json` SPA rewrite
 - framer-motion · lucide-react · recharts · react-hook-form + zod · date-fns
-- Deploys to **Vercel**
+- **i18n** — en / es / vi, all three kept at exact key parity
+- Deploys to **Vercel**; one serverless function in `api/`
 
 ## Commands
 
 ```bash
 npm run dev        # local dev server
-npm run typecheck  # tsc --noEmit (strict)
+npm run typecheck  # tsc --noEmit (strict), app + api
 npm run lint       # eslint, type-aware rules + react-hooks
 npm run build      # typecheck THEN vite build — type errors block a deploy
 npm run preview    # serve the production build
 ```
 
 **Non-negotiable:** `npm run lint` and `npm run typecheck` must both exit 0
-before any change is called done.
+before any change is called done. Lint currently reports 4 known
+`react-hooks/exhaustive-deps` warnings in `src/pages/parent/*` and 0 errors.
 
 ## Code standards (Allen Code Co)
 
 1. No `@ts-ignore`, `as any`, `eslint-disable`, or `ignoreBuildErrors`. Fix root cause.
-   The repo currently has **zero** of these — keep it that way.
+   The repo has **zero** of these — keep it that way.
 2. No mock data, placeholders, or unfinished code in shipped work.
 3. Complete files, not snippets, unless a diff is explicitly requested.
 4. Work in named sections with a stop between each.
 5. Smallest safe change. Do not refactor what you were not asked to touch.
 6. Verify before claiming done — read the file back, run the commands.
+
+## The data layer — how writes work
+
+`src/store/useStore.ts` is a write-through cache. Every mutation goes through
+`commit(updater, sync)`:
+
+- `updater` changes the in-memory cache so the UI responds immediately
+- `sync` receives the post-update state, picks out the row that changed, and
+  pushes only that row via `src/lib/persist.ts`
+- a failed write raises a toast; the local change stays applied
+
+**`sync` is a required argument.** An action that updated the cache without
+writing through would appear to work and then vanish on reload, so the type
+signature refuses that shape — the compiler is the guarantee, not review.
+
+`src/lib/db.ts` holds the pure row↔domain mappers, so `tsc` catches a
+schema/domain mismatch at build time rather than at runtime against live data.
+
+## Security boundary
+
+- `src/lib/useFamilyScope.ts` — family data isolation. Mirrored by RLS in
+  `supabase/migrations/`. Changing one without the other opens a hole.
+- `src/components/ProtectedRoute.tsx` — route guards; holds the route until
+  `store.ready` so a hard refresh does not bounce a signed-in user to /login.
+- Documents live in a **private** bucket; downloads use short-lived signed URLs.
+- `api/create-parent-login.ts` is the only server function. It needs the
+  service-role key, verifies the caller's token and checks `role = 'admin'`.
+  That key must never be `VITE_`-prefixed or Vite inlines it into the bundle.
 
 ## Brand
 
@@ -89,26 +79,33 @@ before any change is called done.
 - Display font **Nunito**, body **Inter**
 - Warm, calm, hand-crafted. Not a generic AI template.
 
-## Preview vs live
+## Payments — read before touching billing
 
-`src/lib/config.ts` exports **`DEMO_MODE`** — currently `true`. It controls the
-demo logins on `/login` and the robots meta tag. See `.claude/LAUNCH-CHECKLIST.md`
-before going live. **The site is intentionally not indexable right now** — it
-carries a placeholder license number and address.
+**There is no payment processor.** Nothing in this app charges anyone.
 
-## Demo accounts
+Invoices are statements; payment is collected outside the app and recorded
+against the invoice by the owner. `InvoiceView` only offers that in
+`mode === 'admin'` — a parent sees their balance and nothing else, because a
+parent-side button would write a payment row with no money behind it.
 
-| Role | Email | Password |
-|---|---|---|
-| Owner | `auntie@auntiestykes.com` | `tykes2024` |
-| Parent (Brooks) | `maya@example.com` | `parent123` |
-| Parent (Okafor) | `daniel@example.com` | `parent123` |
+Payment method strings persist to `payments.method`, so they are deliberately
+not run through i18n.
 
-No self-registration exists. Accounts come from the admin console or an approved
-enrollment. Passwords are plain text — demo only, see `.claude/ARCHITECTURE.md`.
+## Aunties Tykes is NOT a licensed facility
+
+The `licenseNumber` field was removed from the app entirely (types, settings
+table, admin UI). Do not reintroduce it, and do not describe the daycare as
+licensed anywhere.
+
+## Before the site goes into search
+
+`src/lib/config.ts` exports **`SEARCH_INDEXABLE`** — currently `false`.
+`public/robots.txt` is the hard gate and still says `Disallow: /`. Both must
+agree. See `.claude/LAUNCH-CHECKLIST.md` — in particular, the business phone,
+email and hours are still seeded as `TBD — add before launch` and render on
+every public page.
 
 ## More context
 
-- `.claude/PROTECTED-AREAS.md` — what is locked and why
 - `.claude/ARCHITECTURE.md` — routes, data model, store, security boundary
-- `.claude/LAUNCH-CHECKLIST.md` — going live, and what is demo-only
+- `.claude/LAUNCH-CHECKLIST.md` — what is still outstanding before launch

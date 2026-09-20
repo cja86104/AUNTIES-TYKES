@@ -35,7 +35,6 @@ import {
 import { useStore } from '../../store/useStore'
 import { buildCalendar } from '../../lib/calendar'
 import type { CalendarEntryKind } from '../../lib/calendar'
-import { useBootstrap } from '../../lib/hooks'
 import { money, todayISO, fmtTime, fmtDate, safeDate, invoiceBalance, invoiceStatus, sum, ageLabel } from '../../lib/helpers'
 import type { Child, RevenuePoint } from '../../types'
 
@@ -62,7 +61,9 @@ const CALENDAR_KIND_LABEL: Record<CalendarEntryKind, string> = {
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const { isLoading } = useBootstrap('admin-dashboard')
+  // Real readiness, not a timer: the store flips `ready` once bootstrap has
+  // restored the session and hydrated the cache from Supabase.
+  const isLoading = !useStore((s) => s.ready)
 
   const user = useStore((s) => s.user)
   const children = useStore((s) => s.children)

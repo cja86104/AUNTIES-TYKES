@@ -1,20 +1,5 @@
 import { create } from 'zustand'
-import {
-  users as mUsers,
-  families as mFamilies,
-  children as mChildren,
-  attendance as mAttendance,
-  dailyLogs as mDailyLogs,
-  invoices as mInvoices,
-  documents as mDocuments,
-  announcements as mAnnouncements,
-  threads as mThreads,
-  settings as mSettings,
-  leads as mLeads,
-  waitlistProspects,
-} from '../data/mockData'
 import { uid, nowISO, nowTime, todayISO } from '../lib/helpers'
-import { DEMO_MODE } from '../lib/config'
 import {
   createParentLogin as createParentLoginRequest,
   hydrateAll,
@@ -84,12 +69,10 @@ function splitList(value: string): string[] {
     .filter(Boolean)
 }
 
-const DATA_KEY = 'auntiestykes.data.v1'
-const SESSION_KEY = 'auntiestykes.session.v1'
 
 /** The persisted slice of the store — everything that survives a reload. */
 interface DataSlice {
-  /** Live account list. Seeded from mockData so new enrollments can add logins. */
+  /** Profiles loaded from the database. Supabase Auth owns the credentials. */
   users: User[]
   enrollments: EnrollmentSubmission[]
   families: Family[]
@@ -237,102 +220,26 @@ const emptyData: DataSlice = {
   sectionViews: {},
 }
 
-const demoData: DataSlice = {
-  users: mUsers,
-  enrollments: [],
-  families: mFamilies,
-  children: mChildren,
-  attendance: mAttendance,
-  dailyLogs: mDailyLogs,
-  invoices: mInvoices,
-  documents: mDocuments,
-  announcements: mAnnouncements,
-  threads: mThreads,
-  settings: mSettings,
-  leads: mLeads,
-  waitlist: waitlistProspects,
-  // The demo has no seeded calendar; live data comes from Supabase.
-  calendarEvents: [],
-  acknowledgements: [],
-  sectionViews: {},
-}
-
-const initialData: DataSlice = DEMO_MODE ? demoData : emptyData
-
-function readJSON<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? (JSON.parse(raw) as T) : null
-  } catch {
-    return null
-  }
-}
-
-function writeJSON(key: string, value: unknown): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    /* storage unavailable — demo still works in memory */
-  }
-}
-
-/** Pull just the persisted slice out of the live store state. */
-function snapshot(state: StoreState): DataSlice {
-  return {
-    users: state.users,
-    enrollments: state.enrollments,
-    families: state.families,
-    children: state.children,
-    attendance: state.attendance,
-    dailyLogs: state.dailyLogs,
-    invoices: state.invoices,
-    documents: state.documents,
-    announcements: state.announcements,
-    threads: state.threads,
-    settings: state.settings,
-    leads: state.leads,
-    waitlist: state.waitlist,
-    calendarEvents: state.calendarEvents,
-    acknowledgements: state.acknowledgements,
-    sectionViews: state.sectionViews,
-  }
-}
-
-// Live mode never restores from localStorage: the database is the source of
-// truth and the session belongs to Supabase Auth.
-const savedData = DEMO_MODE ? readJSON<Partial<DataSlice>>(DATA_KEY) : null
-const savedSession = DEMO_MODE ? readJSON<SessionUser>(SESSION_KEY) : null
-
 export const useStore = create<StoreState>()((set, get) => {
   /**
    * Applies a change to the cache, then persists it.
    *
-   * Demo mode writes the whole slice to localStorage, exactly as before. Live
-   * mode hands `sync` the post-update state so it can pick out the row that
-   * changed and push only that. A failed write surfaces as a toast while the
-   * local change stays applied — that is the trade-off of a write-through
-   * cache, and the reason every sync failure is made visible.
+   * `sync` receives the post-update state so it can pick out the row that
+   * changed and push only that. It is REQUIRED, not optional: an action that
+   * updated the cache without writing through would look like it worked and
+   * then vanish on the next reload, so the compiler refuses that shape
+   * outright rather than leaving it to be caught in review.
+   *
+   * A failed write surfaces as a toast while the local change stays applied —
+   * that is the trade-off of a write-through cache, and the reason every sync
+   * failure is made visible.
    */
   const commit = (
     updater: (state: StoreState) => Partial<StoreState>,
-    sync?: (state: StoreState) => Promise<unknown>,
+    sync: (state: StoreState) => Promise<unknown>,
   ) => {
     set(updater)
     const state = get()
-    if (DEMO_MODE) {
-      writeJSON(DATA_KEY, snapshot(state))
-      return
-    }
-    if (!sync) {
-      // A live-mode action with no sync would change the cache and silently
-      // lose the change on reload. Fail loudly instead.
-      get().pushToast({
-        tone: 'error',
-        title: 'That change was not saved',
-        description: 'This action is not connected to the database yet.',
-      })
-      return
-    }
     void sync(state).catch((error: unknown) => {
       get().pushToast({
         tone: 'error',
@@ -376,11 +283,10 @@ export const useStore = create<StoreState>()((set, get) => {
   }
 
   return {
-    ...initialData,
-    ...(savedData ?? {}),
-    user: savedSession,
+    ...emptyData,
+    user: null,
     toasts: [],
-    ready: DEMO_MODE,
+    ready: false,
 
     /* ------------------------------- toasts ------------------------------- */
     pushToast: (toast) => {
@@ -392,62 +298,31 @@ export const useStore = create<StoreState>()((set, get) => {
 
     /* -------------------------------- auth -------------------------------- */
     login: async (email, password) => {
-      if (!DEMO_MODE) {
-        try {
-          const session = await signIn(email, password)
-          set({ user: session })
-          await applyHydration()
-          return { ok: true, user: session }
-        } catch (error) {
-          return {
-            ok: false,
-            error:
-              error instanceof Error
-                ? error.message
-                : 'That email and password combination does not match our records.',
-          }
+      try {
+        const session = await signIn(email, password)
+        set({ user: session })
+        await applyHydration()
+        return { ok: true, user: session }
+      } catch (error) {
+        return {
+          ok: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : 'That email and password combination does not match our records.',
         }
       }
-      const found = get().users.find(
-        (u) => u.email.toLowerCase() === String(email).trim().toLowerCase() && u.password === password,
-      )
-      if (!found) return { ok: false, error: 'That email and password combination does not match our records.' }
-      const session: SessionUser = {
-        id: found.id,
-        name: found.name,
-        email: found.email,
-        role: found.role,
-        familyId: found.familyId,
-        title: found.title,
-        preferredLanguage: found.preferredLanguage,
-      }
-      writeJSON(SESSION_KEY, session)
-      set({ user: session })
-      return { ok: true, user: session }
     },
     logout: () => {
-      if (!DEMO_MODE) {
-        // Clear the cache as well as the session. On a shared device the next
-        // person to sign in must not inherit the previous family's data.
-        set({ user: null, ...emptyData })
-        void signOut().catch(() => {
-          /* the local session is dropped either way */
-        })
-        return
-      }
-      try {
-        localStorage.removeItem(SESSION_KEY)
-      } catch {
-        /* noop */
-      }
-      set({ user: null })
+      // Clear the cache as well as the session. On a shared device the next
+      // person to sign in must not inherit the previous family's data.
+      set({ user: null, ...emptyData })
+      void signOut().catch(() => {
+        /* the local session is dropped either way */
+      })
     },
 
     bootstrap: async () => {
-      if (DEMO_MODE) {
-        set({ ready: true })
-        return
-      }
       try {
         const settings = await hydrateSettings()
         if (settings) set({ settings })
@@ -642,7 +517,6 @@ export const useStore = create<StoreState>()((set, get) => {
       if (!profileId) return
       const seenAt = nowISO()
       set((state) => ({ sectionViews: { ...state.sectionViews, [section]: seenAt } }))
-      if (DEMO_MODE) return
       // Not routed through commit(): this is a side effect of reading a page,
       // not an edit the person made, so a failed write gets no error toast.
       void persist.sectionView(section, profileId, seenAt).catch(() => {
@@ -749,33 +623,17 @@ export const useStore = create<StoreState>()((set, get) => {
       if (get().users.some((u) => u.email.toLowerCase() === clean.toLowerCase())) return null
       const credentials: PortalCredentials = { email: clean, password: password.trim() }
 
-      if (!DEMO_MODE) {
-        // Rejects with the server's message; the caller surfaces it.
-        await createParentLoginRequest({
-          familyId,
-          name,
-          email: clean,
-          password: credentials.password,
-          preferredLanguage: preferredLanguage ?? 'en',
-        })
-        await applyHydration()
-        return credentials
-      }
-
-      commit((s) => ({
-        users: [
-          ...s.users,
-          {
-            id: uid('usr'),
-            name,
-            email: clean,
-            password: credentials.password,
-            role: 'parent' as const,
-            familyId,
-            preferredLanguage: preferredLanguage ?? 'en',
-          },
-        ],
-      }))
+      // Rejects with the server's message; the caller surfaces it. The account
+      // is created server-side with the service-role key and the credential
+      // belongs to Supabase Auth — nothing password-shaped is kept in the store.
+      await createParentLoginRequest({
+        familyId,
+        name,
+        email: clean,
+        password: credentials.password,
+        preferredLanguage: preferredLanguage ?? 'en',
+      })
+      await applyHydration()
       return credentials
     },
 

@@ -47,9 +47,8 @@ export default function Contact() {
     },
   })
 
-  const onSubmit = async (values: ContactValues) => {
+  const onSubmit = (values: ContactValues) => {
     try {
-      await new Promise((r) => setTimeout(r, 700))
       addLead({
         parentName: values.parentName,
         email: values.email,

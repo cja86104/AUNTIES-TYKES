@@ -7,7 +7,7 @@ import './index.css'
 import './i18n'
 
 // Loads public settings, restores any Supabase session, and hydrates the cache.
-// No-op in demo mode, where the cache comes from localStorage.
+// Flips `ready` when it settles, which is what the route guards wait on.
 void useStore.getState().bootstrap()
 
 const queryClient = new QueryClient({

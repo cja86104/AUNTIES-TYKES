@@ -1,11 +1,10 @@
 /**
- * Real site content — NOT demo data.
+ * Static site content.
  *
- * These two lists are shipped content the app reads in live mode: the document
- * categories the owner files uploads under, and the published FAQ. They lived
- * in `mockData.ts` while the whole app ran on fixtures, which meant deleting
- * the demo dataset would have taken working pages down with it. They belong
- * here so `src/data/mockData.ts` can be removed outright once `DEMO_MODE` goes.
+ * These two lists are shipped content the app reads at runtime: the document
+ * categories the owner files uploads under, and the published FAQ. They are
+ * static because neither is owner-editable yet — if either becomes editable,
+ * it moves into the settings row rather than growing a table of its own.
  *
  * Edit freely — nothing in this file is placeholder text.
  */

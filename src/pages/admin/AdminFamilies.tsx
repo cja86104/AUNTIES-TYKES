@@ -23,13 +23,14 @@ import ParentAccountDialog from '../../components/ParentAccountDialog'
 import type { ChildFormValue } from '../../components/ChildForm'
 import { todayISO } from '../../lib/helpers'
 import { useStore } from '../../store/useStore'
-import { useBootstrap } from '../../lib/hooks'
 import { money, fmtDate, invoiceBalance, sum } from '../../lib/helpers'
 
 const leadStatuses = ['New inquiry', 'Tour scheduled', 'Waitlisted', 'Enrolled', 'Not a fit']
 
 export default function AdminFamilies() {
-  const { isLoading } = useBootstrap('admin-families', 400)
+  // Real readiness, not a timer: the store flips `ready` once bootstrap has
+  // restored the session and hydrated the cache from Supabase.
+  const isLoading = !useStore((s) => s.ready)
   const families = useStore((s) => s.families)
   const children = useStore((s) => s.children)
   const invoices = useStore((s) => s.invoices)

@@ -28,7 +28,6 @@ import {
 import DailyLogCard from '../../components/DailyLogCard'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
-import { useBootstrap } from '../../lib/hooks'
 import { ageLabel, fmtDate, fmtTime, money, todayISO } from '../../lib/helpers'
 
 export default function ParentDashboard() {
@@ -36,7 +35,9 @@ export default function ParentDashboard() {
   const { user, activeKids, kids, outstanding, nextInvoice, announcements } = useFamilyScope()
   const attendance = useStore((s) => s.attendance)
   const dailyLogs = useStore((s) => s.dailyLogs)
-  const { isLoading } = useBootstrap('parent-dashboard')
+  // Real readiness, not a timer: the store flips `ready` once bootstrap has
+  // restored the session and hydrated the cache from Supabase.
+  const isLoading = !useStore((s) => s.ready)
 
   const firstName = user?.name.split(' ')[0] ?? 'there'
   const today = todayISO()

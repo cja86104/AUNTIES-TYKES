@@ -1,7 +1,7 @@
 /**
- * Shared domain types for the Aunties Tykes demo build.
+ * Shared domain types for the Aunties Tykes app.
  *
- * Every record shape the app reads from `src/data/mockData.ts` or writes
+ * Every record shape the app reads from Supabase or writes
  * through `src/store/useStore.ts` is declared here so the two stay honest
  * about each other.
  */
@@ -21,25 +21,18 @@ export interface User {
   id: string
   name: string
   email: string
-  /**
-   * Demo build only. Live accounts authenticate through Supabase Auth, which
-   * owns the credential — a profile loaded from the database has no password
-   * field at all, which is why this is optional rather than an empty string.
-   */
-  password?: string
   role: Role
   familyId?: string
   title?: string
   /**
    * UI language for the parent portal, set by the owner when the account is
-   * created. Optional (rather than defaulted here) because demo data and
-   * localStorage sessions saved before this field existed won't have it —
-   * every read site falls back to 'en'.
+   * created. Optional rather than defaulted: a profile row written before this
+   * column existed won't have it, and every read site falls back to 'en'.
    */
   preferredLanguage?: Language
 }
 
-/** The subset of a user persisted to localStorage as the active session. */
+/** The subset of a profile the app keeps as the active session. */
 export type SessionUser = Omit<User, 'password'>
 
 /* -------------------------------- families -------------------------------- */

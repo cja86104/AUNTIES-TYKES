@@ -19,11 +19,12 @@ import {
 import ChildForm, { emptyChildForm, formToChild, validateChildForm } from '../../components/ChildForm'
 import type { ChildFormValue } from '../../components/ChildForm'
 import { useStore } from '../../store/useStore'
-import { useBootstrap } from '../../lib/hooks'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 
 export default function AdminChildren() {
-  const { isLoading } = useBootstrap('admin-children', 400)
+  // Real readiness, not a timer: the store flips `ready` once bootstrap has
+  // restored the session and hydrated the cache from Supabase.
+  const isLoading = !useStore((s) => s.ready)
   const children = useStore((s) => s.children)
   const families = useStore((s) => s.families)
   const attendance = useStore((s) => s.attendance)

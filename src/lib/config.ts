@@ -1,19 +1,22 @@
 /**
- * The one switch that separates the preview build from the live site.
+ * Whether search engines may index the public site.
  *
- * While this is true the site behaves as a demo:
- *   • the sign-in page shows the seeded demo accounts and a "demo build" note
- *   • search engines are told not to index anything (see src/lib/seo.ts)
+ * This drives the robots meta tag that RouteMeta writes on every route (via
+ * SITE.indexable in src/lib/seo.ts). It is deliberately NOT the only gate:
+ * `public/robots.txt` is the hard one, because a meta tag only reaches
+ * crawlers that run JavaScript.
  *
- * ── AT LAUNCH ──────────────────────────────────────────────────────────────
- * 1. Set DEMO_MODE to false, and set SITE.url in src/lib/seo.ts to the real domain.
- * 2. Switch public/robots.txt to the allow rules written at the bottom of that file.
+ * Both have to agree. Flipping this to true while robots.txt still carries
+ * `Disallow: /` leaves the site out of search — which is the safe direction,
+ * and the reason the two are separate.
  *
- * Two steps, because they gate different things. This flag drives the robots
- * meta tag that RouteMeta writes on every route; robots.txt is the hard gate
- * that also stops crawlers which never run JavaScript. Until step 2 is done,
- * robots.txt still disallows everything — so flipping this flag alone cannot
- * put a placeholder site into Google.
+ * ── BEFORE TURNING THIS ON ─────────────────────────────────────────────────
+ * The business phone, email and hours are seeded as the literal text
+ * `TBD — add before launch` and render publicly (PublicFooter on every page,
+ * Contact, FAQ, and the schema.org JSON-LD in RouteMeta). Indexing the site
+ * while those are unfilled publishes them to Google. Fill them in Admin →
+ * Settings first, then set SITE.url in src/lib/seo.ts to the real domain, then
+ * switch public/robots.txt to its allow rules.
  * ───────────────────────────────────────────────────────────────────────────
  */
-export const DEMO_MODE: boolean = false
+export const SEARCH_INDEXABLE: boolean = false
