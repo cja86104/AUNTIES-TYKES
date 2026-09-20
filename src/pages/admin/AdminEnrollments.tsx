@@ -11,7 +11,6 @@ import {
   UserRound,
   ShieldCheck,
   Copy,
-  
   ArrowRight,
   AlertTriangle,
 } from 'lucide-react'
@@ -280,8 +279,8 @@ export default function AdminEnrollments() {
                   {e.status === 'pending' ? (
                     <>
                       <p className="text-xs text-slate-500">
-                        Approving creates the family file, {e.children.length === 1 ? 'the child' : 'all children'}, and a
-                        portal login.
+                        Approving creates the family file and {e.children.length === 1 ? 'the child' : 'all children'}.
+                        A portal login is created separately from Families.
                       </p>
                       <div className="flex gap-2">
                         <Button variant="ghost" onClick={() => setConfirmDecline(e)}>
@@ -328,9 +327,9 @@ export default function AdminEnrollments() {
         }
       >
         <Card className="bg-[#FBEEF1]/60 p-4 text-sm text-[#1f6152]">
-          This creates the family file, adds{' '}
-          {confirmApprove?.children.map((c) => c.name).join(' and ') || 'their children'} as enrolled, and issues a parent
-          portal login you can hand over.
+          This creates the family file and adds{' '}
+          {confirmApprove?.children.map((c) => c.name).join(' and ') || 'their children'} as enrolled. You'll create their
+          parent portal login separately from Families.
         </Card>
       </Modal>
 
