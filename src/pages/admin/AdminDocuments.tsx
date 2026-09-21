@@ -23,15 +23,13 @@ import {
   PageHeader,
   Select,
   StatCard,
-  Tabs,
 } from '../../components/ui'
 import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
 import { bytes, fmtDate } from '../../lib/helpers'
 import { downloadDocument, removeDocumentFile } from '../../lib/storage'
 import { useSectionSeen } from '../../lib/unread'
-import { documentCategories } from '../../data/content'
-import type { DocumentCategory, DocumentRecord, UploadedFileMeta } from '../../types'
+import type { DocumentRecord, UploadedFileMeta } from '../../types'
 
 export default function AdminDocuments() {
   const documents = useStore((s) => s.documents)
@@ -42,34 +40,19 @@ export default function AdminDocuments() {
   const user = useStore((s) => s.user)
   const seen = useSectionSeen('documents')
 
-  const [tab, setTab] = useState<'all' | DocumentCategory>('all')
   const [query, setQuery] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<DocumentRecord | null>(null)
 
   /** Settings applied to the next file dropped on the uploader. */
-  const [uploadCategory, setUploadCategory] = useState<DocumentCategory>('Forms')
   const [uploadVisible, setUploadVisible] = useState(true)
   const [uploadRequiresAck, setUploadRequiresAck] = useState(false)
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return documents
-      .filter((d) => (tab === 'all' ? true : d.category === tab))
-      .filter((d) => (q ? `${d.title} ${d.category} ${d.uploadedBy}`.toLowerCase().includes(q) : true))
+      .filter((d) => (q ? `${d.title} ${d.uploadedBy}`.toLowerCase().includes(q) : true))
       .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1))
-  }, [documents, tab, query])
-
-  const tabs = useMemo(
-    () => [
-      { value: 'all', label: 'All', count: documents.length },
-      ...documentCategories.map((c) => ({
-        value: c,
-        label: c,
-        count: documents.filter((d) => d.category === c).length,
-      })),
-    ],
-    [documents],
-  )
+  }, [documents, query])
 
   const visibleCount = documents.filter((d) => d.visibleToParents).length
   const ackCount = documents.filter((d) => d.requiresAck).length
@@ -81,13 +64,12 @@ export default function AdminDocuments() {
       fileName: meta.fileName,
       size: meta.size,
       storagePath: meta.storagePath,
-      category: uploadCategory,
       visibleToParents: uploadVisible,
       requiresAck: uploadRequiresAck,
     })
     pushToast({
       title: 'Document added',
-      description: `${meta.title} filed under ${uploadCategory}${uploadVisible ? ' and shared with parents.' : ' (staff only).'}`,
+      description: `${meta.title} was added${uploadVisible ? ' and shared with parents.' : ' (staff only).'}`,
     })
   }
 
@@ -154,29 +136,19 @@ export default function AdminDocuments() {
         }
       />
 
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard icon={FolderOpen} label="Documents" value={documents.length} sub={bytes(totalSize)} tone="blue" />
         <StatCard icon={Users} label="Shared with parents" value={visibleCount} sub={`${documents.length - visibleCount} staff-only`} tone="green" />
         <StatCard icon={ShieldCheck} label="Need acknowledgement" value={ackCount} sub="Parents must confirm they read these" tone="amber" />
-        <StatCard icon={FileText} label="Categories" value={documentCategories.length} sub={documentCategories.join(' · ')} tone="violet" />
       </div>
 
-      <Card className="mt-6 p-5">
+      <Card className="mt-6 mb-8 p-5">
         <h2 className="font-display text-lg font-bold text-slate-900">Upload a document</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Choose where it files and who sees it, then drop the file. Files are stored privately — only a signed-in account with permission can open one.
+          Choose who sees it, then drop the file. Files are stored privately — only a signed-in account with permission can open one.
         </p>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Field label="Category">
-            <Select value={uploadCategory} onChange={(e) => setUploadCategory(e.target.value as DocumentCategory)}>
-              {documentCategories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Select>
-          </Field>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="Visible to parents">
             <Select value={uploadVisible ? 'yes' : 'no'} onChange={(e) => setUploadVisible(e.target.value === 'yes')}>
               <option value="yes">Yes — show in the parent portal</option>
@@ -196,28 +168,18 @@ export default function AdminDocuments() {
         </div>
       </Card>
 
-      <div className="mb-6 mt-8">
-        <Tabs tabs={tabs} value={tab} onChange={(v) => setTab(v as 'all' | DocumentCategory)} />
-      </div>
-
       {rows.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
-          title={query || tab !== 'all' ? 'Nothing filed here yet' : 'No documents yet'}
+          title={query ? 'Nothing filed here yet' : 'No documents yet'}
           description={
-            query || tab !== 'all'
-              ? 'Try another category, or clear the search.'
+            query
+              ? 'Nothing matches that search.'
               : 'Upload your handbook and enrollment packet so families can find them without emailing you.'
           }
           action={
-            query || tab !== 'all' ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setQuery('')
-                  setTab('all')
-                }}
-              >
+            query ? (
+              <Button variant="outline" onClick={() => setQuery('')}>
                 Show everything
               </Button>
             ) : undefined
@@ -241,7 +203,7 @@ export default function AdminDocuments() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-display text-sm font-bold text-slate-900">{d.title}</p>
                   <p className="truncate text-xs text-slate-500">
-                    {d.category} · {bytes(d.size)} · added {fmtDate(d.uploadedAt)} by {d.uploadedBy}
+                    {bytes(d.size)} · added {fmtDate(d.uploadedAt)} by {d.uploadedBy}
                   </p>
                 </div>
 
