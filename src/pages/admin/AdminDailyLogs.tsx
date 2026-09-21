@@ -170,7 +170,7 @@ export default function AdminDailyLogs() {
         description="Write the report parents read at pickup — meals, naps, diapers, mood, activities, and a personal note."
         actions={
           <>
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input
                 value={query}
@@ -180,7 +180,7 @@ export default function AdminDailyLogs() {
                 aria-label="Search daily logs"
               />
             </div>
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input
                 type="date"
@@ -191,7 +191,7 @@ export default function AdminDailyLogs() {
                 aria-label="Filter by date"
               />
             </div>
-            <Button onClick={openNew}>
+            <Button onClick={openNew} className="ml-auto sm:ml-0">
               <Plus size={16} /> New report
             </Button>
           </>
