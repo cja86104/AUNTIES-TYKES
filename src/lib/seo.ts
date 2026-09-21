@@ -62,12 +62,12 @@ export const PAGE_SEO: Record<string, PageSeo> = {
   '/faq': {
     title: 'Frequently Asked Questions | Aunties Tykes Daycare',
     description:
-      'Hours, what to pack, meals, nap schedules, potty training, sick policy, and how the waitlist works — the questions parents ask us most.',
+      'Hours, what to pack, meals, nap schedules, potty training, and our sick policy — the questions parents ask us most.',
   },
   '/contact': {
     title: 'Contact Us | Aunties Tykes, Camp Hill PA',
     description:
-      'Get in touch with Aunties Tykes in Camp Hill, PA. Tell us your child’s age and when you need care, and we will tell you honestly where you stand.',
+      'Get in touch with Aunties Tykes in Camp Hill, PA. Tell us your child’s age and when you need care, and we will get back to you.',
   },
   '/enroll': {
     title: 'Enrollment Form | Aunties Tykes Daycare',

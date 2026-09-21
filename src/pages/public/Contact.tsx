@@ -4,9 +4,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion } from 'framer-motion'
-import { MapPin, Mail, Clock, Send, CheckCircle2, CalendarCheck, ArrowRight } from 'lucide-react'
+import { MapPin, Mail, Clock, Send, CheckCircle2, ArrowRight } from 'lucide-react'
 import PageTransition, { Reveal } from '../../components/PageTransition'
-import { Button, Card, Field, Input, Textarea, Select, Badge } from '../../components/ui'
+import { Button, Card, Field, Input, Textarea, Select } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -76,15 +76,12 @@ export default function Contact() {
     <PageTransition>
       <section className="px-5 pb-8 pt-10 lg:px-8 lg:pt-16">
         <div className="mx-auto max-w-4xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#D98B9B]/40 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[#7A3B47] backdrop-blur">
-            <CalendarCheck size={14} /> Now welcoming new families
-          </span>
-          <h1 className="mt-6 font-display text-4xl font-black leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
-            Let's find your child a spot.
+          <h1 className="font-display text-4xl font-black leading-[1.08] tracking-tight text-slate-900 sm:text-5xl">
+            Get in touch.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-            Tell us a little about your family. We will reply with real availability and an honest waitlist
-            position — usually within one business day.
+            Tell us a little about your family and we will get back to you — usually within one
+            business day.
           </p>
         </div>
       </section>
@@ -218,27 +215,6 @@ export default function Contact() {
                     </li>
                   </ul>
                 </div>
-              </Card>
-
-              <Card className="p-6">
-                <h3 className="font-display text-lg font-bold text-slate-900">Current availability</h3>
-                <ul className="mt-4 space-y-3 text-sm">
-                  <li className="flex items-center justify-between gap-3">
-                    <span className="text-slate-600">Infants</span>
-                    <Badge tone="amber">Waitlist · January</Badge>
-                  </li>
-                  <li className="flex items-center justify-between gap-3">
-                    <span className="text-slate-600">Toddlers</span>
-                    <Badge tone="green">1 part-time spot</Badge>
-                  </li>
-                  <li className="flex items-center justify-between gap-3">
-                    <span className="text-slate-600">Preschool</span>
-                    <Badge tone="green">2 full-time spots</Badge>
-                  </li>
-                </ul>
-                <p className="mt-5 text-xs leading-relaxed text-slate-500">
-                  Availability changes quickly. We update this page the same week a spot opens or fills.
-                </p>
               </Card>
             </div>
           </Reveal>

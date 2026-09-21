@@ -5,8 +5,6 @@
  * categories the owner files uploads under, and the published FAQ. They are
  * static because neither is owner-editable yet — if either becomes editable,
  * it moves into the settings row rather than growing a table of its own.
- *
- * Edit freely — nothing in this file is placeholder text.
  */
 import type { DocumentCategory, Faq } from '../types'
 
@@ -21,6 +19,5 @@ export const faqs: Faq[] = [
   { q: 'What is your sick policy?', a: 'Children need to stay home with a fever of 100.4°F or higher, vomiting or diarrhea, an undiagnosed rash, or draining eyes. They may return 24 hours after symptoms resolve without medication.' },
   { q: 'Are you insured?', a: 'Yes — we carry liability insurance, and every adult in the home has a cleared background check plus current CPR and First Aid.' },
   { q: 'How do we get updates during the day?', a: 'Every family gets a parent portal login for daily reports — meals, naps, diapers, mood, and activities. Announcements and invoices live there too.' },
-  { q: 'Is there a waitlist?', a: 'Usually, yes. We keep 12 spots total. Join the waitlist through the contact form and we will tell you honestly where you stand and when we expect an opening.' },
-  { q: 'Do you offer part-time care?', a: 'We offer part-time (three fixed days) and occasional drop-in care when a spot is available. Full-time families always get first choice of schedule.' },
+  { q: 'How do we find out about availability?', a: 'Tell us about your family through the contact form and we will contact you with availability.' },
 ]
