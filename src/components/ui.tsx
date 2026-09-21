@@ -49,7 +49,9 @@ export function Button<T extends React.ElementType = 'button'>({
   return (
     <As
       className={cx(
-        'inline-flex items-center justify-center font-semibold transition-all duration-200 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none',
+        // min-h is phone-only: 44px is the comfortable touch target, and sm:min-h-0
+        // hands the original sizing back to the design at 640px and up.
+        'inline-flex min-h-[2.75rem] items-center justify-center font-semibold transition-all duration-200 active:translate-y-0 disabled:opacity-50 disabled:pointer-events-none sm:min-h-0',
         variants[variant],
         sizes[size],
         className,
@@ -258,7 +260,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
               <button
                 onClick={onClose}
                 aria-label="Close dialog"
-                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 <X size={18} />
               </button>
@@ -456,7 +458,7 @@ export function Tabs({ tabs, value, onChange, className = '' }: TabsProps) {
             aria-selected={active}
             onClick={() => onChange(t.value)}
             className={cx(
-              'relative rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all',
+              'relative inline-flex min-h-[2.75rem] items-center rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all sm:min-h-0',
               active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800',
             )}
           >

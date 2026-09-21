@@ -85,7 +85,7 @@ export default function Login() {
       <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 py-8 lg:px-8">
         <Link
           to="/"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#3F8570]"
+          className="inline-flex min-h-[2.75rem] items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#3F8570] sm:min-h-0"
         >
           <ArrowLeft size={15} /> Back to auntiestykes.com
         </Link>

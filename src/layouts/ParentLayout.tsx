@@ -92,7 +92,7 @@ export default function ParentLayout() {
             </button>
             <button
               onClick={() => setOpen((o) => !o)}
-              className="rounded-xl border border-slate-300 p-2 text-slate-600 lg:hidden"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 text-slate-600 lg:hidden"
               aria-label={t('portal.toggleMenu')}
             >
               <Menu size={18} />

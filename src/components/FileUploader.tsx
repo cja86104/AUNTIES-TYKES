@@ -204,7 +204,7 @@ export default function FileUploader({
                 {item.state === 'error' && (
                   <button
                     onClick={() => setQueue((q) => q.filter((i) => i.id !== item.id))}
-                    className="rounded-full p-1 text-slate-400 hover:bg-slate-100"
+                    className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-full p-1 text-slate-400 hover:bg-slate-100"
                     aria-label={`Dismiss ${item.name}`}
                   >
                     <X size={14} />

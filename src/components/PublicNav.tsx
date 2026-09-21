@@ -83,7 +83,7 @@ export default function PublicNav() {
           </Button>
           <button
             onClick={() => setOpen((o) => !o)}
-            className="rounded-xl border border-slate-300 bg-white p-2.5 text-slate-700 transition hover:border-[#3F8570] hover:text-[#3F8570] xl:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 transition hover:border-[#3F8570] hover:text-[#3F8570] xl:hidden"
             aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
           >

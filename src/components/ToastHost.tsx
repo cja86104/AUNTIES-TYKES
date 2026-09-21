@@ -14,7 +14,7 @@ export default function ToastHost() {
   const dismiss = useStore((s) => s.dismissToast)
 
   return (
-    <div className="pointer-events-none fixed bottom-5 right-5 z-[120] flex w-[min(92vw,22rem)] flex-col gap-3">
+    <div className="pointer-events-none fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-5 z-[120] flex w-[min(92vw,22rem)] flex-col gap-3">
       <AnimatePresence>
         {toasts.map((t) => {
           const Icon = icons[t.tone] || CheckCircle2
@@ -37,7 +37,7 @@ export default function ToastHost() {
               <button
                 onClick={() => dismiss(t.id)}
                 aria-label="Dismiss notification"
-                className="shrink-0 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                className="shrink-0 inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 <X size={14} />
               </button>

@@ -4,7 +4,6 @@ import ReactMarkdown from 'react-markdown'
 import { useState } from 'react'
 import {
   ChevronDown,
-  ArrowRight,
   LayoutDashboard,
   LogIn,
   UserRound,
@@ -174,9 +173,6 @@ export default function ParentPortalGuide() {
                 Families get portal access as soon as enrollment is complete. Already have a login?
               </p>
               <div className="mt-9 flex flex-wrap justify-center gap-3">
-                <Button as={Link} to="/enroll" size="lg">
-                  Start enrollment <ArrowRight size={18} />
-                </Button>
                 <Button as={Link} to="/login" size="lg" variant="outline">
                   Parent login
                 </Button>

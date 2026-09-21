@@ -27,18 +27,14 @@ export interface PageSeo {
 /**
  * Routes that must never be indexed, whatever `SITE.indexable` says.
  *
- * /tuition-policies and /faq are here because they were taken off the site:
- * the pages and routes still exist so they can be put back, but nothing links
- * to them and they should not turn up in search either. Remove them from this
- * list when the links go back.
+ * /enroll is here because it is a private intake form: the owner shares the
+ * link directly with a family, and nothing on the public site points at it.
  */
 export const PRIVATE_PREFIXES = [
   '/admin',
   '/parent',
   '/login',
   '/enroll',
-  '/tuition-policies',
-  '/faq',
 ] as const
 
 export const DEFAULT_SEO: PageSeo = {
@@ -53,16 +49,6 @@ export const PAGE_SEO: Record<string, PageSeo> = {
     title: 'Parent Portal Guide | Aunties Tykes Daycare, Camp Hill PA',
     description:
       'A walkthrough of the Aunties Tykes parent portal — daily reports, attendance, billing, documents, and messaging, all explained in plain language.',
-  },
-  '/tuition-policies': {
-    title: 'Parent Handbook | Aunties Tykes Daycare, Camp Hill PA',
-    description:
-      'Full-time, part-time, and drop-in rates with a live cost estimator, plus our sick policy, late pickup rules, holiday closures, and potty learning approach.',
-  },
-  '/faq': {
-    title: 'Frequently Asked Questions | Aunties Tykes Daycare',
-    description:
-      'Hours, what to pack, meals, nap schedules, potty training, and our sick policy — the questions parents ask us most.',
   },
   '/contact': {
     title: 'Contact Us | Aunties Tykes, Camp Hill PA',

@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   Building2,
   Calculator,
   ScrollText,
   Save,
-  ExternalLink,
   Info,
 } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
@@ -81,23 +79,12 @@ export default function AdminSettings() {
     <PageTransition>
       <PageHeader
         title="Settings"
-        description="Your business details, rate card, and policy wording — all of it feeds the public site."
-        actions={
-          <Button as={Link} to="/tuition-policies" variant="outline" target="_blank" rel="noreferrer">
-            <ExternalLink size={16} /> View public page
-          </Button>
-        }
+        description="Your business details, rate card, and policy wording."
       />
 
       <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[#3F8570]/30 bg-[#3F8570]/5 p-4 text-sm text-[#1F4A3D]">
         <Info size={18} className="mt-0.5 shrink-0" />
-        <p>
-          These fields are live. Changing a rate here updates the tuition estimator on the public{' '}
-          <Link to="/tuition-policies" className="font-semibold underline">
-            Parent Handbook
-          </Link>{' '}
-          page, and policy edits change the text families read there.
-        </p>
+        <p>These fields are live. Rates here are what new invoices are built from.</p>
       </div>
 
       <div className="mb-6">

@@ -115,16 +115,6 @@ export default function Contact() {
                 </motion.div>
               ) : (
                 <>
-                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D98B9B]/40 bg-[#FBEEF1]/50 p-4">
-                  <p className="text-sm text-slate-700">
-                    <strong className="font-semibold text-slate-900">Already spoken with Melissa?</strong> Skip ahead and
-                    fill out the enrollment form.
-                  </p>
-                  <Button as={Link} to="/enroll" size="sm" variant="accent">
-                    Start enrollment <ArrowRight size={14} />
-                  </Button>
-                </div>
-
                 <form
                   onSubmit={(e) => {
                     void handleSubmit(onSubmit)(e)
