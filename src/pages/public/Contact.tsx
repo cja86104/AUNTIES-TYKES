@@ -128,13 +128,13 @@ export default function Contact() {
 
                   <div className="mt-6 grid gap-5 sm:grid-cols-2">
                     <Field label="Your name *" error={errors.parentName?.message}>
-                      <Input placeholder="Jordan Rivera" invalid={!!errors.parentName} {...register('parentName')} />
+                      <Input autoComplete="name" placeholder="Jordan Rivera" invalid={!!errors.parentName} {...register('parentName')} />
                     </Field>
                     <Field label="Email *" error={errors.email?.message}>
-                      <Input type="email" placeholder="you@example.com" invalid={!!errors.email} {...register('email')} />
+                      <Input type="email" autoComplete="email" placeholder="you@example.com" invalid={!!errors.email} {...register('email')} />
                     </Field>
                     <Field label="Phone *" error={errors.phone?.message}>
-                      <Input placeholder="(717) 555-0148" invalid={!!errors.phone} {...register('phone')} />
+                      <Input type="tel" autoComplete="tel" placeholder="(717) 555-0148" invalid={!!errors.phone} {...register('phone')} />
                     </Field>
                     <Field label="Child's age(s) *" error={errors.childAges?.message}>
                       <Input placeholder="18 months and 4 years" invalid={!!errors.childAges} {...register('childAges')} />

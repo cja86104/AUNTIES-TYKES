@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Megaphone, MessageSquare, Plus, Send, Users, Inbox } from 'lucide-react'
+import { Megaphone, MessageSquare, Plus, Send, Users, Inbox, ArrowLeft } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
   Avatar,
@@ -18,7 +18,7 @@ import {
   Textarea,
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
-import { fmtDate, nowISO, uid } from '../../lib/helpers'
+import { cx, fmtDate, nowISO, uid } from '../../lib/helpers'
 import { useSectionSeen } from '../../lib/unread'
 
 interface AnnouncementErrors {
@@ -51,6 +51,12 @@ export default function AdminMessages() {
   const [errors, setErrors] = useState<AnnouncementErrors>({})
 
   const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id ?? null)
+  /**
+   * Below lg the list and thread stack, and the thread lands off the fold — so on
+   * phones they take turns instead. A thread is auto-selected on mount, so this
+   * cannot be derived from activeThreadId or the list would never be reachable.
+   */
+  const [mobilePane, setMobilePane] = useState<'list' | 'thread'>('list')
   const [reply, setReply] = useState('')
 
   /** The "start a conversation with one family" composer. */
@@ -220,7 +226,7 @@ export default function AdminMessages() {
         />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
-          <Card className="overflow-hidden">
+          <Card className={cx('overflow-hidden', mobilePane === 'thread' && 'hidden lg:block')}>
             <div className="border-b border-slate-100 px-4 py-3">
               <h2 className="font-display text-sm font-bold text-slate-900">Conversations</h2>
             </div>
@@ -232,7 +238,10 @@ export default function AdminMessages() {
                 return (
                   <li key={t.id}>
                     <button
-                      onClick={() => setActiveThreadId(t.id)}
+                      onClick={() => {
+                        setActiveThreadId(t.id)
+                        setMobilePane('thread')
+                      }}
                       className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition ${
                         isActive ? 'bg-[#3F8570]/8' : 'hover:bg-slate-50'
                       }`}
@@ -254,8 +263,14 @@ export default function AdminMessages() {
           </Card>
 
           {activeThread && (
-            <Card className="flex flex-col overflow-hidden">
+            <Card className={cx('flex flex-col overflow-hidden', mobilePane === 'list' && 'hidden lg:flex')}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+                <button
+                  onClick={() => setMobilePane('list')}
+                  className="inline-flex min-h-[2.75rem] w-full items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#3F8570] lg:hidden"
+                >
+                  <ArrowLeft size={16} /> Conversations
+                </button>
                 <div>
                   <h2 className="font-display text-base font-bold text-slate-900">{activeThread.subject}</h2>
                   <p className="text-xs text-slate-500">

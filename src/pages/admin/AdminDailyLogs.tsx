@@ -258,14 +258,14 @@ export default function AdminDailyLogs() {
                   <button
                     onClick={() => openEdit(log)}
                     aria-label={`Edit report from ${fmtDate(log.date)}`}
-                    className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-[#3F8570]"
+                    className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-[#3F8570]"
                   >
                     <Pencil size={15} />
                   </button>
                   <button
                     onClick={() => setConfirmDelete(log)}
                     aria-label={`Delete report from ${fmtDate(log.date)}`}
-                    className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-rose-600"
+                    className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-rose-600"
                   >
                     <Trash2 size={15} />
                   </button>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Megaphone, MessageSquare, Send, Plus, Users, Inbox } from 'lucide-react'
+import { Megaphone, MessageSquare, Send, Plus, Users, Inbox, ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import {
@@ -19,7 +19,7 @@ import {
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
-import { fmtDate, nowISO, uid } from '../../lib/helpers'
+import { cx, fmtDate, nowISO, uid } from '../../lib/helpers'
 import { useSectionSeen } from '../../lib/unread'
 
 interface NewThreadErrors {
@@ -48,6 +48,12 @@ export default function ParentMessages() {
 
   const [tab, setTab] = useState<'announcements' | 'threads'>('announcements')
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
+  /**
+   * Below lg the list and thread stack and the thread lands off the fold, so on
+   * phones they take turns. activeThread falls back to threads[0], so which pane
+   * shows cannot be derived from it or the list would never be reachable.
+   */
+  const [mobilePane, setMobilePane] = useState<'list' | 'thread'>('list')
   const [reply, setReply] = useState('')
   const [open, setOpen] = useState(false)
   const [subject, setSubject] = useState('')
@@ -163,7 +169,7 @@ export default function ParentMessages() {
         />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
-          <Card className="overflow-hidden">
+          <Card className={cx('overflow-hidden', mobilePane === 'thread' && 'hidden lg:block')}>
             <div className="border-b border-slate-100 px-4 py-3">
               <h2 className="font-display text-sm font-bold text-slate-900">{t('messages.yourConversations')}</h2>
             </div>
@@ -175,7 +181,10 @@ export default function ParentMessages() {
                 return (
                   <li key={t.id}>
                     <button
-                      onClick={() => setActiveThreadId(t.id)}
+                      onClick={() => {
+                        setActiveThreadId(t.id)
+                        setMobilePane('thread')
+                      }}
                       className={`w-full px-4 py-3.5 text-left transition ${isActive ? 'bg-[#3F8570]/8' : 'hover:bg-slate-50'}`}
                     >
                       <span className="flex items-center gap-2">
@@ -192,8 +201,14 @@ export default function ParentMessages() {
           </Card>
 
           {activeThread && (
-            <Card className="flex flex-col overflow-hidden">
+            <Card className={cx('flex flex-col overflow-hidden', mobilePane === 'list' && 'hidden lg:flex')}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+                <button
+                  onClick={() => setMobilePane('list')}
+                  className="inline-flex min-h-[2.75rem] w-full items-center gap-1.5 text-sm font-semibold text-slate-500 transition hover:text-[#3F8570] lg:hidden"
+                >
+                  <ArrowLeft size={16} /> {t('messages.backToMessages')}
+                </button>
                 <div>
                   <h2 className="font-display text-base font-bold text-slate-900">{activeThread.subject}</h2>
                   <p className="text-xs text-slate-500">{t('messages.updated', { date: fmtDate(activeThread.updatedAt) })}</p>

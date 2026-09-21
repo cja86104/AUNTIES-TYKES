@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Inbox, ChevronRight } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cx, initials } from '../lib/helpers'
+import { useBodyScrollLock } from '../lib/useBodyScrollLock'
 
 /* -------------------------------- Button --------------------------------- */
 
@@ -220,6 +221,8 @@ export interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, description, children, footer, wide = false }: ModalProps) {
+  useBodyScrollLock(open)
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -248,7 +251,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
             exit={{ opacity: 0, y: 20, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 260, damping: 26 }}
             className={cx(
-              'relative z-10 max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl',
+              'relative z-10 max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl [@supports(height:100dvh)]:max-h-[92dvh] sm:rounded-3xl',
               wide ? 'sm:max-w-3xl' : 'sm:max-w-lg',
             )}
           >

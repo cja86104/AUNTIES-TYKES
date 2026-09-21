@@ -318,7 +318,7 @@ export default function Enroll() {
                           <Input value={secondary.relation} onChange={(e) => setSecondary({ ...secondary, relation: e.target.value })} placeholder="Father" />
                         </Field>
                         <Field label="Phone">
-                          <Input value={secondary.phone} onChange={(e) => setSecondary({ ...secondary, phone: e.target.value })} placeholder="(919) 555-0188" />
+                          <Input type="tel" value={secondary.phone} onChange={(e) => setSecondary({ ...secondary, phone: e.target.value })} placeholder="(919) 555-0188" />
                         </Field>
                       </div>
                     </div>
@@ -468,6 +468,7 @@ export default function Enroll() {
                           </Field>
                           <Field label="Phone" error={i === 0 ? errors['emg-0-phone'] : undefined}>
                             <Input
+                              type="tel"
                               value={c.phone}
                               invalid={i === 0 && Boolean(errors['emg-0-phone'])}
                               onChange={(e) => setEmergencyAt(i, 'phone', e.target.value)}

@@ -212,12 +212,12 @@ export default function AdminDashboard() {
                 const status = record?.status || 'expected'
                 return (
                   <li key={child.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="flex min-w-[10rem] flex-1 items-center gap-3 sm:min-w-0">
                       <Avatar name={child.name} hue={child.hue} size="md" />
                       <div className="min-w-0 flex-1">
                         <Link
                           to={`/admin/children/${child.id}`}
-                          className="truncate font-display text-sm font-bold text-slate-900 transition hover:text-[#3F8570]"
+                          className="block truncate font-display text-sm font-bold text-slate-900 transition hover:text-[#3F8570]"
                         >
                           {child.name}
                         </Link>

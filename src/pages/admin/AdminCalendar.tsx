@@ -269,7 +269,7 @@ export default function AdminCalendar() {
                             type="button"
                             onClick={() => openEdit(source)}
                             aria-label={`Edit ${entry.title}`}
-                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#3F8570]"
+                            className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-[#3F8570]"
                           >
                             <Pencil size={15} />
                           </button>
@@ -277,7 +277,7 @@ export default function AdminCalendar() {
                             type="button"
                             onClick={() => setConfirmDelete(entry)}
                             aria-label={`Remove ${entry.title}`}
-                            className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                            className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
                           >
                             <Trash2 size={15} />
                           </button>

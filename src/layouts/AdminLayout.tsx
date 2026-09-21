@@ -24,6 +24,7 @@ import { setPortalLanguage } from '../i18n'
 import { Avatar } from '../components/ui'
 import { cx } from '../lib/helpers'
 import { useUnreadCounts, type UnreadCounts } from '../lib/unread'
+import { useBodyScrollLock } from '../lib/useBodyScrollLock'
 
 interface NavItem {
   to: string
@@ -55,6 +56,19 @@ export default function AdminLayout() {
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const unread = useUnreadCounts()
+
+  useBodyScrollLock(open)
+
+  // The drawer is a full-screen overlay on phones, so Escape has to dismiss it
+  // the way it dismisses a Modal.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
 
   useEffect(() => {
     setOpen(false)
@@ -176,7 +190,7 @@ export default function AdminLayout() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setOpen(true)}
-                className="rounded-control border border-slate-300 p-2 text-slate-600 transition hover:border-brand hover:text-brand lg:hidden"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-control border border-slate-300 text-slate-600 transition hover:border-brand hover:text-brand lg:hidden"
                 aria-label="Open navigation"
               >
                 <Menu size={20} strokeWidth={1.75} />
@@ -194,7 +208,7 @@ export default function AdminLayout() {
               <Avatar name={user?.name || 'Admin'} hue="from-[#3F8570] to-[#D98B9B]" size="md" />
               <button
                 onClick={doLogout}
-                className="rounded-control border border-slate-300 p-2 text-slate-500 transition hover:border-rose-300 hover:text-rose-600"
+                className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center rounded-control border border-slate-300 text-slate-500 transition hover:border-rose-300 hover:text-rose-600 sm:min-h-0 sm:min-w-0 sm:p-2"
                 aria-label="Sign out"
               >
                 <LogOut size={20} strokeWidth={1.75} />

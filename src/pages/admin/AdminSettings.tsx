@@ -125,7 +125,7 @@ export default function AdminSettings() {
               <Input value={business.address} onChange={(e) => setBiz('address', e.target.value)} />
             </Field>
             <Field label="Phone">
-              <Input value={business.phone} onChange={(e) => setBiz('phone', e.target.value)} />
+              <Input type="tel" value={business.phone} onChange={(e) => setBiz('phone', e.target.value)} />
             </Field>
             <Field label="Email">
               <Input type="email" value={business.email} onChange={(e) => setBiz('email', e.target.value)} />

@@ -87,6 +87,7 @@ export default function FamilyForm({ value, onChange, errors = {} }: FamilyFormP
         </Field>
         <Field label="Phone" error={errors.phone}>
           <Input
+            type="tel"
             value={value.phone}
             invalid={Boolean(errors.phone)}
             onChange={(e) => set('phone', e.target.value)}
@@ -149,6 +150,7 @@ export default function FamilyForm({ value, onChange, errors = {} }: FamilyFormP
           </Field>
           <Field label="Phone">
             <Input
+              type="tel"
               value={value.secondary.phone}
               onChange={(e) => set('secondary', { ...value.secondary, phone: e.target.value })}
             />
