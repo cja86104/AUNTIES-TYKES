@@ -73,7 +73,7 @@ export default function Home() {
               style={{ fontFamily: "'Caveat', cursive" }}
               className="text-4xl leading-[1.15] text-slate-800 sm:text-5xl lg:text-[3.4rem]"
             >
-              Every family who walks through my door becomes part of mine — that's not a slogan, it's just how I
+              Every family who walks through this door becomes part of mine — that's not a slogan, it's just how I
               do things here.
             </p>
             <p
