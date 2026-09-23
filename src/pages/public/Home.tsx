@@ -73,14 +73,14 @@ export default function Home() {
               style={{ fontFamily: "'Caveat', cursive" }}
               className="text-4xl leading-[1.15] text-slate-800 sm:text-5xl lg:text-[3.4rem]"
             >
-              Every family who walks through our door becomes part of ours — that's not a slogan, it's just how we
+              Every family who walks through my door becomes part of mine — that's not a slogan, it's just how I
               do things here.
             </p>
             <p
               style={{ fontFamily: "'Caveat', cursive" }}
               className="mt-6 text-3xl text-[#3F8570] sm:text-4xl"
             >
-              — Melissa
+              — AUNTIE 
             </p>
           </div>
         </Reveal>

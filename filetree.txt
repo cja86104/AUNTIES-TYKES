@@ -1,0 +1,208 @@
+AUNTIES-TYKES/
+├── .claude/
+│   ├── ARCHITECTURE.md
+│   ├── LAUNCH-CHECKLIST.md
+│   ├── PROTECTED-AREAS.md
+│   └── settings.json
+├── .env.local
+├── .gitattributes
+├── .gitignore
+├── AI-ADMIN-ASSISTANT-PLAN.md
+├── CLAUDE.md
+├── api/
+│   └── create-parent-login.ts
+├── dist/
+│   ├── apple-touch-icon.png
+│   ├── favicon.svg
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   ├── icon-maskable-512.png
+│   ├── index.html
+│   ├── manifest.webmanifest
+│   ├── og-image.png
+│   ├── robots.txt
+│   └── assets/
+│       ├── AdminAttendance-8RHxWX0Z.js
+│       ├── AdminBilling-CAcfFxnU.js
+│       ├── AdminCalendar-CAWTm5sd.js
+│       ├── AdminChildDetail-BdWzLT_h.js
+│       ├── AdminChildren-eXewTxms.js
+│       ├── AdminDailyLogs-BQVmjlY7.js
+│       ├── AdminDashboard-0AJSpY9D.js
+│       ├── AdminDocuments-iFbF0qbL.js
+│       ├── AdminEnrollments-BV7IHXWJ.js
+│       ├── AdminFamilies--EcYRIjc.js
+│       ├── AdminFamilyDetail-8wsqLo3s.js
+│       ├── AdminInvoiceDetail-DwDVBF4B.js
+│       ├── AdminInvoices-BnH6142B.js
+│       ├── AdminMessages-C7u389n6.js
+│       ├── AdminSettings-BjdBMb6b.js
+│       ├── arrow-left-D9Q6yNmf.js
+│       ├── arrow-right-C3ll6GnX.js
+│       ├── calendar-BsqYA67e.js
+│       ├── calendar-clock-BaSJ6nCx.js
+│       ├── ChildForm-Cfls5b_O.js
+│       ├── Contact-KIIM8d7T.js
+│       ├── content-CgMX-YV1.js
+│       ├── copy-BAKJlorL.js
+│       ├── credit-card-BfzZgw0t.js
+│       ├── DailyLogCard-Bq9h0NCq.js
+│       ├── download-BPVKBE90.js
+│       ├── Enroll-Cp9kAspu.js
+│       ├── eye-iOFGBstU.js
+│       ├── index-BTen3P2n.js
+│       ├── index-h8JMcNSK.css
+│       ├── InvoiceView-Chbk15n-.js
+│       ├── Login-BqjqqO8d.js
+│       ├── megaphone-oEybo71l.js
+│       ├── NotFound-FcO7Yixm.js
+│       ├── ParentAccountDialog-tm4LjKCZ.js
+│       ├── ParentAttendance-B5d1fQ3c.js
+│       ├── ParentBilling-9a99XPAG.js
+│       ├── ParentCalendar-BYDaffRB.js
+│       ├── ParentChildDetail-DPVAn2oQ.js
+│       ├── ParentChildren-BVFbgwL7.js
+│       ├── ParentDailyReports-DiblpLUw.js
+│       ├── ParentDashboard-CwlhvxFB.js
+│       ├── ParentDocuments-0wekzD20.js
+│       ├── ParentInvoiceDetail-DZV8uAVy.js
+│       ├── ParentMessages-Bp-3uD1v.js
+│       ├── ParentPortalGuide-CXJ4YAx1.js
+│       ├── pencil-7Kmczvqo.js
+│       ├── phone-CvnofZfl.js
+│       ├── pill-BCzuDpyf.js
+│       ├── plus-CiS35y0L.js
+│       ├── search-CHN8TgYO.js
+│       ├── send-CLhixcQj.js
+│       ├── shield-alert-C4E3g4vs.js
+│       ├── shield-check-CKbIVqxF.js
+│       ├── sticky-note-DlP3bQWE.js
+│       ├── trash-2-CVzDHgIL.js
+│       ├── useFamilyScope-wnj7SnfP.js
+│       ├── user-plus-BfheR1GA.js
+│       ├── user-x-CiePV27g.js
+│       ├── vendor-charts-DXocRkA9.js
+│       ├── vendor-forms-CKxRnS-9.js
+│       ├── vendor-markdown-DOdvRrxO.js
+│       ├── vendor-motion-DPraOFqJ.js
+│       ├── vendor-react-DhCgcy2D.js
+│       └── zod-CVkahphm.js
+├── eslint.config.js
+├── index.html
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── public/
+│   ├── apple-touch-icon.png
+│   ├── favicon.svg
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   ├── icon-maskable-512.png
+│   ├── manifest.webmanifest
+│   ├── og-image.png
+│   └── robots.txt
+├── src/
+│   ├── App.tsx
+│   ├── index.css
+│   ├── main.tsx
+│   ├── types.ts
+│   ├── vite-env.d.ts
+│   ├── components/
+│   │   ├── ChildForm.tsx
+│   │   ├── DailyLogCard.tsx
+│   │   ├── FamilyForm.tsx
+│   │   ├── FileUploader.tsx
+│   │   ├── InvoiceView.tsx
+│   │   ├── PageTransition.tsx
+│   │   ├── ParentAccountDialog.tsx
+│   │   ├── ProtectedRoute.tsx
+│   │   ├── PublicFooter.tsx
+│   │   ├── PublicNav.tsx
+│   │   ├── RouteMeta.tsx
+│   │   ├── ToastHost.tsx
+│   │   └── ui.tsx
+│   ├── data/
+│   │   └── content.ts
+│   ├── i18n/
+│   │   ├── index.ts
+│   │   └── locales/
+│   │       ├── en.json
+│   │       ├── es.json
+│   │       └── vi.json
+│   ├── layouts/
+│   │   ├── AdminLayout.tsx
+│   │   ├── ParentLayout.tsx
+│   │   └── PublicLayout.tsx
+│   ├── lib/
+│   │   ├── calendar.ts
+│   │   ├── config.ts
+│   │   ├── database.types.ts
+│   │   ├── db.ts
+│   │   ├── helpers.ts
+│   │   ├── persist.ts
+│   │   ├── seo.ts
+│   │   ├── storage.ts
+│   │   ├── supabase.ts
+│   │   ├── tokens.ts
+│   │   ├── unread.ts
+│   │   ├── useBodyScrollLock.ts
+│   │   └── useFamilyScope.ts
+│   ├── pages/
+│   │   ├── NotFound.tsx
+│   │   ├── admin/
+│   │   │   ├── AdminAttendance.tsx
+│   │   │   ├── AdminBilling.tsx
+│   │   │   ├── AdminCalendar.tsx
+│   │   │   ├── AdminChildDetail.tsx
+│   │   │   ├── AdminChildren.tsx
+│   │   │   ├── AdminDailyLogs.tsx
+│   │   │   ├── AdminDashboard.tsx
+│   │   │   ├── AdminDocuments.tsx
+│   │   │   ├── AdminEnrollments.tsx
+│   │   │   ├── AdminFamilies.tsx
+│   │   │   ├── AdminFamilyDetail.tsx
+│   │   │   ├── AdminInvoiceDetail.tsx
+│   │   │   ├── AdminInvoices.tsx
+│   │   │   ├── AdminMessages.tsx
+│   │   │   └── AdminSettings.tsx
+│   │   ├── auth/
+│   │   │   └── Login.tsx
+│   │   ├── parent/
+│   │   │   ├── ParentAttendance.tsx
+│   │   │   ├── ParentBilling.tsx
+│   │   │   ├── ParentCalendar.tsx
+│   │   │   ├── ParentChildDetail.tsx
+│   │   │   ├── ParentChildren.tsx
+│   │   │   ├── ParentDailyReports.tsx
+│   │   │   ├── ParentDashboard.tsx
+│   │   │   ├── ParentDocuments.tsx
+│   │   │   ├── ParentInvoiceDetail.tsx
+│   │   │   └── ParentMessages.tsx
+│   │   └── public/
+│   │       ├── Contact.tsx
+│   │       ├── Enroll.tsx
+│   │       ├── Home.tsx
+│   │       └── ParentPortalGuide.tsx
+│   └── store/
+│       └── useStore.ts
+├── supabase/
+│   └── migrations/
+│       ├── 0001_init.sql
+│       ├── 0002_seed_settings.sql
+│       ├── 0003_text_primary_keys.sql
+│       ├── 0004_family_calendar.sql
+│       ├── 0005_pickup_and_release.sql
+│       ├── 0006_document_storage.sql
+│       ├── 0007_thread_update_policy.sql
+│       ├── 0008_section_views.sql
+│       ├── 0009_lock_down_profile_writes.sql
+│       └── 0010_family_custom_rate.sql
+├── tailwind.config.js
+├── tsconfig.api.json
+├── tsconfig.json
+├── tsconfig.node.json
+├── vercel.json
+├── vite.config.ts
+├── vite.config.ts.timestamp-1789946058313-e2f7c2568c167.mjs
+├── vite.config.ts.timestamp-1789946086966-d99c0461b84b5.mjs
+└── package.json
