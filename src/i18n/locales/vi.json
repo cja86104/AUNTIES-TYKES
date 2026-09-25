@@ -309,7 +309,12 @@
     "ref": "Mã tham chiếu {{ref}}",
     "recordNote": "Mục này ghi nhận khoản thanh toán bạn đã nhận. Không hề thu tiền của ai — không có thông tin thẻ hay ngân hàng nào được thu thập hoặc lưu tại đây.",
     "reference": "Mã tham chiếu",
-    "referenceHint": "Số séc hoặc xác nhận chuyển khoản. Không bắt buộc."
+    "referenceHint": "Số séc hoặc xác nhận chuyển khoản. Không bắt buộc.",
+    "deleteInvoice": "Xóa hóa đơn",
+    "deleteInvoiceTitle": "Xóa hóa đơn này?",
+    "deleteInvoiceDesc": "{{id}} với số tiền {{amount}} sẽ bị xóa vĩnh viễn, cùng với mọi khoản thanh toán đã ghi nhận trên đó. Không thể hoàn tác.",
+    "toastDeletedTitle": "Đã xóa hóa đơn",
+    "toastDeletedDesc": "{{id}} đã bị xóa vĩnh viễn."
   },
   "dailyLogCard": {
     "meals": "Bữa ăn",

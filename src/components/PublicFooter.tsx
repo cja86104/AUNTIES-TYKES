@@ -10,9 +10,7 @@ export default function PublicFooter() {
       <div className="mx-auto grid max-w-7xl gap-12 px-5 py-14 lg:grid-cols-4 lg:px-8">
         <div className="lg:col-span-2">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3F8570] to-[#D98B9B]">
-              <span className="font-display text-lg font-black text-white">AT</span>
-            </span>
+            <img src="/logo-mark.png" alt="Aunties Tykes" className="h-11 w-11 shrink-0 object-contain" />
             <span className="font-display text-xl font-extrabold text-slate-900">Aunties Tykes</span>
           </div>
           <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-600">{settings.tagline}</p>

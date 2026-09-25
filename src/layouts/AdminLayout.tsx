@@ -17,7 +17,6 @@ import {
   LogOut,
   Menu,
   ExternalLink,
-  Heart,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { setPortalLanguage } from '../i18n'
@@ -92,9 +91,7 @@ export default function AdminLayout() {
   const SidebarInner = (
     <div className="flex h-full flex-col">
       <Link to="/" className="flex items-center gap-3 px-5 py-5">
-        <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#D98B9B] to-[#3F8570] shadow-control">
-          <Heart size={20} strokeWidth={1.75} className="fill-white text-white" />
-        </span>
+        <img src="/logo-mark.png" alt="Aunties Tykes" className="h-11 w-11 shrink-0 object-contain" />
         <span className="leading-tight">
           <span className="block font-script text-2xl font-semibold text-white">Aunties Tykes</span>
           <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50">Home care console</span>

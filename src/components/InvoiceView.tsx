@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, CreditCard, Receipt, CheckCircle2, Printer, Info } from 'lucide-react'
+import { ArrowLeft, CreditCard, Receipt, CheckCircle2, Printer, Info, Trash2 } from 'lucide-react'
 import { Card, Badge, Button, Modal, Field, Input, Select, statusTone } from './ui'
 import { useTranslation } from 'react-i18next'
 import { money, fmtDate, invoiceBalance, invoiceStatus } from '../lib/helpers'
@@ -28,11 +28,14 @@ const PAYMENT_METHODS = ['Check', 'Cash', 'Bank transfer', 'Zelle', 'Card (in pe
 
 export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }: InvoiceViewProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [payOpen, setPayOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<string>(PAYMENT_METHODS[0])
   const [reference, setReference] = useState('')
   const recordPayment = useStore((s) => s.recordPayment)
+  const deleteInvoice = useStore((s) => s.deleteInvoice)
   const pushToast = useStore((s) => s.pushToast)
 
   const balance = invoiceBalance(invoice)
@@ -64,6 +67,16 @@ export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }:
       title: t('invoiceView.toastRecordedTitle'),
       description: `${t('invoiceView.toastPaymentDesc', { amount: money(value), id: invoice.id, partial: value < balance ? t('invoiceView.partialSuffix') : '' })}.`,
     })
+  }
+
+  const confirmDelete = () => {
+    setDeleteOpen(false)
+    deleteInvoice(invoice.id)
+    pushToast({
+      title: t('invoiceView.toastDeletedTitle'),
+      description: t('invoiceView.toastDeletedDesc', { id: invoice.id }),
+    })
+    navigate(backTo)
   }
 
   return (
@@ -178,6 +191,11 @@ export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }:
             <Button variant="outline" className="mt-2.5 w-full" onClick={() => window.print()}>
               <Printer size={16} /> {t('invoiceView.printSave')}
             </Button>
+            {canRecord && (
+              <Button variant="danger" className="mt-2.5 w-full" onClick={() => setDeleteOpen(true)}>
+                <Trash2 size={16} /> {t('invoiceView.deleteInvoice')}
+              </Button>
+            )}
           </Card>
 
           <Card className="p-5">
@@ -239,6 +257,25 @@ export default function InvoiceView({ invoice, family, backTo, mode = 'admin' }:
             </div>
           </form>
         </Modal>
+      )}
+
+      {canRecord && (
+        <Modal
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          title={t('invoiceView.deleteInvoiceTitle')}
+          description={t('invoiceView.deleteInvoiceDesc', { id: invoice.id, amount: money(invoice.amount) })}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
+                {t('invoiceView.cancel')}
+              </Button>
+              <Button variant="danger" onClick={confirmDelete}>
+                {t('invoiceView.deleteInvoice')}
+              </Button>
+            </>
+          }
+        />
       )}
     </div>
   )

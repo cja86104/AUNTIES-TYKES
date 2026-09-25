@@ -276,6 +276,8 @@ export const persist = {
 
   invoice: (invoice: Invoice) => run(supabase.from('invoices').upsert(fromInvoice(invoice)).select()),
 
+  deleteInvoice: (id: string) => run(supabase.from('invoices').delete().eq('id', id).select()),
+
   payment: (payment: Payment, invoiceId: string) =>
     run(supabase.from('payments').upsert(fromPayment(payment, invoiceId)).select()),
 

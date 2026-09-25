@@ -37,14 +37,15 @@ export default function PublicNav() {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 lg:px-8">
         <Link to="/" className="group flex items-center gap-3" aria-label="Aunties Tykes home">
-          <span className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3F8570] to-[#D98B9B] shadow-[0_8px_18px_-8px_rgba(79,119,217,0.9)] transition-transform duration-300 group-hover:rotate-6">
-            <span className="font-display text-lg font-black text-white">AT</span>
-            <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-2 border-[#FCF7EA] bg-[#F5B942]" />
-          </span>
+          <img
+            src="/logo-mark.png"
+            alt="Aunties Tykes"
+            className="h-11 w-11 shrink-0 object-contain transition-transform duration-300 group-hover:rotate-6"
+          />
           <span className="leading-tight">
             <span className="block font-display text-lg font-extrabold tracking-tight text-slate-900">Aunties Tykes</span>
             <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Home daycare & family portal
+              Home daycare School and Summer camp 
             </span>
           </span>
         </Link>

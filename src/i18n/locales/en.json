@@ -309,7 +309,12 @@
     "ref": "Ref {{ref}}",
     "recordNote": "This records a payment you have already received. It does not charge anyone — no card or bank details are collected or stored here.",
     "reference": "Reference",
-    "referenceHint": "Check number or transfer confirmation. Optional."
+    "referenceHint": "Check number or transfer confirmation. Optional.",
+    "deleteInvoice": "Delete invoice",
+    "deleteInvoiceTitle": "Delete this invoice?",
+    "deleteInvoiceDesc": "{{id}} for {{amount}} will be permanently deleted, along with any payments recorded against it. This cannot be undone.",
+    "toastDeletedTitle": "Invoice deleted",
+    "toastDeletedDesc": "{{id}} was permanently removed."
   },
   "dailyLogCard": {
     "meals": "Meals",

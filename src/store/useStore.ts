@@ -133,6 +133,7 @@ export interface StoreState extends DataSlice {
 
   createInvoice: (invoice: NewInvoice) => void
   recordPayment: (invoiceId: string, payment: NewPayment) => void
+  deleteInvoice: (id: string) => void
 
   addDocument: (doc: NewDocument) => void
   deleteDocument: (id: string) => void
@@ -458,6 +459,11 @@ export const useStore = create<StoreState>()((set, get) => {
           const recorded = invoice?.payments[invoice.payments.length - 1]
           return recorded ? persist.payment(recorded, invoiceId) : Promise.resolve()
         },
+      ),
+    deleteInvoice: (id) =>
+      commit(
+        (s) => ({ invoices: s.invoices.filter((i) => i.id !== id) }),
+        () => persist.deleteInvoice(id),
       ),
 
     /* ------------------------------ documents ----------------------------- */

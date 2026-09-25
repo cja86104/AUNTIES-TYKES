@@ -93,9 +93,7 @@ export default function Login() {
         <div className="grid flex-1 items-center gap-10 py-10 lg:grid-cols-[1fr_1fr]">
           <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3F8570] to-[#D98B9B]">
-                <span className="font-display text-lg font-black text-white">AT</span>
-              </span>
+              <img src="/logo-mark.png" alt="Aunties Tykes" className="h-12 w-12 shrink-0 object-contain" />
               <div>
                 <p className="font-display text-lg font-extrabold text-slate-900">Aunties Tykes</p>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Family portal</p>
