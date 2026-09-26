@@ -29,7 +29,7 @@ const guideItems: GuideItem[] = [
     key: 'login',
     title: 'Logging in',
     icon: LogIn,
-    body: `Once your enrollment is set up, we'll create your family login using the email you gave us. From then on, click **Parent Login** in the site header, sign in, and your dashboard opens with everything for your family in one place.`,
+    body: `Once your enrollment is set up, we'll create your family login using the email and password Aunties Tykes gave you. From then on, click **Parent Login** in the site header, sign in, and your dashboard opens with everything for your family in one place.`,
   },
   {
     key: 'dashboard',
@@ -47,7 +47,7 @@ const guideItems: GuideItem[] = [
     key: 'dailyReports',
     title: 'Daily Reports',
     icon: NotebookPen,
-    body: `Meals, naps, diapers, mood, and a note from the day, posted before pickup. Search by child or filter by date to pull up any past report.`,
+    body: `Meals, naps, diapers, mood, and a note from the day. Search by child or filter by date to pull up any past report.`,
   },
   {
     key: 'attendance',

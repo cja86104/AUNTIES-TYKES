@@ -218,6 +218,11 @@ export interface Announcement {
   audience: Audience
   date: string
   body: string
+  /** Optional file attached at posting time. */
+  attachmentFileName?: string
+  attachmentSize?: number
+  /** Object key in the private `documents` bucket. Absent = no file behind it. */
+  attachmentStoragePath?: string
 }
 
 export type NewAnnouncement = Omit<Announcement, 'id' | 'date'> & Partial<Pick<Announcement, 'date'>>

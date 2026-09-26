@@ -269,7 +269,9 @@
     "bodyError": "Add a little more detail",
     "toastSentTitle": "Message sent",
     "toastReplySentDesc": "Auntie Melissa will see it on her next check of the portal.",
-    "toastNewThreadDesc": "We started a new conversation with Auntie Melissa."
+    "toastNewThreadDesc": "We started a new conversation with Auntie Melissa.",
+    "attachment": "Download attachment",
+    "attachmentError": "That download did not open. Check your connection and try again."
   },
   "invoiceView": {
     "backToInvoices": "Back to invoices",

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Megaphone, MessageSquare, Plus, Send, Users, Inbox, ArrowLeft } from 'lucide-react'
+import { Megaphone, MessageSquare, Paperclip, Plus, Send, Users, Inbox, ArrowLeft, X } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
   Avatar,
@@ -17,9 +17,12 @@ import {
   Tabs,
   Textarea,
 } from '../../components/ui'
+import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
-import { cx, fmtDate, nowISO, uid } from '../../lib/helpers'
+import { bytes, cx, fmtDate, nowISO, uid } from '../../lib/helpers'
+import { downloadDocument, removeDocumentFile } from '../../lib/storage'
 import { useSectionSeen } from '../../lib/unread'
+import type { UploadedFileMeta } from '../../types'
 
 interface AnnouncementErrors {
   title?: string
@@ -49,6 +52,7 @@ export default function AdminMessages() {
   const [body, setBody] = useState('')
   const [audience, setAudience] = useState('all')
   const [errors, setErrors] = useState<AnnouncementErrors>({})
+  const [attachment, setAttachment] = useState<UploadedFileMeta | null>(null)
 
   const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id ?? null)
   /**
@@ -78,6 +82,39 @@ export default function AdminMessages() {
   )
   const activeThread = sortedThreads.find((t) => t.id === activeThreadId) ?? sortedThreads[0]
 
+  /** A file already sitting in storage that no announcement row points at yet. */
+  const discardStagedAttachment = (meta: UploadedFileMeta | null) => {
+    if (!meta) return
+    void removeDocumentFile(meta.storagePath).catch(() => {
+      /* best-effort cleanup; an orphaned object is harmless */
+    })
+  }
+
+  const onAttachmentUploaded = (meta: UploadedFileMeta) => {
+    // Only one file per announcement — replacing a choice drops the one before it.
+    discardStagedAttachment(attachment)
+    setAttachment(meta)
+  }
+
+  const onAttachmentError = (message: string) => {
+    pushToast({ tone: 'error', title: 'That file was not uploaded', description: message })
+  }
+
+  const removeAttachment = () => {
+    discardStagedAttachment(attachment)
+    setAttachment(null)
+  }
+
+  const closeAnnouncementModal = () => {
+    discardStagedAttachment(attachment)
+    setOpen(false)
+    setTitle('')
+    setBody('')
+    setAudience('all')
+    setAttachment(null)
+    setErrors({})
+  }
+
   const publish = () => {
     const next: AnnouncementErrors = {}
     if (!title.trim()) next.title = 'Give the announcement a title'
@@ -85,15 +122,34 @@ export default function AdminMessages() {
     setErrors(next)
     if (Object.keys(next).length) return
 
-    addAnnouncement({ title: title.trim(), body: body.trim(), audience })
+    addAnnouncement({
+      title: title.trim(),
+      body: body.trim(),
+      audience,
+      attachmentFileName: attachment?.fileName,
+      attachmentSize: attachment?.size,
+      attachmentStoragePath: attachment?.storagePath,
+    })
     setOpen(false)
     setTitle('')
     setBody('')
     setAudience('all')
+    setAttachment(null)
     setErrors({})
     pushToast({
       title: 'Announcement posted',
       description: audience === 'all' ? 'Every family can see it now.' : `Sent to ${familyName(audience)}.`,
+    })
+  }
+
+  const onDownloadAttachment = (a: { attachmentStoragePath?: string; attachmentFileName?: string; title: string }) => {
+    if (!a.attachmentStoragePath) return
+    void downloadDocument(a.attachmentStoragePath, a.attachmentFileName).catch((error: unknown) => {
+      pushToast({
+        tone: 'error',
+        title: 'That download did not open',
+        description: error instanceof Error ? error.message : 'Check your connection and try again.',
+      })
     })
   }
 
@@ -208,6 +264,16 @@ export default function AdminMessages() {
                   <div className="md px-5 py-4 text-sm">
                     <ReactMarkdown>{a.body}</ReactMarkdown>
                   </div>
+                  {a.attachmentStoragePath && (
+                    <div className="border-t border-slate-100 px-5 py-3">
+                      <Button size="sm" variant="outline" onClick={() => onDownloadAttachment(a)}>
+                        <Paperclip size={14} /> {a.attachmentFileName ?? 'Attachment'}
+                        {typeof a.attachmentSize === 'number' && (
+                          <span className="text-slate-400">· {bytes(a.attachmentSize)}</span>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               </motion.div>
             ))}
@@ -388,13 +454,13 @@ export default function AdminMessages() {
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={closeAnnouncementModal}
         wide
         title="New announcement"
         description="Markdown works here — use **bold**, lists, and short paragraphs."
         footer={
           <>
-            <Button variant="ghost" onClick={() => setOpen(false)}>
+            <Button variant="ghost" onClick={closeAnnouncementModal}>
               Cancel
             </Button>
             <Button onClick={publish}>
@@ -430,6 +496,33 @@ export default function AdminMessages() {
               onChange={(e) => setBody(e.target.value)}
               placeholder={'Our photographer arrives at **9:30 AM** next Thursday.\n\n- Clothes without logos if you can\n- Order forms go home Tuesday'}
             />
+          </Field>
+          <Field label="Attachment (optional)">
+            {attachment ? (
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                  <Paperclip size={16} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-800">{attachment.fileName}</p>
+                  <p className="text-xs text-slate-500">{bytes(attachment.size)}</p>
+                </div>
+                <button
+                  onClick={removeAttachment}
+                  className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-full p-1 text-slate-400 hover:bg-slate-100"
+                  aria-label="Remove attachment"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <FileUploader
+                prefix="admin"
+                label="Attach a flyer, form, or order sheet"
+                onUploaded={onAttachmentUploaded}
+                onError={onAttachmentError}
+              />
+            )}
           </Field>
           {body.trim() && (
             <div>

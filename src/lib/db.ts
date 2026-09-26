@@ -172,6 +172,9 @@ export function toAnnouncement(row: AnnouncementRow): Announcement {
     audience: row.audience_family_id ?? ALL_AUDIENCE,
     date: row.date,
     body: row.body,
+    attachmentFileName: row.attachment_file_name ?? undefined,
+    attachmentSize: row.attachment_size ?? undefined,
+    attachmentStoragePath: row.attachment_storage_path ?? undefined,
   }
 }
 
@@ -398,6 +401,9 @@ export function fromAnnouncement(announcement: Announcement): Ins<'announcements
     audience_family_id:
       announcement.audience === ALL_AUDIENCE ? null : announcement.audience,
     date: announcement.date,
+    attachment_storage_path: announcement.attachmentStoragePath ?? null,
+    attachment_file_name: announcement.attachmentFileName ?? null,
+    attachment_size: announcement.attachmentSize ?? null,
   }
 }
 

@@ -269,7 +269,9 @@
     "bodyError": "Hãy ghi rõ hơn một chút",
     "toastSentTitle": "Đã gửi tin nhắn",
     "toastReplySentDesc": "Auntie Melissa sẽ xem trong lần kiểm tra cổng thông tin tiếp theo.",
-    "toastNewThreadDesc": "Đã bắt đầu một cuộc trò chuyện mới với Auntie Melissa."
+    "toastNewThreadDesc": "Đã bắt đầu một cuộc trò chuyện mới với Auntie Melissa.",
+    "attachment": "Tải tệp đính kèm",
+    "attachmentError": "Không thể mở tệp tải xuống. Hãy kiểm tra kết nối mạng và thử lại."
   },
   "invoiceView": {
     "backToInvoices": "Quay lại danh sách hóa đơn",

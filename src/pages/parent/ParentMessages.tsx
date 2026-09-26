@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Megaphone, MessageSquare, Send, Plus, Users, Inbox, ArrowLeft } from 'lucide-react'
+import { Megaphone, MessageSquare, Paperclip, Send, Plus, Users, Inbox, ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import {
@@ -19,7 +19,8 @@ import {
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
-import { cx, fmtDate, nowISO, uid } from '../../lib/helpers'
+import { bytes, cx, fmtDate, nowISO, uid } from '../../lib/helpers'
+import { downloadDocument } from '../../lib/storage'
 import { useSectionSeen } from '../../lib/unread'
 
 interface NewThreadErrors {
@@ -62,6 +63,12 @@ export default function ParentMessages() {
 
   const activeThread = threads.find((t) => t.id === activeThreadId) ?? threads[0]
   const authorName = user?.name ?? family?.primaryContact ?? 'Parent'
+
+  const onDownloadAttachment = (storagePath: string, fileName?: string) => {
+    void downloadDocument(storagePath, fileName).catch(() => {
+      pushToast({ tone: 'error', title: t('messages.attachmentError') })
+    })
+  }
 
   const sendReply = () => {
     if (!activeThread || !reply.trim()) return
@@ -151,6 +158,20 @@ export default function ParentMessages() {
                   <div className="md px-5 py-4 text-sm">
                     <ReactMarkdown>{a.body}</ReactMarkdown>
                   </div>
+                  {a.attachmentStoragePath && (
+                    <div className="border-t border-slate-100 px-5 py-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onDownloadAttachment(a.attachmentStoragePath ?? '', a.attachmentFileName)}
+                      >
+                        <Paperclip size={14} /> {a.attachmentFileName ?? t('messages.attachment')}
+                        {typeof a.attachmentSize === 'number' && (
+                          <span className="text-slate-400">· {bytes(a.attachmentSize)}</span>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               </motion.div>
             ))}

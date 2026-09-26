@@ -159,6 +159,10 @@ export type AnnouncementRow = {
   /** NULL is the app's 'all' audience. */
   audience_family_id: string | null
   date: string
+  /** Object key in the private `documents` bucket. NULL = no file attached. */
+  attachment_storage_path: string | null
+  attachment_file_name: string | null
+  attachment_size: number | null
 }
 
 export type ThreadRow = {
