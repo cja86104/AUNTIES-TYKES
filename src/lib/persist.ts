@@ -223,6 +223,40 @@ export async function hydrateSettings(): Promise<Settings | null> {
   return data ? toSettings(data) : null
 }
 
+/* -------------------------------- realtime --------------------------------- */
+
+/**
+ * Listens for changes to any realtime-enabled table (see migration
+ * 0012_realtime_publication.sql) and calls `onChange` once, debounced, after
+ * a burst of writes settles.
+ *
+ * This is how a second open tab — an admin sending an announcement while a
+ * family's portal tab sits open elsewhere, say — finds out without a manual
+ * refresh. Realtime still runs each row through that table's own RLS SELECT
+ * policy for the subscribing client's JWT before delivering it, so this never
+ * surfaces a row the client could not already read with a plain query.
+ *
+ * Returns an unsubscribe function; call it on sign-out.
+ */
+export function subscribeToChanges(onChange: () => void): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  const debounced = (): void => {
+    clearTimeout(timer)
+    timer = setTimeout(onChange, 500)
+  }
+
+  const channel = supabase
+    .channel('db-changes')
+    .on('postgres_changes', { event: '*', schema: 'public' }, debounced)
+    .subscribe()
+
+  return () => {
+    clearTimeout(timer)
+    void supabase.removeChannel(channel)
+  }
+}
+
 export interface NewParentLogin {
   familyId: string
   name: string

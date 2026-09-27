@@ -50,7 +50,7 @@ export default function ParentDailyReports() {
         count: dailyLogs.filter((l) => l.childId === k.id).length,
       })),
     ],
-    [kids, kidIds, dailyLogs],
+    [kids, kidIds, dailyLogs, t],
   )
 
   const filtersActive = Boolean(query || dateFilter || childFilter !== 'all')

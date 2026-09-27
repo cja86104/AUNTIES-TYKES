@@ -73,7 +73,7 @@ export default function ParentAttendance() {
         count: attendance.filter((a) => a.childId === k.id).length,
       })),
     ],
-    [kids, kidIds, attendance],
+    [kids, kidIds, attendance, t],
   )
 
   const exportCsv = () => {

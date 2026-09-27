@@ -8,6 +8,7 @@ import {
   restoreSession,
   signIn,
   signOut,
+  subscribeToChanges,
 } from '../lib/persist'
 import type { SectionName } from '../lib/database.types'
 import type {
@@ -274,6 +275,24 @@ export const useStore = create<StoreState>()((set, get) => {
     })
   }
 
+  /**
+   * Keeps this tab's cache in step with writes from any other signed-in tab —
+   * another admin window, or a family's portal left open — by re-running
+   * applyHydration() shortly after the database changes underneath it.
+   *
+   * Held as a plain closure variable, like `commit` and `applyHydration`
+   * above: it is plumbing, not data a component should ever read or
+   * re-render on.
+   */
+  let stopRealtime: (() => void) | null = null
+
+  const startRealtime = (): void => {
+    stopRealtime?.()
+    stopRealtime = subscribeToChanges(() => {
+      void applyHydration()
+    })
+  }
+
   /* ---- sync helpers: pick the row that changed out of the updated state ---- */
 
   const authorId = (state: StoreState): string | null => state.user?.id ?? null
@@ -303,6 +322,7 @@ export const useStore = create<StoreState>()((set, get) => {
         const session = await signIn(email, password)
         set({ user: session })
         await applyHydration()
+        startRealtime()
         return { ok: true, user: session }
       } catch (error) {
         return {
@@ -315,6 +335,8 @@ export const useStore = create<StoreState>()((set, get) => {
       }
     },
     logout: () => {
+      stopRealtime?.()
+      stopRealtime = null
       // Clear the cache as well as the session. On a shared device the next
       // person to sign in must not inherit the previous family's data.
       set({ user: null, ...emptyData })
@@ -331,6 +353,7 @@ export const useStore = create<StoreState>()((set, get) => {
         if (session) {
           set({ user: session })
           await applyHydration()
+          startRealtime()
         }
       } catch (error) {
         get().pushToast({

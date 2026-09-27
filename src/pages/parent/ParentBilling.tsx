@@ -44,7 +44,7 @@ export default function ParentBilling() {
       { value: 'overdue', label: t('billing.tabOverdue'), count: decorated.filter((r) => r.status === 'overdue').length },
       { value: 'paid', label: t('billing.tabPaid'), count: decorated.filter((r) => r.status === 'paid').length },
     ],
-    [decorated],
+    [decorated, t],
   )
 
   return (

@@ -1,12 +1,22 @@
-# AI Admin Assistant — Planning Doc (v2 — full build, voice included)
+# AI Admin Assistant — Planning Doc (v3 — live app, real voice pricing, real personality)
 
-**Status:** Plan only. Nothing in this document has been built. No locked file
-has been touched to produce it.
-**Drafted:** September 2026, with Claude (Cowork). Supersedes the earlier
-September draft — that version assumed no backend and treated voice as a
-later fast-follow. Neither is true anymore: the Supabase backend is going
-live tonight, and voice — both directions, working on Safari — is now a v1
-requirement, not a phase-2 nice-to-have. This version reflects that.
+**Status:** Plan only. Nothing in §§3–11 has been built yet — `api/` holds
+exactly one server function today (`create-parent-login.ts`, from the Auth
+migration), nothing AI-related. No locked file has been touched to produce
+this doc.
+**Drafted:** September 2026, with Claude (Cowork). **Updated September 26**
+— the app itself is no longer pre-launch. Three things changed from the
+v2 draft: (1) the Supabase migration this plan was written to wait for is
+done and live, so §2 below describes a starting line, not a countdown to
+tonight; (2) the voice pricing in §9 was optimistic — real OpenRouter rates
+pulled this week showed the actual TTS model's input/output prices are
+wildly lopsided in a way v2 never explained, so it's rewritten with
+verified numbers and a cheaper pick; (3) §§4–5 got a real pass on
+personality and proactive behavior — the v2 version leaned so hard on
+"don't invent facts" that the result was six hardcoded trigger conditions
+with no AI judgment anywhere in them, which reads exactly like what it is:
+a rules engine wearing a chat UI. That's fixed below without giving up the
+guardrail that made it safe.
 
 **Working name used throughout:** *Ro*. Placeholder from the planning
 conversation, not a locked decision — swap it for whatever you or Melissa
@@ -31,22 +41,27 @@ not sit above it. Everything below is designed around keeping that true.
 
 ---
 
-## 2. Where this stands tonight
+## 2. Where this stands now
 
-The Supabase migration — Auth, Postgres tables mirroring `types.ts`, RLS
-that reproduces what `useFamilyScope` does client-side today — is going
-live tonight. That migration and this feature are still the same project,
-not two: the tables, RLS policies, and server functions this needs are the
-ones the real launch needs regardless of AI.
+**Done:** the Supabase migration — real Auth, Postgres tables with RLS
+reproducing what `useFamilyScope` did client-side, private Storage for
+documents. `DEMO_MODE` and the localStorage data layer are gone entirely.
+The app is live-wired. That part of the plan is finished; this section
+used to describe it as a countdown and now just says so.
 
-1. **Supabase migration** — happening tonight. A server-side boundary to
-   call into, a place to log every action, and a real place to send from
-   (Resend/Postmark) all come from this, not from the AI work.
-2. **AI layer on top of the same server functions** the real admin UI ends
-   up calling — not a parallel path.
+**Not done:** everything from §3 on. `api/` has one server function today
+— `create-parent-login.ts`, from the Auth work — and nothing that talks to
+OpenRouter, nothing resembling a tool catalog, no chat endpoint. The AI
+layer is still a plan, not code, regardless of how live the rest of the
+app is. Building it means adding server functions that call into the same
+family-scoped boundary the admin UI already uses — not a parallel path,
+and not blocked on anything else at this point.
 
-Nothing in §§3–9 below starts before step 1 is actually live and the admin
-UI is calling real server functions instead of the localStorage store.
+Email (Resend) is wired for real sending now; there is still no payment
+processor — invoices are statements, payment is recorded by hand outside
+the app, same as before. That doesn't change how the `billing.mutate` tool
+in §3 is scoped, since its job is keeping the record straight, not moving
+money.
 
 ---
 
@@ -110,6 +125,53 @@ what she wants it to know about her business, that text gets normalized
 into consistent second-person register with one cheap model call *at save
 time*, not re-interpreted live on every turn.
 
+**Ro's personality, concretely — not just "second person."** Second-person
+framing is the mechanism, but it's not the whole feeling. Kirra's
+companion prompts work because they specify an actual personality, not
+just a grammatical person. Ro needs the same thing, written into the
+system prompt as traits the model is told to embody, not left to whatever
+"helpful assistant" defaults to:
+
+- **Warm but efficient** — she runs a business with a toddler on her hip
+  half the time. Ro leads with the point, not a greeting-then-preamble.
+- **A co-worker, not a customer-support agent.** Ro has opinions about
+  what's worth Melissa's attention today and says so ("the Chen thing is
+  the one I'd actually deal with first") instead of listing everything
+  flat and making her triage it herself.
+- **Comfortable saying "I don't know"** or "that's outside what I can do"
+  plainly, without padding it in apology. Confident about what it does
+  know, for the same reason.
+- **Notices the human parts, not just the data.** If three families paid
+  the same week the system prompt's "today's real numbers" show a good
+  month, Ro's allowed to say so — it's not required to stay clinical when
+  the honest read of the numbers is "good week."
+- **Pushes back when told to ignore something the data disagrees with —
+  explicitly, not as a hoped-for side effect of "has opinions."** A
+  companion-style trial run of this personality (September 26) surfaced
+  the gap directly: told "don't worry about it, it's fine" on an invoice
+  that was, by the numbers, not fine, the model just logged the
+  instruction and moved on — no "is that a one-off or the pattern with
+  them," nothing. "Not deferential for the sake of it" as a personality
+  trait is not enough to make a model actually do this; it needs to be a
+  named behavior in the prompt: when an instruction contradicts a fact Ro
+  actually has, say so once, plainly, before complying — she can still be
+  overridden, she just doesn't silently swallow the contradiction first.
+
+This is a fixed block in the system prompt, the same way a companion
+product's personality bio is fixed — not something the model infers fresh
+from the data each session. The data changes every session; the
+personality doesn't.
+
+**Continuity is part of the personality, not a separate memory feature.**
+§6 already turns standing instructions into rows so they survive between
+sessions. Extend the same idea one step further: when Ro says it'll follow
+up on something ("I'll flag it if the Chens haven't paid by Friday"), that
+commitment becomes a row too — not full conversational memory, just enough
+that Ro can open a session by checking its own open commitments and
+mentioning them unprompted. That's most of what makes a companion feel
+like it remembers *you* rather than just answering the last message: not
+deep recall, just not forgetting what it said it would do.
+
 ---
 
 ## 5. What Ro notices without being asked
@@ -129,15 +191,33 @@ pinged about the same thing five times or at 9pm on a Sunday.
 | `cold_lead` | A `leads`/`waitlist` entry has had no status change or activity in N days | Low |
 
 Each of these is a plain read query, evaluated by ordinary code — no model
-call, no cost, no judgment involved in deciding *whether* to surface it.
-They only ever surface things to Melissa; anything in the Send/Money/PII
-tier still goes through the confirmation gate in §7 before it does
-anything to a family. Noticing and acting stay separate.
+call, no cost, no judgment involved in deciding *whether* something is
+true. That part stays deterministic on purpose: whether an invoice is
+actually overdue is a fact to look up, not something worth risking a
+model's judgment on, and §8's "no invented facts" guardrail depends on
+that boundary holding.
 
-The result is that opening the console (or asking Ro out loud, "what's
-going on today?") gets her a short, ranked list — "3 families haven't
-paid, the Chen daily log never went out, the Brooks haven't heard from you
-in a week" — instead of her having to go find that herself.
+**But *whether it's true* and *how Ro tells her about it* are different
+jobs, and only the first one needs to be mechanical.** A raw list of six
+rows is the "chatbot following set links" version of this feature —
+technically proactive, but it reads like a cron job's output, because it
+is one. What makes it feel like Ro noticed something is a second, cheap
+step: hand the day's trigger results to the Tier-1 model, inside the same
+personality-bearing system prompt from §4, and let it decide the framing —
+what leads, what's worth a sentence versus a mention, what tone a good
+week versus a rough one deserves, and whether anything connects (the Chen
+daily log being late *and* their invoice sliding into "overdue" the same
+week is worth saying as one thing, not two bullet points). The model is
+never allowed to change the underlying facts, only their order and voice —
+it's handed the exact trigger rows as structured data and templated
+guardrails against adding anything not in them, the same discipline §8
+already applies to message drafting.
+
+The result Melissa actually sees, opening the console or asking out loud
+"what's going on today?", reads like someone who's been paying attention
+gave her a heads-up — not a report generator rendering six rows. That
+distinction is the entire point of building this instead of a settings
+page with filters on it.
 
 ---
 
@@ -247,41 +327,47 @@ modern browser, not Safari-specific — playback has to start from a user
 gesture (a tap), which a chat interface already does naturally.
 
 **Speech-to-text (her voice → text):** OpenRouter's audio-transcription
-endpoint, `openai/whisper-large-v3-turbo` (Groq-hosted), roughly
-$0.0007/minute — same API key already used for chat. At single-owner
-volume this is effectively free. Record with `MediaRecorder`, upload the
-clip, transcribe server-side, feed the transcript into the normal
-send-message flow as if she'd typed it.
+endpoint, `openai/whisper-large-v3-turbo` (Groq-hosted). Verified rate:
+**$0.000003/second** — that's $0.18/hour, effectively free at single-owner
+volume. Record with `MediaRecorder`, upload the clip, transcribe
+server-side, feed the transcript into the normal send-message flow as if
+she'd typed it.
 
-**Text-to-speech (Ro's replies → her voice):** OpenRouter now has a native
-TTS endpoint (`/api/v1/audio/speech`), added since the original draft —
-this means voice output can run on the exact same provider and key as
-chat and speech-to-text, rather than adding OpenAI as a second vendor.
-Candidate model: `openai/gpt-4o-mini-tts` (OpenRouter currently lists it
-as `openai/gpt-4o-mini-tts-2025-12-15` — confirm the current ID via
-OpenRouter's Models API at build time, these roll forward), priced per
-character, roughly $0.015/minute of generated audio by OpenAI's own
-published rate — reconfirm OpenRouter's actual rate for the model at build
-time since routed pricing can differ slightly from a provider's direct
-rate. At Melissa's volume this is a few dollars a month at most, most
-likely cents.
+**Text-to-speech (Ro's replies → her voice):** verified rates below,
+pulled directly from OpenRouter this week — v2 had this as a rough
+estimate and got it wrong in a way worth explaining rather than just
+correcting quietly.
 
-Two things worth knowing exist, not necessarily for v1:
+| Model | Input / Output per 1M | Real cost per minute of speech |
+|---|---|---|
+| `google/gemini-3.8-flash-lite-tts` — **pick** | $0.50 / $6 | roughly half a cent |
+| `openai/gpt-4o-mini-tts` — fallback | $0.60 / $12 | roughly a penny |
 
-- **ElevenLabs** is a meaningfully more natural-sounding voice than
-  OpenAI's or Azure's, if quality becomes the deciding factor later. $6/mo
-  for 30,000 credits on their Starter plan (their free tier's 10,000
-  credits/month might even cover a single owner's daily digest on its
-  own). Separate account and key, so it's a deliberate upgrade, not a
-  default — the server-audio-file architecture is identical, only the
-  fetch call changes.
-- **OpenAI's TTS API directly** (`tts-1`/`tts-1-hd`, $15–30 per 1M chars)
-  is a reference implementation, not a recommendation — it's what an
-  existing companion product in the portfolio already runs, including a
-  sentence-chunking trick for perceived latency. Useful to look at if
-  OpenRouter's TTS endpoint has rough edges at build time; not the primary
-  path given it'd be a second provider outside the OpenRouter-only
-  standard this app already holds to for chat.
+**Why the output price is so much higher than the input price, on both of
+these — this isn't a mistake, and it's true of every TTS model, not just
+one:** input tokens are text, priced like any text model. Output "tokens"
+for a TTS model are chunks of generated audio, and it takes far more of
+them to represent a sentence spoken aloud than it took to represent that
+same sentence as written text — so the per-token rate looks enormous next
+to a chat model's, while the actual per-minute cost stays tiny, because a
+short reply doesn't generate many of those tokens. Both numbers are real
+and both matter (the per-1M rate for engineering purposes, the per-minute
+figure for what this actually costs Melissa), which is why v2 stating only
+a single rough per-minute estimate was the wrong call — showing one number
+without the other is exactly what reads as "doesn't make sense."
+
+Gemini's the pick over gpt-4o-mini-tts specifically because its output
+rate is half, at no cost to the Safari-safety architecture — that
+mechanism (server generates a file, client plays it through a tapped
+`<audio>` element) doesn't care which vendor generated the file. Both stay
+on OpenRouter, so there's still exactly one provider and one key across
+chat, transcription, and speech.
+
+If voice quality becomes the deciding factor later — ElevenLabs is
+meaningfully more natural-sounding than either of the above — that's a
+deliberate upgrade to evaluate on its own, not a v1 default; it'd be a
+second vendor and key outside the OpenRouter-only standard this app holds
+to everywhere else.
 
 **Playback UI:** every Ro reply gets a tap-to-listen affordance next to
 the text — never autoplay. That satisfies the universal user-gesture
@@ -369,8 +455,8 @@ of the portal was.
 
 ## 13. Phased rollout
 
-1. **Phase 0 — Supabase migration.** In progress tonight. Nothing below
-   starts before real server functions exist to call into.
+1. **Phase 0 — Supabase migration. Done.** Real Auth, real tables, real
+   RLS, live in production. Nothing below has started.
 2. **Phase 1 — read-only + draft-only, voice included.** She can ask
    questions (typed or spoken) and get drafted messages and spoken
    replies; nothing sends without her tap. Zero blast radius on the
@@ -411,13 +497,22 @@ splitting to a second vendor for voice.
 
 ## 15. Suggested next step
 
-Finish Phase 0 tonight. Everything from §3 on is written to map onto
-whatever that migration produces, not the other way around — once real
-server functions exist, §3's tool catalog and §5's trigger queries are the
-next concrete build targets.
+Phase 0 is done, so this is no longer "finish the migration first" — it's
+"start Phase 1." §3's tool catalog and §5's trigger queries, against the
+real Supabase tables that now exist, are the next concrete build targets.
+
+One thing to check before that starts, unrelated to this plan's content:
+`.env.local` currently has `AI_ASSISTANT_ENABLED` set twice — `false` in
+the AI section with the "don't flip this on at initial deploy" comment
+right above it, and `true` again in a stray line near the bottom of the
+file. Nothing reads that flag yet since none of the AI server functions
+exist, so it's inert today — but whichever value wins by the time Phase 1
+code ships depends on dotenv's own last-one-wins behavior, not on anyone's
+intent, which is exactly how a safety flag gets shipped backwards by
+accident. Worth cleaning up now while it's free, not after it's live.
 
 ---
 
-*Pricing in §§9–10 is a September 2026 snapshot — reconfirm current model
-IDs and rates via OpenRouter's Models API at build time rather than
-treating the numbers above as fixed.*
+*Pricing in §§9–10 reflects rates pulled directly from OpenRouter on
+September 26, 2026 — reconfirm via OpenRouter's Models API at build time
+regardless, these roll forward on their own schedule.*
