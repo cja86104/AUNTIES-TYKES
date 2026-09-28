@@ -110,6 +110,52 @@ function isFatal(status: number): boolean {
 }
 
 /**
+ * An auth rejection, reported with what OpenRouter actually said.
+ *
+ * 401 and 403 were originally collapsed into one message about the key being
+ * rejected, which is wrong for 403: a 401 means the credential was not accepted
+ * at all, while a 403 often means it WAS accepted and something else is refused —
+ * a model the account cannot reach, a region block, a moderation refusal. One
+ * message for both sends you looking at the wrong thing.
+ */
+function authFailure(
+  status: number,
+  detail: string,
+  attempts: AttemptLog[],
+  config: AiConfig,
+): AiFailure {
+  const cause =
+    status === 401
+      ? 'OpenRouter did not accept the API key (401). A rejected key cannot be ' +
+        "attributed to an account, so a 401 will NOT appear in OpenRouter's activity " +
+        'log — an empty log is expected here, not evidence the key is fine.'
+      : 'OpenRouter accepted the key but refused the request (403). That is usually ' +
+        'model access, a region restriction, or a moderation block — not the key itself.'
+  return {
+    ok: false,
+    error: `${cause} It said: ${detail} [${describeKey(config.apiKey)}]`,
+    status: 502,
+    attempts,
+  }
+}
+
+/**
+ * Describes the configured key without revealing it.
+ *
+ * Length and prefix catch what actually goes wrong when a key moves from a local
+ * file to a dashboard: quotes pasted around the value, a truncated copy, or a
+ * different credential entirely. An OpenRouter inference key is `sk-or-v1-` plus
+ * 64 characters, so 73 is expected and 75 almost always means the quotes came
+ * along. No part of the key itself is included.
+ */
+function describeKey(key: string): string {
+  const notes = [`key length ${String(key.length)}`, 'expected 73']
+  notes.push(key.startsWith('sk-or-v1-') ? 'prefix ok' : 'prefix is NOT sk-or-v1-')
+  if (!/^[A-Za-z0-9-]+$/.test(key)) notes.push('contains quotes or other unexpected characters')
+  return notes.join(', ')
+}
+
+/**
  * Names a model together with the variable that set it.
  *
  * A model id alone is not actionable when four variables can hold one: the fix
@@ -295,14 +341,7 @@ export async function chat(
     if (result.status >= 400) {
       const detail = errorDetail(result.body, `HTTP ${result.status}`)
       attempts.push({ model, status: result.status, detail })
-      if (isFatal(result.status)) {
-        return {
-          ok: false,
-          error: 'OpenRouter rejected the studio API key',
-          status: 502,
-          attempts,
-        }
-      }
+      if (isFatal(result.status)) return authFailure(result.status, detail, attempts, config)
       continue
     }
 
@@ -344,6 +383,66 @@ export async function chat(
  * iOS Safari, the second has inconsistent voices there. Nothing in this module
  * or its callers may reach for them later.
  */
+
+/**
+ * Gemini TTS returns raw PCM and refuses mp3: "Gemini TTS only supports
+ * response_format=\"pcm\"". That breaks §9's Safari reasoning as originally
+ * written, because headerless PCM is not playable by an `<audio>` element —
+ * there is no container for the browser to read a rate or bit depth from.
+ *
+ * The fix keeps the architecture and changes the container: ask for PCM, then put
+ * a 44-byte RIFF/WAVE header on it here. WAV plays through a plain `<audio>`
+ * element in every browser, Safari included, so the mechanism §9 depends on —
+ * server produces a file, client plays it after a tap — is untouched. Only the
+ * file type changed, mp3 to wav.
+ *
+ * These numbers are Google's own, not inferred: the Gemini speech docs specify
+ * "headerless raw 16-bit signed little-endian linear PCM (audio/l16, 24 kHz,
+ * mono)". A wrong value here does not fail loudly, it plays the voice at the
+ * wrong speed, which is why each is written down with its source.
+ */
+const PCM_SAMPLE_RATE = 24_000
+const PCM_CHANNELS = 1
+const PCM_BITS_PER_SAMPLE = 16
+
+/** Wraps raw little-endian PCM samples in a WAV container. */
+export function wavFromPcm(
+  pcm: Buffer,
+  sampleRate = PCM_SAMPLE_RATE,
+  channels = PCM_CHANNELS,
+  bitsPerSample = PCM_BITS_PER_SAMPLE,
+): Buffer {
+  const blockAlign = (channels * bitsPerSample) / 8
+  // Written into one allocation rather than concatenated: Buffer.concat's typing
+  // disagrees with Buffer's own ArrayBufferLike in current @types/node, and a
+  // single alloc plus copy is cheaper anyway.
+  const out = Buffer.alloc(44 + pcm.byteLength)
+  out.write('RIFF', 0, 'ascii')
+  out.writeUInt32LE(36 + pcm.byteLength, 4)
+  out.write('WAVE', 8, 'ascii')
+  out.write('fmt ', 12, 'ascii')
+  out.writeUInt32LE(16, 16) // fmt chunk length
+  out.writeUInt16LE(1, 20) // 1 = uncompressed PCM
+  out.writeUInt16LE(channels, 22)
+  out.writeUInt32LE(sampleRate, 24)
+  out.writeUInt32LE(sampleRate * blockAlign, 28) // byte rate
+  out.writeUInt16LE(blockAlign, 32)
+  out.writeUInt16LE(bitsPerSample, 34)
+  out.write('data', 36, 'ascii')
+  out.writeUInt32LE(pcm.byteLength, 40)
+  // `set` rather than `copy`: both move the bytes, but copy's parameter type in
+  // current @types/node is narrower than Buffer itself, and set takes an
+  // ArrayLike<number> so it accepts a Buffer without a cast.
+  out.set(pcm, 44)
+  return out
+}
+
+/**
+ * A response-size ceiling. PCM is uncompressed — 24 kHz 16-bit mono is 48 KB per
+ * second — and a function response cannot be arbitrarily large, so a long reply
+ * is refused before generation rather than truncated mid-sentence.
+ */
+const MAX_SPEECH_BYTES = 4_000_000
 
 /** Formats OpenRouter's transcription endpoint documents. */
 export const TRANSCRIBABLE_FORMATS = ['wav', 'mp3', 'flac', 'm4a', 'ogg', 'webm', 'aac'] as const
@@ -449,9 +548,7 @@ export async function transcribe(
     if (result.status >= 400) {
       const detail = errorDetail(result.body, `HTTP ${result.status}`)
       attempts.push({ model, status: result.status, detail })
-      if (isFatal(result.status)) {
-        return { ok: false, error: 'OpenRouter rejected the studio API key', status: 502, attempts }
-      }
+      if (isFatal(result.status)) return authFailure(result.status, detail, attempts, config)
       continue
     }
     if (!isRecord(result.body) || typeof result.body.text !== 'string') {
@@ -479,8 +576,9 @@ export async function transcribe(
 /**
  * Ro's reply to an audio file.
  *
- * mp3 rather than the endpoint's default pcm: Safari has always played mp3
- * through a plain `<audio>` element, which is the whole Safari story here.
+ * The returned file is WAV (PCM in a RIFF header) or mp3, depending on what the
+ * provider gives back — either plays through a plain `<audio>` element, which is
+ * the whole Safari story here. See the PCM notes above.
  *
  * A model with no configured voice is skipped rather than called with another
  * provider's voice name — §9 leaves the fallback model's voice unpicked, and
@@ -511,31 +609,54 @@ export async function speak(
   for (const model of usable) {
     const voice = config.tts.voices[model]
     if (voice === undefined) continue
-    const result = await postForBinary(
-      `${BASE_URL}/audio/speech`,
-      config,
-      { model, input: input.text, voice, response_format: 'mp3' },
-      timeoutMs,
-    )
 
-    if ('detail' in result) {
-      attempts.push({ model, status: null, detail: result.detail })
-      continue
-    }
-    if ('errorBody' in result) {
-      const detail = errorDetail(result.errorBody, `HTTP ${result.status}`)
-      attempts.push({ model, status: result.status, detail })
-      if (isFatal(result.status)) {
-        return { ok: false, error: 'OpenRouter rejected the studio API key', status: 502, attempts }
+    // PCM first: it is the format the endpoint documents as its default and the
+    // only one Gemini accepts. mp3 is tried after, for a provider that refuses
+    // PCM. Negotiating per model rather than hardcoding one format is the lesson
+    // of this bug — asking every model for mp3 is what broke speech.
+    for (const format of ['pcm', 'mp3'] as const) {
+      const result = await postForBinary(
+        `${BASE_URL}/audio/speech`,
+        config,
+        { model, input: input.text, voice, response_format: format },
+        timeoutMs,
+      )
+
+      if ('detail' in result) {
+        attempts.push({ model, status: null, detail: `${format}: ${result.detail}` })
+        break // a network failure is not a format problem
       }
-      continue
-    }
-    if (result.body.byteLength === 0) {
-      attempts.push({ model, status: result.status, detail: 'empty audio' })
-      continue
-    }
+      if ('errorBody' in result) {
+        const detail = errorDetail(result.errorBody, `HTTP ${result.status}`)
+        attempts.push({ model, status: result.status, detail: `${format}: ${detail}` })
+        if (isFatal(result.status)) return authFailure(result.status, detail, attempts, config)
+        // Only try the other format when the complaint was about the format.
+        if (/response_format|format|pcm|mp3/i.test(detail)) continue
+        break
+      }
+      if (result.body.byteLength === 0) {
+        attempts.push({ model, status: result.status, detail: `${format}: empty audio` })
+        break
+      }
 
-    return { ok: true, model, voice, contentType: result.contentType, audio: result.body }
+      // Branch on what came back, not on what was asked for.
+      const returnedMp3 = /mpeg|mp3/i.test(result.contentType)
+      const audio = returnedMp3 ? result.body : wavFromPcm(result.body)
+      const contentType = returnedMp3 ? 'audio/mpeg' : 'audio/wav'
+
+      if (audio.byteLength > MAX_SPEECH_BYTES) {
+        return {
+          ok: false,
+          error:
+            'That reply is too long to read aloud — uncompressed speech would be about ' +
+            `${String(Math.round(audio.byteLength / 100_000) / 10)} MB.`,
+          status: 413,
+          attempts,
+        }
+      }
+
+      return { ok: true, model, voice, contentType, audio }
+    }
   }
 
   const last = attempts[attempts.length - 1]

@@ -448,6 +448,29 @@ correcting quietly.
 | `google/gemini-3.8-flash-lite-tts` — **pick** | $0.50 / $6 | roughly half a cent |
 | `openai/gpt-4o-mini-tts-2025-12-15` — fallback | $0.60 / $12 | roughly a penny |
 
+**Correction, 2026-09-27 — the audio format.** §9's Safari argument rested on
+mp3 playing through a plain `<audio>` element. Gemini TTS does not offer mp3:
+it answers `Gemini TTS only supports response_format="pcm"`. Headerless PCM is
+not playable by an `<audio>` element at all, so the argument as written did not
+survive contact with the chosen model.
+
+The mechanism is intact, the container changed. The server now asks for PCM and
+wraps it in a 44-byte RIFF/WAVE header before returning it, so the client still
+receives a file it plays after a tap — WAV rather than mp3, and WAV plays in
+every browser including Safari. Format is negotiated per model (PCM first, mp3
+second, branching on the content type that actually comes back) rather than
+hardcoded, which is what caused this. Two consequences worth knowing: PCM is
+uncompressed at 48 KB per second, so `api/ai/speak.ts` caps text at 1200
+characters (~80s) as a response-size limit, and speech above 4 MB is refused
+outright rather than truncated mid-sentence.
+
+**Voice check, closed.** §9 flagged that the male/female split for Gemini's
+voices came from a third-party reference rather than Google. Google's own speech
+documentation lists both: **`Erinome` — "Clear"** and **`Sulafat` — "Warm"**,
+among 30 prebuilt voices. That matches §9's reasoning for picking Erinome as the
+neutral-professional read, from the primary source. What remains is only a
+listen for taste, not a correctness question.
+
 **Correction, 2026-09-27.** This row previously read `openai/gpt-4o-mini-tts`,
 undated. That slug does not exist on OpenRouter and returns "Model ... does not
 exist" — OpenRouter's own TTS documentation names the dated

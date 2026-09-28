@@ -17,7 +17,14 @@ import { speak } from '../_lib/ai/openrouter.js'
  * keeping at the edge.
  */
 
-const MAX_CHARS = 2000
+/**
+ * Roughly 80 seconds of speech.
+ *
+ * Lower than it looks on purpose: speech comes back as uncompressed PCM at 48 KB
+ * per second, so this is a response-size limit wearing a character limit's
+ * clothes. Ro's replies are short by design, so it should not bite.
+ */
+const MAX_CHARS = 1200
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') {
