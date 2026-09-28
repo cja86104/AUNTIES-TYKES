@@ -189,7 +189,17 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
     let cancelled = false
     fetchRoStatus()
       .then((result) => {
-        if (!cancelled) setStatus(result)
+        if (cancelled) return
+        setStatus(result)
+        // A server that cannot read its own config says so in the panel rather
+        // than disappearing, so the missing variable names reach someone.
+        if (result.misconfigured === true && result.reason !== undefined) {
+          setStatusProblem(
+            `${result.reason}. Every AI_MODEL_* value, OPENROUTER_API_KEY and ` +
+              'OPENROUTER_SITE_URL/NAME must be set in the Vercel project — .env.local ' +
+              'is not deployed.',
+          )
+        }
       })
       .catch((cause: unknown) => {
         if (cancelled) return
@@ -362,11 +372,12 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
     [speakingId, pushToast],
   )
 
-  // Hidden only when the server says Ro is deliberately off. A status call that
-  // failed leaves the control visible, because the panel can then explain why —
-  // silently hiding it would look identical to the feature not existing.
-  if (statusChecked && status !== null && !status.enabled) return null
-  if (!statusChecked) return null
+  // Hidden only when Ro is deliberately switched off. A failed status call or a
+  // broken server config leaves the control visible, because the panel can then
+  // explain why — hiding it in those cases looks identical to the feature not
+  // existing, which is exactly how a missing env var went unnoticed once already.
+  const deliberatelyOff = status !== null && !status.enabled && status.misconfigured !== true
+  if (!statusChecked || deliberatelyOff) return null
 
   const unreachable = statusProblem !== null
   const voiceIn = status?.voice.input === true && canRecord()

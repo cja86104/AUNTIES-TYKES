@@ -17,6 +17,8 @@ import { supabase } from './supabase'
 
 export interface RoStatus {
   enabled: boolean
+  /** True when the server could not read its own configuration. */
+  misconfigured?: boolean
   name?: string
   reason?: string
   voice: { input: boolean; output: boolean }
@@ -158,6 +160,7 @@ export async function fetchRoStatus(): Promise<RoStatus> {
   const voice = (record.voice ?? {}) as Record<string, unknown>
   return {
     enabled: record.enabled === true,
+    misconfigured: record.misconfigured === true,
     name: typeof record.name === 'string' ? record.name : 'Ro',
     reason: typeof record.reason === 'string' ? record.reason : undefined,
     voice: { input: voice.input === true, output: voice.output === true },

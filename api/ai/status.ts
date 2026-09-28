@@ -34,9 +34,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const config = loadAiConfig()
   if (!config.ok) {
-    // Misconfiguration is reported as "off with a reason" rather than a 500: the
-    // console should hide the control, not show an error nobody can act on.
-    res.status(200).json({ enabled: false, reason: config.error, voice: { input: false, output: false } })
+    // Not a 500: a missing variable is a deployment problem, not a crash. But it
+    // is reported as `misconfigured` rather than plain `enabled: false`, because
+    // the two need opposite handling — a deliberate off switch should hide the
+    // control, while a broken config has to be visible to the one person who can
+    // fix it. Collapsing them made a missing env var look like a missing feature.
+    res.status(200).json({
+      enabled: false,
+      misconfigured: true,
+      reason: config.error,
+      voice: { input: false, output: false },
+    })
     return
   }
 
