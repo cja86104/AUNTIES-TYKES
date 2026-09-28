@@ -132,6 +132,16 @@ export interface ThreadBrief {
   lastAt: string | null
   /** True when the parent spoke last — §5's `unanswered_message` condition. */
   awaitingReply: boolean
+  /**
+   * Who owes the next message, spelled out.
+   *
+   * `awaitingReply: true` alone proved ambiguous in use: a model read it and
+   * reported the opposite, saying the owner had spoken last when the parent had.
+   * 'owner' here means the parent wrote last and a reply from the owner is
+   * outstanding; 'family' means the owner wrote last. Redundant with the boolean
+   * on purpose — the redundancy is what stops the inversion.
+   */
+  waitingOn: 'owner' | 'family' | null
 }
 
 export interface ThreadMessageBrief {

@@ -49,11 +49,17 @@ export interface AiConfig {
   stt: string[]
   tts: SpeechConfig
   /**
-   * Which environment variable supplied each model id.
+   * Every environment variable that names each model id, comma-joined.
    *
    * Only for error messages, and it earns its keep: "openai/gpt-4o-mini-tts does
    * not exist" sends you hunting through four TTS variables, while "AI_MODEL_TTS
    * (openai/gpt-4o-mini-tts) does not exist" names the one to change.
+   *
+   * ALL of them, not the last one written — that distinction caused a real
+   * misdiagnosis. When AI_MODEL_TTS and AI_MODEL_TTS_FALLBACK both held the same
+   * id, a single-value map kept whichever was assigned last, so a failure of the
+   * PRIMARY model was reported against the FALLBACK variable. It read as an
+   * unexplained fallback when nothing had fallen back at all.
    */
   modelSources: Record<string, string>
   /** Master switch. False means every Ro endpoint refuses. */
@@ -160,15 +166,23 @@ export function loadAiConfig(): ConfigResult {
   const maxSendsPerHour = count('AI_MAX_SENDS_PER_HOUR', missing, malformed)
   const maxRecipientsPerAction = count('AI_MAX_RECIPIENTS_PER_ACTION', missing, malformed)
 
-  // Built after the reads above so every id is attributed, including duplicates
-  // across variables (last one wins, which is fine for a diagnostic).
-  const modelSources: Record<string, string> = {}
-  for (const tier of Object.keys(models) as ModelTier[]) {
-    for (const id of models[tier]) modelSources[id] = TIER_ENV[tier]
+  // Built after the reads above. An id named by more than one variable is
+  // attributed to every one of them, so a duplicate is visible rather than
+  // silently collapsing to whichever was assigned last.
+  const sourcesById = new Map<string, string[]>()
+  const attribute = (id: string, variable: string): void => {
+    const existing = sourcesById.get(id) ?? []
+    if (!existing.includes(variable)) existing.push(variable)
+    sourcesById.set(id, existing)
   }
-  for (const id of stt) modelSources[id] = 'AI_MODEL_STT'
-  if (primaryTts !== null) modelSources[primaryTts] = 'AI_MODEL_TTS'
-  if (fallbackTts !== null) modelSources[fallbackTts] = 'AI_MODEL_TTS_FALLBACK'
+  for (const tier of Object.keys(models) as ModelTier[]) {
+    for (const id of models[tier]) attribute(id, TIER_ENV[tier])
+  }
+  for (const id of stt) attribute(id, 'AI_MODEL_STT')
+  if (primaryTts !== null) attribute(primaryTts, 'AI_MODEL_TTS')
+  if (fallbackTts !== null) attribute(fallbackTts, 'AI_MODEL_TTS_FALLBACK')
+  const modelSources: Record<string, string> = {}
+  for (const [id, variables] of sourcesById) modelSources[id] = variables.join(' and ')
 
   const problems: string[] = []
   if (missing.length > 0) problems.push(`missing ${missing.join(', ')}`)

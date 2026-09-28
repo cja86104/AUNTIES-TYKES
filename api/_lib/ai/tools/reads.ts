@@ -595,8 +595,11 @@ const threadList: ToolSpec = {
   name: 'thread.list',
   tier: 'read',
   description:
-    'Message threads, most recently active first, each marked with who spoke ' +
-    'last. Use awaitingReplyOnly to find the threads where a parent is waiting.',
+    'Message threads, most recently active first. Read waitingOn literally: ' +
+    '"owner" means the PARENT sent the last message and is waiting on a reply from ' +
+    'her; "family" means she sent the last message and the parent has not written ' +
+    'back. Never describe it the other way round — check waitingOn before saying ' +
+    'who owes whom. awaitingReplyOnly filters to the threads where she owes a reply.',
   parameters: schema({ awaitingReplyOnly: { type: 'boolean' } }),
   execute: async (args, ctx): Promise<ToolOutcome> => {
     const awaitingOnly = readBoolean(args, 'awaitingReplyOnly', false)
@@ -635,6 +638,7 @@ const threadList: ToolSpec = {
         lastFrom: last?.role ?? null,
         lastAt: last?.at ?? null,
         awaitingReply: last?.role === 'parent',
+        waitingOn: last === undefined ? null : last.role === 'parent' ? 'owner' : 'family',
       }
     })
     const filtered = awaitingOnly ? all.filter((thread) => thread.awaitingReply) : all
@@ -646,8 +650,10 @@ const threadGet: ToolSpec = {
   name: 'thread.get',
   tier: 'read',
   description:
-    'The messages in one thread, oldest first. Read this before drafting a reply ' +
-    'so the draft answers what was actually asked.',
+    'The messages in one thread, oldest first — so the LAST entry is the most ' +
+    'recent. On each message, from: "admin" is her and from: "parent" is the ' +
+    'family. Read this before drafting a reply so the draft answers what was ' +
+    'actually asked, and check the last message before saying who spoke last.',
   parameters: schema(
     {
       threadId: { type: 'string' },
