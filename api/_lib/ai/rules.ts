@@ -184,6 +184,11 @@ export async function saveRule(ctx: ToolContext, rule: NewRule): Promise<RulesRe
     channel: rule.channel ?? 'any',
     blocks_sends: rule.blocksSends,
     hold_until: rule.holdUntil ?? null,
+    // Stated rather than left to the column default. The send-time check filters
+    // on `active`, so this one field decides whether a saved rule guards anything
+    // — and a value this load-bearing should be visible in the insert that writes
+    // it, not inferred from a line in a migration.
+    active: true,
   })
   if (error !== null) return { ok: false, error: `Could not save that rule: ${error.message}` }
 

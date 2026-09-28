@@ -24,6 +24,7 @@
  */
 
 import { propose, record } from '../audit.js'
+import { matchStandingInstruction } from '../instructions.js'
 import { prettyDate } from '../clock.js'
 import {
   activeRules,
@@ -129,12 +130,26 @@ export function readPendingRule(args: Record<string, unknown>): PendingRule | st
   if (said === null) return 'The instruction she gave is required'
   if (summary === null) return 'A plain-English summary is required'
 
-  const kind = readEnum(args, 'kind', RULE_KINDS, 'manual')
-  // A contact hold that does not stop sends is a rule that reads like a guard and
-  // acts like a note. `blocks_sends` is explicit on the row for good reason — a
-  // check that infers it silently stops blocking the day a kind is added — but a
-  // floor in this one direction can only make a rule more protective, never less,
-  // and the preview says so plainly before she approves it.
+  // §6's matcher gets the deciding vote on what shape this is, not the model.
+  //
+  // "don't message the Brooks family until Friday" is a contact hold by its
+  // grammar, and a plain regex says so with certainty. Left to the model, it can
+  // file the same sentence as kind 'manual' with blocksSends false — which saves
+  // a rule that reads like a guard in her list and blocks nothing at all. That is
+  // the worst possible outcome: she believes the family is protected, and a
+  // message goes to them anyway. §7 wants rules "evaluated by ordinary code";
+  // this is ordinary code deciding what the rule IS, not just what it does.
+  const detected = matchStandingInstruction(said)
+  const kind: RuleKind =
+    detected?.shape === 'contact_hold'
+      ? 'contact_hold'
+      : readEnum(args, 'kind', RULE_KINDS, 'manual')
+
+  // A contact hold that does not stop sends reads like a guard and acts like a
+  // note. `blocks_sends` stays explicit on the row for good reason — a check that
+  // infers it silently stops blocking the day a kind is added — but this floor
+  // can only make a rule more protective, never less, and the preview says so
+  // plainly before she approves it.
   const blocksSends = kind === 'contact_hold' ? true : readBoolean(args, 'blocksSends', false)
 
   return {

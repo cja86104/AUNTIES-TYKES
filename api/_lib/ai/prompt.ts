@@ -167,9 +167,10 @@ function numbersBlock(numbers: TodayNumbers): string {
   return `TODAY — real numbers, read from the records just now\n\n${lines.join('\n')}`
 }
 
-function listBlock(title: string, items: string[], emptyLine: string): string {
+function listBlock(title: string, items: string[], emptyLine: string, footer = ''): string {
   if (items.length === 0) return `${title}\n\n${emptyLine}`
-  return `${title}\n\n${items.map((item) => `- ${item}`).join('\n')}`
+  const list = items.map((item) => `- ${item}`).join('\n')
+  return footer.length > 0 ? `${title}\n\n${list}\n\n${footer}` : `${title}\n\n${list}`
 }
 
 /**
@@ -206,6 +207,16 @@ export function buildSystemPrompt(state: PromptState): string {
       'Nothing on file yet. You have no standing instructions from her, so do not act ' +
         'as though you remember any. When she gives you one, save it with rule.save — ' +
         'she approves it with a tap and it holds from then on, in every conversation.',
+      // The list on its own was not enough. A rule was saved correctly, shown here
+      // correctly, and then ignored when she asked for a message to that family —
+      // because nothing in the prompt said what to DO about it. A standing
+      // instruction is not background colour; it is the first thing to check.
+      'Read that list before you write ANY message or announcement. If one of those ' +
+        'rules covers the family she is asking you to contact, do not draft it and do ' +
+        'not call message.send — tell her which rule it is, in her own words, and stop ' +
+        'there. She can lift it if she means to. This holds even when what she is ' +
+        'asking for sounds urgent or obviously fine: she set the rule, and going ' +
+        'around it quietly is the one thing that would make it worthless.',
     ),
     listBlock(
       "WHAT YOU SAID YOU'D DO",
@@ -354,7 +365,12 @@ export async function gatherPromptState(
           .length,
       },
       standingRules: rules.ok
-        ? rules.value.map((rule) => `${describeRule(rule)} [id ${rule.id}]`)
+        ? rules.value.map(
+            // Her verbatim sentence leads, because that is the form she will
+            // recognise if Ro quotes it back — and the `summary` beside it was
+            // written by a model at save time and may be looser than what she said.
+            (rule) => `"${rule.said}" — ${describeRule(rule)} [id ${rule.id}]`,
+          )
         : [],
       openCommitments: commitments.ok
         ? commitments.value.map((commitment) => {
