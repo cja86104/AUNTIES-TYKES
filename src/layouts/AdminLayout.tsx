@@ -24,6 +24,7 @@ import { Avatar } from '../components/ui'
 import { cx } from '../lib/helpers'
 import { useUnreadCounts, type UnreadCounts } from '../lib/unread'
 import { useBodyScrollLock } from '../lib/useBodyScrollLock'
+import RoAssistant from '../components/RoPanel'
 
 interface NavItem {
   to: string
@@ -198,6 +199,7 @@ export default function AdminLayout() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <RoAssistant onOpen={() => setOpen(false)} />
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-bold text-slate-900">{user?.name}</p>
                 <p className="text-xs text-slate-500">{user?.title || 'Administrator'}</p>

@@ -321,3 +321,214 @@ export async function chat(
     attempts,
   }
 }
+
+/* ---------------------------------- audio --------------------------------- */
+/**
+ * Speech in both directions, plan §9.
+ *
+ * The architecture is chosen to be Safari-safe by construction: the server calls
+ * the API and hands back text or an audio file, so neither direction touches
+ * `webkitSpeechRecognition` or `speechSynthesis()`. Those are free and are
+ * exactly the wrong choice — the first does not reliably open the microphone on
+ * iOS Safari, the second has inconsistent voices there. Nothing in this module
+ * or its callers may reach for them later.
+ */
+
+/** Formats OpenRouter's transcription endpoint documents. */
+export const TRANSCRIBABLE_FORMATS = ['wav', 'mp3', 'flac', 'm4a', 'ogg', 'webm', 'aac'] as const
+export type TranscribableFormat = (typeof TRANSCRIBABLE_FORMATS)[number]
+
+export interface TranscriptionSuccess {
+  ok: true
+  model: string
+  text: string
+  /** Billed audio length, when the provider reports it. */
+  seconds: number | null
+}
+
+export interface SpeechSuccess {
+  ok: true
+  model: string
+  voice: string
+  contentType: string
+  audio: Buffer
+}
+
+/** POSTs and returns the raw body, for the endpoint that answers with audio. */
+async function postForBinary(
+  url: string,
+  config: AiConfig,
+  payload: unknown,
+  timeoutMs: number,
+): Promise<
+  | { status: number; contentType: string; body: Buffer }
+  | { status: number; errorBody: unknown }
+  | { status: null; detail: string }
+> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => {
+    controller.abort()
+  }, timeoutMs)
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: headers(config),
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    })
+    if (!response.ok) {
+      // An error from this endpoint is JSON even though success is not.
+      const raw = await response.text()
+      let parsed: unknown = raw
+      try {
+        parsed = JSON.parse(raw) as unknown
+      } catch {
+        parsed = raw
+      }
+      return { status: response.status, errorBody: parsed }
+    }
+    const buffer = Buffer.from(await response.arrayBuffer())
+    return {
+      status: response.status,
+      contentType: response.headers.get('content-type') ?? 'audio/mpeg',
+      body: buffer,
+    }
+  } catch (cause) {
+    const detail = controller.signal.aborted
+      ? `no response within ${Math.round(timeoutMs / 1000)}s`
+      : cause instanceof Error
+        ? cause.message
+        : 'the request could not be sent'
+    return { status: null, detail }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * Her voice to text.
+ *
+ * Audio goes as raw base64 in JSON, not as a data URI — OpenRouter's docs are
+ * explicit that `input_audio.data` must not carry a `data:audio/...;base64,`
+ * prefix.
+ */
+export async function transcribe(
+  config: AiConfig,
+  input: { audioBase64: string; format: TranscribableFormat; language?: string; timeoutMs?: number },
+): Promise<TranscriptionSuccess | AiFailure> {
+  const attempts: AttemptLog[] = []
+  const timeoutMs = input.timeoutMs ?? 60_000
+
+  if (config.stt.length === 0) {
+    return { ok: false, error: 'No speech-to-text model is configured', status: 500, attempts }
+  }
+
+  for (const model of config.stt) {
+    const payload: Record<string, unknown> = {
+      model,
+      input_audio: { data: input.audioBase64, format: input.format },
+    }
+    if (input.language !== undefined) payload.language = input.language
+
+    const result = await postJson(`${BASE_URL}/audio/transcriptions`, config, payload, timeoutMs)
+    if (result.status === null) {
+      attempts.push({ model, status: null, detail: result.detail })
+      continue
+    }
+    if (result.status >= 400) {
+      const detail = errorDetail(result.body, `HTTP ${result.status}`)
+      attempts.push({ model, status: result.status, detail })
+      if (isFatal(result.status)) {
+        return { ok: false, error: 'OpenRouter rejected the studio API key', status: 502, attempts }
+      }
+      continue
+    }
+    if (!isRecord(result.body) || typeof result.body.text !== 'string') {
+      attempts.push({ model, status: result.status, detail: 'no transcript in the response' })
+      continue
+    }
+
+    const usage = result.body.usage
+    const seconds = isRecord(usage) && typeof usage.seconds === 'number' ? usage.seconds : null
+    return { ok: true, model, text: result.body.text, seconds }
+  }
+
+  const last = attempts[attempts.length - 1]
+  return {
+    ok: false,
+    error: last === undefined ? 'Could not transcribe that' : `Could not transcribe that: ${last.detail}`,
+    status: 502,
+    attempts,
+  }
+}
+
+/**
+ * Ro's reply to an audio file.
+ *
+ * mp3 rather than the endpoint's default pcm: Safari has always played mp3
+ * through a plain `<audio>` element, which is the whole Safari story here.
+ *
+ * A model with no configured voice is skipped rather than called with another
+ * provider's voice name — §9 leaves the fallback model's voice unpicked, and
+ * `Erinome` is a Gemini voice that OpenAI would refuse. See config.ts.
+ */
+export async function speak(
+  config: AiConfig,
+  input: { text: string; timeoutMs?: number },
+): Promise<SpeechSuccess | AiFailure> {
+  const attempts: AttemptLog[] = []
+  const timeoutMs = input.timeoutMs ?? 60_000
+
+  const usable = config.tts.models.filter((model) => config.tts.voices[model] !== undefined)
+  if (usable.length === 0) {
+    const configured = config.tts.models.length
+    return {
+      ok: false,
+      error:
+        configured === 0
+          ? 'No text-to-speech model is configured'
+          : 'No text-to-speech model has a voice configured. Set AI_MODEL_TTS_VOICE, ' +
+            'and AI_MODEL_TTS_FALLBACK_VOICE if a fallback model is set.',
+      status: 500,
+      attempts,
+    }
+  }
+
+  for (const model of usable) {
+    const voice = config.tts.voices[model]
+    if (voice === undefined) continue
+    const result = await postForBinary(
+      `${BASE_URL}/audio/speech`,
+      config,
+      { model, input: input.text, voice, response_format: 'mp3' },
+      timeoutMs,
+    )
+
+    if ('detail' in result) {
+      attempts.push({ model, status: null, detail: result.detail })
+      continue
+    }
+    if ('errorBody' in result) {
+      const detail = errorDetail(result.errorBody, `HTTP ${result.status}`)
+      attempts.push({ model, status: result.status, detail })
+      if (isFatal(result.status)) {
+        return { ok: false, error: 'OpenRouter rejected the studio API key', status: 502, attempts }
+      }
+      continue
+    }
+    if (result.body.byteLength === 0) {
+      attempts.push({ model, status: result.status, detail: 'empty audio' })
+      continue
+    }
+
+    return { ok: true, model, voice, contentType: result.contentType, audio: result.body }
+  }
+
+  const last = attempts[attempts.length - 1]
+  return {
+    ok: false,
+    error: last === undefined ? 'Could not generate speech' : `Could not generate speech: ${last.detail}`,
+    status: 502,
+    attempts,
+  }
+}
