@@ -51,6 +51,97 @@ function readPayload(raw: unknown): Payload | string {
   return payload
 }
 
+/**
+ * Whisper's stock phrases for silence, which it emits before she starts talking.
+ *
+ * These are artifacts of the training data — subtitle and end-card boilerplate —
+ * not anything that was in the room. Pinning the language removes the non-English
+ * ones at source; this is the backstop for the English ones, which pinning cannot
+ * help with because they are already in the right language.
+ *
+ * Deliberately a short list of exact openers rather than a fuzzy filter. "Thank
+ * you" is something she might genuinely start with, so it is removed only when it
+ * stands alone at the very front AND real words follow it. Cutting a sentence she
+ * actually said is the worse of the two failures: a spurious one is visible in the
+ * box and she can delete it, because a transcript lands there for her to read
+ * rather than being sent anywhere.
+ */
+const OPENING_ARTIFACTS = [
+  'thank you',
+  'thanks for watching',
+  'thank you for watching',
+  'please subscribe',
+  'subscribe to my channel',
+  'bye',
+  'you',
+]
+
+/** Han, Kana or Hangul. She is not speaking these. */
+const NON_LATIN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u
+const NON_LATIN_ALL = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/gu
+
+/** Sentence enders, including the full-width ones these artifacts arrive with. */
+const SENTENCE_END = /^([^.!?…。！？]{1,60}[.!?…。！？]+)[\s]+(\S[\s\S]*)$/u
+
+/**
+ * Removes a foreign-script preamble sitting in front of what she said.
+ *
+ * Not done by splitting sentences, which was the first attempt and was wrong
+ * twice over: the real artifact was "字幕由Amara.org社群提供." — whose embedded dot
+ * in "Amara.org" split it in the wrong place — and the Japanese one ends in a
+ * full-width period, which a plain [.!?] class does not match.
+ *
+ * So it works on scripts instead. Find the last Han/Kana/Hangul character; if
+ * everything after it is ordinary Latin text of a reasonable length, that tail is
+ * what she said and the head is the artifact. A transcript that is foreign script
+ * throughout is left alone — she may have meant it, and there would be nothing
+ * left to keep.
+ */
+function stripForeignPreamble(text: string): string {
+  const marks = [...text.matchAll(NON_LATIN_ALL)]
+  const last = marks[marks.length - 1]
+  if (last?.index === undefined) return text
+
+  const cut = last.index + last[0].length
+  // A long foreign section is content, not a stray opener.
+  if (cut > 80) return text
+
+  const rest = text.slice(cut).replace(/^[\s.,!?…。！？、:;-]+/u, '').trim()
+  // Nothing worth keeping, or still foreign: leave the transcript as it came.
+  if (rest.length < 10 || NON_LATIN.test(rest)) return text
+  return rest
+}
+
+/**
+ * Strips what Whisper invents for the silence before she starts talking.
+ *
+ * Two different problems. The foreign-script ones are handled above. The English
+ * ones are handled below, from a short list of exact openers rather than a fuzzy
+ * filter: "Thank you" is something she might genuinely start with, so it is
+ * removed only when it stands alone at the very front AND real words follow it.
+ * Cutting a sentence she actually said is the worse of the two failures — a
+ * spurious one is visible in the box and she can delete it, because a transcript
+ * lands there for her to read rather than being sent anywhere.
+ */
+export function stripOpeningArtifact(raw: string): string {
+  let text = stripForeignPreamble(raw.trim())
+  if (text.length === 0) return text
+
+  // Two passes: these arrive doubled often enough to matter — "Thank you. Thank
+  // you. <what she actually said>".
+  for (let pass = 0; pass < 2; pass += 1) {
+    const match = SENTENCE_END.exec(text)
+    if (match === null) break
+    const opener = match[1] ?? ''
+    const rest = match[2] ?? ''
+    const bare = opener.replace(/[.!?…。！？\s]+$/u, '').trim().toLowerCase()
+    if (!OPENING_ARTIFACTS.includes(bare)) break
+    text = rest.trim()
+  }
+
+  return text
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' })
@@ -79,6 +170,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
+  // Her own language, unless the client named one. Left unpinned, Whisper guesses
+  // from the audio — and the quiet second before she starts talking is exactly
+  // where it guesses wrong.
+  if (payload.language === undefined) payload.language = caller.caller.language
+
   const result = await transcribe(config.config, payload)
   if (!result.ok) {
     console.error('[ro] transcribe failed', JSON.stringify(result.attempts))
@@ -86,5 +182,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  res.status(200).json({ text: result.text, model: result.model, seconds: result.seconds })
+  const text = stripOpeningArtifact(result.text)
+  res.status(200).json({ text, model: result.model, seconds: result.seconds })
 }

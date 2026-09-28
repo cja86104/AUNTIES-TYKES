@@ -568,6 +568,10 @@ export async function transcribe(
     const payload: Record<string, unknown> = {
       model,
       input_audio: { data: input.audioBase64, format: input.format },
+      // Whisper-family models invent text when the audio gives them nothing to
+      // work with, and sampling is what lets them. Zero does not eliminate it,
+      // but it stops the model reaching for a plausible-sounding phrase.
+      temperature: 0,
     }
     if (input.language !== undefined) payload.language = input.language
 

@@ -444,6 +444,17 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
   const meterRef = useRef<{ context: AudioContext; frame: number } | null>(null)
+  /**
+   * Whether the microphone ever actually picked anything up this recording, and
+   * whether the meter was running well enough to know.
+   *
+   * Silence is what makes Whisper invent text — it answers a quiet clip with
+   * subtitle boilerplate ("Thank you", sometimes in Chinese). The cheapest fix is
+   * not to send silence. `meterRan` matters because the meter is best-effort: if
+   * it failed to start, "heard nothing" means nothing, and the clip must be sent.
+   */
+  const heardRef = useRef(false)
+  const meterRanRef = useRef(false)
   const tickRef = useRef<number | null>(null)
 
   const narrow = useNarrowViewport()
@@ -533,11 +544,18 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
           const centred = (sample - 128) / 128
           sum += centred * centred
         }
-        setLevel(Math.min(1, Math.sqrt(sum / samples.length) * 4))
+        const level = Math.min(1, Math.sqrt(sum / samples.length) * 4)
+        // Comfortably above room tone, comfortably below speech.
+        if (level > 0.08) heardRef.current = true
+        setLevel(level)
         if (meterRef.current !== null) meterRef.current.frame = requestAnimationFrame(read)
       }
       meterRef.current = { context, frame: requestAnimationFrame(read) }
+      meterRanRef.current = true
     } catch {
+      // Without a meter there is no way to know whether anything was said, so the
+      // silence guard below must not fire.
+      meterRanRef.current = false
       setLevel(0)
     }
   }, [])
@@ -562,6 +580,18 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
         stopMeter()
         const blob = new Blob(chunksRef.current, { type: mimeType })
         chunksRef.current = []
+
+        if (meterRanRef.current && !heardRef.current) {
+          // Nothing was said. Sending it anyway is how "Thank you." ends up in
+          // the box in front of whatever she types next.
+          pushToast({
+            tone: 'info',
+            title: "I didn't hear anything",
+            description: 'Tap the mic and speak, or type it instead.',
+          })
+          return
+        }
+
         setTranscribing(true)
         transcribeRecording(blob)
           .then((text) => {
@@ -581,6 +611,7 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
           .finally(() => setTranscribing(false))
       }
       recorderRef.current = recorder
+      heardRef.current = false
       recorder.start()
       setRecording(true)
       setSeconds(0)

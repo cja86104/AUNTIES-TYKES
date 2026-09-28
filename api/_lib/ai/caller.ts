@@ -23,6 +23,16 @@ export interface Caller {
   id: string
   /** The owner's display name, for the system prompt's "who Melissa is". */
   name: string
+  /**
+   * Her own `preferred_language`, ISO-639-1.
+   *
+   * Used to pin transcription to a language. Left unpinned, Whisper guesses from
+   * the audio, and on the near-silent lead-in before she starts speaking it
+   * guesses badly — returning subtitle boilerplate, sometimes in Chinese. Taken
+   * from her profile rather than hardcoded to 'en' because the app already
+   * supports 'es' and 'vi' and her account is the one that decides.
+   */
+  language: string
   db: AiDb
 }
 
@@ -73,7 +83,7 @@ export async function authenticateAdmin(header: string | undefined): Promise<Cal
 
   const { data: profile, error: profileError } = await db
     .from('profiles')
-    .select('name, role')
+    .select('name, role, preferred_language')
     .eq('id', authData.user.id)
     .single()
 
@@ -84,5 +94,13 @@ export async function authenticateAdmin(header: string | undefined): Promise<Cal
     return { ok: false, status: 403, error: 'Ro is only available to the owner' }
   }
 
-  return { ok: true, caller: { id: authData.user.id, name: profile.name, db } }
+  return {
+    ok: true,
+    caller: {
+      id: authData.user.id,
+      name: profile.name,
+      language: profile.preferred_language,
+      db,
+    },
+  }
 }
