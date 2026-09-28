@@ -225,6 +225,37 @@ function ActionCard({ action }: { action: RoAction }) {
   )
 }
 
+/* -------------------------------- warnings -------------------------------- */
+
+/**
+ * Things that went wrong behind a reply that still came back.
+ *
+ * These were collected server-side from the first turn and then rendered
+ * nowhere, which is how "No reply after 4 rounds" — the actual explanation for a
+ * failed turn — reached the browser and was thrown away. A warning channel with
+ * no display is worse than no channel: it reads as working.
+ *
+ * Kept small and below the reply, because most of these are survivable: a watcher
+ * that could not run, a tier that was unavailable and got covered by the backup.
+ * She should be able to see them without being alarmed by them.
+ */
+function Warnings({ items }: { items: string[] }) {
+  if (items.length === 0) return null
+  return (
+    <div className="mt-2 space-y-1">
+      {items.map((item, index) => (
+        <p
+          key={`${String(index)}-${item.slice(0, 24)}`}
+          className="flex items-start gap-1.5 text-xs leading-relaxed text-slate-500"
+        >
+          <AlertTriangle size={13} strokeWidth={1.75} className="mt-0.5 shrink-0 text-sunny-ink" />
+          {item}
+        </p>
+      ))}
+    </div>
+  )
+}
+
 /* ------------------------------ activity feed ------------------------------ */
 
 const priorityTone = { high: 'rose', medium: 'amber', low: 'blue' } as const
@@ -658,6 +689,7 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                         {(message.drafts ?? []).map((draft, index) => (
                           <DraftCard key={`${message.id}-draft-${String(index)}`} entry={draft} />
                         ))}
+                        <Warnings items={message.warnings ?? []} />
                         <Activity runs={message.toolRuns ?? []} notices={message.notices ?? []} />
                       </div>
                     ),

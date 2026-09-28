@@ -168,7 +168,10 @@ export const useRoSession = create<RoSessionState>()((set, get) => ({
       set((state) => ({
         messages: [
           ...state.messages,
-          { id: uid('ro'), role: 'assistant', content: message, warnings: ['failed'] },
+          // No `warnings` here: the failure IS the message. Now that warnings are
+          // rendered, a marker like 'failed' would print as a second line under
+          // the error saying "failed", which tells her nothing she cannot see.
+          { id: uid('ro'), role: 'assistant', content: message },
         ],
       }))
     } finally {

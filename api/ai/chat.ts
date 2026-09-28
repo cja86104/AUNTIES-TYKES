@@ -40,8 +40,22 @@ import { readActionPreview, type ActionPreview, type ToolContext } from '../_lib
 
 const MAX_HISTORY = 20
 const MAX_MESSAGE_CHARS = 4000
-/** Read, think, read again, answer. Four covers real chains without looping. */
-const MAX_ROUNDS = 4
+/**
+ * How many times the model may be called in one turn.
+ *
+ * Raised from 4 to 8 on 2026-09-28, after "don't message the Brooks family until
+ * Friday" came back as "I looked that up but couldn't put an answer together."
+ * Four was budgeted for reads, where two lookups and an answer is plenty. An
+ * action needs more: resolve the family, propose the rule, then speak — three
+ * before a word is said, with nothing left over for a second lookup or a retry.
+ * The budget had no slack for the work it was being asked to do.
+ *
+ * Eight is still a ceiling rather than a target: the loop breaks the moment the
+ * model answers in prose, so a normal read turn costs the same two calls it
+ * always did. It only spends more where the alternative was spending everything
+ * and producing nothing.
+ */
+const MAX_ROUNDS = 8
 
 interface IncomingTurn {
   message: string
@@ -133,6 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     today: todayInZone(),
     instruction: turn.message,
     model: '',
+    proposedThisTurn: new Map(),
   }
   const warnings: string[] = []
 
@@ -253,12 +268,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
 
   if (reply.length === 0) {
-    // Out of rounds with no prose. Better to say so than to ship a blank bubble.
-    reply =
-      runs.length > 0
-        ? "I looked that up but couldn't put an answer together. Ask me again?"
-        : "I couldn't work out what to do with that. Can you say it another way?"
-    warnings.push(`No reply after ${MAX_ROUNDS} rounds.`)
+    // Out of rounds with no prose. The work may still have happened — a card is
+    // rendered from `actions` and a draft from `drafts` whatever this text says —
+    // so the fallback has to describe what is actually on her screen. Saying
+    // "couldn't put an answer together" above a card she can tap is worse than
+    // saying nothing: it tells her the thing in front of her failed.
+    if (actions.length > 0) {
+      reply =
+        actions.length === 1
+          ? `${actions[0]?.summary ?? 'One thing'} — it's below, waiting on you.`
+          : `${String(actions.length)} things are below, waiting on you.`
+    } else if (drafts.length > 0) {
+      reply = "Draft's below — I ran out of room to say more about it."
+    } else {
+      reply =
+        runs.length > 0
+          ? "I looked that up but couldn't put an answer together. Ask me again?"
+          : "I couldn't work out what to do with that. Can you say it another way?"
+    }
+    warnings.push(
+      `No reply after ${String(MAX_ROUNDS)} model calls. Tools run: ` +
+        (runs.length > 0 ? runs.map((run) => run.name).join(' → ') : 'none'),
+    )
   }
 
   res.status(200).json({

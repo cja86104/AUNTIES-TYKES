@@ -70,6 +70,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     today: todayInZone(),
     instruction: '',
     model: '',
+    // Nothing proposes anything here; this endpoint only runs what already was.
+    proposedThisTurn: new Map(),
   }
 
   const result = await settleProposal(ctx, body.proposalId, body.decision)

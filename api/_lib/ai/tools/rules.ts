@@ -34,9 +34,11 @@ import {
   type RuleKind,
 } from '../rules.js'
 import {
+  alreadyProposed,
   dbFailure,
   NO_ARGS,
   proposed,
+  rememberProposal,
   readBoolean,
   readDate,
   readEnum,
@@ -78,9 +80,11 @@ const ruleList: ToolSpec = {
   tier: 'read',
   description:
     'List the standing instructions the owner has given you — who not to contact, ' +
-    'who is paying when, what to remind her about. Read this before saying you do ' +
-    'or do not have a rule about something, and before saving a new one that might ' +
-    'duplicate or contradict an existing one.',
+    'who is paying when, what to remind her about. You do NOT need this before ' +
+    'saving a rule: every active rule, with its id, is already listed for you at ' +
+    'the start of this conversation. Call it only if she asks to see the full list, ' +
+    'or if you think that list is out of date because something changed mid-' +
+    'conversation.',
   parameters: NO_ARGS,
   execute: async (_args, ctx): Promise<ToolOutcome> => {
     const rules = await activeRules(ctx)
@@ -237,6 +241,11 @@ const ruleSave: ToolSpec = {
       }
     }
 
+    // One card per instruction, however many times the model asks this turn.
+    const key = `rule.save:${JSON.stringify(pending)}`
+    const existing = alreadyProposed(ctx, key)
+    if (existing !== undefined) return proposed(existing)
+
     const logged = await propose(ctx, {
       instruction: ctx.instruction,
       tool: 'rule.save',
@@ -249,7 +258,9 @@ const ruleSave: ToolSpec = {
     })
     if (!logged.ok) return { ok: false, error: logged.error }
 
-    return proposed(rulePreview(logged.value, pending))
+    const preview = rulePreview(logged.value, pending)
+    rememberProposal(ctx, key, preview)
+    return proposed(preview)
   },
 }
 
@@ -277,6 +288,10 @@ const ruleRetire: ToolSpec = {
       return { ok: true, data: { retired: false, reason: 'no active rule has that id', ruleId } }
     }
 
+    const key = `rule.retire:${ruleId}`
+    const existing = alreadyProposed(ctx, key)
+    if (existing !== undefined) return proposed(existing)
+
     const logged = await propose(ctx, {
       instruction: ctx.instruction,
       tool: 'rule.retire',
@@ -287,7 +302,7 @@ const ruleRetire: ToolSpec = {
     })
     if (!logged.ok) return { ok: false, error: logged.error }
 
-    return proposed({
+    const preview: ActionPreview = {
       id: logged.value,
       kind: 'rule.retire',
       title: 'Turn off a standing rule',
@@ -304,7 +319,9 @@ const ruleRetire: ToolSpec = {
         { label: 'Kept on record', value: 'Yes — turned off, not deleted.' },
       ],
       confirmLabel: 'Turn it off',
-    })
+    }
+    rememberProposal(ctx, key, preview)
+    return proposed(preview)
   },
 }
 

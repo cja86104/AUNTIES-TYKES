@@ -47,6 +47,19 @@ export interface ToolContext {
   instruction: string
   /** Which model produced the call, for §10's tier accounting in the audit row. */
   model: string
+  /**
+   * Proposals already made during this turn, keyed by tool and arguments.
+   *
+   * Exists because a model that has just proposed something has no way to see
+   * that it worked: the rule is not in the rules table, because it is only
+   * proposed. A weaker model checks, finds nothing, and proposes again — which
+   * would stack two identical cards in front of her for one instruction, and
+   * two rows in the audit trail. Asking twice in one turn now answers once.
+   *
+   * Per-request by design, not a cache: a genuine second save of the same rule
+   * in a later turn is a real request and gets its own card.
+   */
+  proposedThisTurn: Map<string, ActionPreview>
 }
 
 export type ToolOutcome = { ok: true; data: unknown } | { ok: false; error: string }
@@ -162,9 +175,39 @@ export interface ActionPreview {
   confirmLabel: string
 }
 
-/** The tool result that carries a proposal. `proposed` is what chat.ts keys on. */
+/**
+ * The tool result that carries a proposal. `proposed` is what chat.ts keys on.
+ *
+ * `nextStep` is in the payload rather than left to the system prompt on purpose.
+ * A tool result is the model's most recent input and the thing it reasons from
+ * next, and "proposed: true" does not obviously mean "finished" to a small model
+ * — it read as "not saved yet", which is how one instruction turned into a loop
+ * of retries that burned the whole round budget without ever answering her.
+ */
 export function proposed(action: ActionPreview): { ok: true; data: unknown } {
-  return { ok: true, data: { proposed: true, action } }
+  return {
+    ok: true,
+    data: {
+      proposed: true,
+      action,
+      nextStep:
+        'Done — this is now showing on her screen as a card with the details and a ' +
+        'button, directly under your reply. Do NOT call this tool again for the same ' +
+        'thing, and do not look it up to check: it is deliberately not saved until she ' +
+        'taps. Stop using tools now and write her one short sentence saying it is ' +
+        'waiting for her. Do not repeat the details — the card already shows them.',
+    },
+  }
+}
+
+/** A proposal already made this turn for these arguments, if there is one. */
+export function alreadyProposed(ctx: ToolContext, key: string): ActionPreview | undefined {
+  return ctx.proposedThisTurn.get(key)
+}
+
+/** Remembers a proposal so an immediate repeat of the same request answers once. */
+export function rememberProposal(ctx: ToolContext, key: string, action: ActionPreview): void {
+  ctx.proposedThisTurn.set(key, action)
 }
 
 /**
