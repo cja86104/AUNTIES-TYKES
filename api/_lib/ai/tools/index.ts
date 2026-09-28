@@ -7,25 +7,32 @@
  * does not exist, and the model is told so plainly rather than being given an
  * error it could narrate around.
  *
- * Phase 1 registers read and draft tools only. The Send / Money / PII tools in
- * §3's table are deliberately absent: confirmation gating them (§7) is a Phase
- * 2/3 job, and a tool that is not in this array cannot be called by any prompt.
+ * Registering a tool here makes it callable; leaving it out makes it impossible,
+ * whatever a prompt says. That is still true of every tool in §3's table that is
+ * not listed below.
+ *
+ * Note what registering does NOT do. `rule.save` and `rule.retire` are in this
+ * array and change nothing when called: they record a proposal and stop, and
+ * their writes live in `../execute.ts` behind `api/ai/confirm.ts`. So the catalog
+ * being reachable by the model and the write being reachable by the model are two
+ * separate questions, and the second one always answers to her tap.
  */
 
 import type { ToolDefinition } from '../openrouter.js'
 import { draftTools } from './drafts.js'
 import { readTools } from './reads.js'
+import { ruleTools } from './rules.js'
 import type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
 
 export type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
 
-/** Everything Ro can do this phase, in the order the model sees it. */
-export const phase1Tools: ToolSpec[] = [...readTools, ...draftTools]
+/** Everything Ro can do, in the order the model sees it. */
+export const roTools: ToolSpec[] = [...readTools, ...draftTools, ...ruleTools]
 
-const byName = new Map<string, ToolSpec>(phase1Tools.map((tool) => [tool.name, tool]))
+const byName = new Map<string, ToolSpec>(roTools.map((tool) => [tool.name, tool]))
 
 /** The catalog in OpenRouter's tool-definition shape. */
-export function toolDefinitions(tools: ToolSpec[] = phase1Tools): ToolDefinition[] {
+export function toolDefinitions(tools: ToolSpec[] = roTools): ToolDefinition[] {
   return tools.map((tool) => ({
     type: 'function',
     function: {

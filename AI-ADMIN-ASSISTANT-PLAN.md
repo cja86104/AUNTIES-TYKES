@@ -68,13 +68,33 @@ documents. `DEMO_MODE` and the localStorage data layer are gone entirely.
 The app is live-wired. That part of the plan is finished; this section
 used to describe it as a countdown and now just says so.
 
-**Not done:** everything from §3 on. `api/` has one server function today
-— `create-parent-login.ts`, from the Auth work — and nothing that talks to
-OpenRouter, nothing resembling a tool catalog, no chat endpoint. The AI
-layer is still a plan, not code, regardless of how live the rest of the
-app is. Building it means adding server functions that call into the same
-family-scoped boundary the admin UI already uses — not a parallel path,
-and not blocked on anything else at this point.
+**Updated 2026-09-28.** The paragraph that used to sit here said "not done:
+everything from §3 on", which stopped being true the day Phase 1 shipped. It
+is replaced rather than amended, because a stale status section is the same
+defect as a stale `ARCHITECTURE.md` — and this repo already has one of those.
+
+**Done since:** Ro is live in production. `api/` now holds six server
+functions: `create-parent-login.ts` from the Auth work, plus `ai/chat`,
+`ai/status`, `ai/transcribe`, `ai/speak` and `ai/confirm`. All of §3's read
+and draft tools work against real data, §5's six watchers run on every turn,
+§9's voice pipeline works in both directions on Chrome, and §11's slide-over
+persists across navigation. Migration `0013_ai_assistant.sql` is applied, so
+§8's audit log and §6/§7's standing rules are real tables.
+
+The approve-and-execute path from §7 is built and proven on its first real
+action — saving and retiring standing rules. That is the piece everything
+else hangs off: `api/_lib/ai/execute.ts` holds the writes, `api/ai/confirm`
+is its only caller, and a gated tool has no write of its own. So every
+remaining mutation in the table below is a matter of adding a tool and an
+executor, not new plumbing — and notably not a new endpoint, so the Vercel
+function count stops growing here.
+
+**Not done:** the mutation tools themselves, marked in the table below.
+
+One thing worth watching, from live use rather than from this plan: the
+Tier-0 model answers correctly but slowly, and TTS takes well over five
+seconds to start. Both are deferred to a tuning pass after the catalog is
+complete — they are latency, not correctness.
 
 Email (Resend) is wired for real sending now; there is still no payment
 processor — invoices are statements, payment is recorded by hand outside
@@ -100,32 +120,54 @@ business settings, thread creation, and every deletion. The complete map is
 below, and the audit is the reason it is worth trusting: it was derived from
 `useStore.ts` rather than from memory of what the app does.
 
-### Built in Phase 1 — read and draft (17 tools, live)
+### Built and live — 22 tools
 
-`family.find` · `family.get` · `roster.list` · `attendance.today` ·
-`attendance.history` · `dailyLog.list` · `invoice.list` · `invoice.get` ·
-`thread.list` · `thread.get` · `document.list` · `enrollment.list` ·
-`calendar.upcoming` · `settings.get` — all reads, all on the caller's own JWT
-so RLS decides what comes back. Plus `message.draft`, `announcement.draft`
-and `dailyLog.draft`, which prepare wording and stop.
+**Reads (15).** `family.find` · `family.get` · `roster.list` ·
+`attendance.today` · `attendance.history` · `dailyLog.list` · `invoice.list` ·
+`invoice.get` · `thread.list` · `thread.get` · `document.list` ·
+`enrollment.list` · `calendar.upcoming` · `settings.get` · `rule.list` — all
+on the caller's own JWT, so RLS decides what comes back.
 
-### Phase 2/3 — the mutation catalog, complete
+**Drafts (3).** `message.draft` · `announcement.draft` · `dailyLog.draft` —
+prepare wording and stop. No send tool exists for them to chain into yet.
 
-| Store action(s) in `useStore.ts` | AI tool name | Risk tier |
-|---|---|---|
-| `checkIn` / `checkOut` / `markAbsent` | `attendance.set` | Low |
-| `addDailyLog` / `updateDailyLog` / `deleteDailyLog` | `dailyLog.write` | Low, **delete gated** |
-| `addDocument` (+ `uploadDocument` in `lib/storage.ts`) / `toggleDocVisibility` / `deleteDocument` | `document.manage` | Low, **delete gated** |
-| `addCalendarEvent` / `updateCalendarEvent` / `deleteCalendarEvent` | `calendar.mutate` | Low, **delete gated** — *added 2026-09-27* |
-| `addLead` / `updateLead` | `lead.mutate` | Low — *added 2026-09-27* |
-| `setWaitlist` | `waitlist.mutate` | Low — *added 2026-09-27* |
-| `addFamily` / `updateFamily` / `addChild` / `updateChild` | `family.mutate` | Medium |
-| `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium |
-| `updateSettings` / `updateRates` / `updatePolicies` | `settings.mutate` | **Money** — *added 2026-09-27* |
-| `startThread` / `sendThreadMessage` | `message.send` | **Send** |
-| `addAnnouncement` | `announcement.send` | **Send** |
-| `createInvoice` / `recordPayment` / `deleteInvoice` | `billing.mutate` | **Money** |
-| `createParentLogin` (via `api/create-parent-login.ts`) | `account.create` | **Money/PII** |
+**Actions (4), added 2026-09-28.** `rule.save` and `rule.retire` propose and
+wait for her tap; `commitment.note` and `commitment.close` write straight
+away. The difference is not a flag — `rule.save` contains no write at all.
+Its write lives in `api/_lib/ai/execute.ts`, which only `api/ai/confirm.ts`
+calls, so there is no path from a model's tool call to a saved rule that
+does not pass through her approval. The commitment pair is exempt because it
+touches Ro's own follow-up list and nothing else: no business record, no
+message, no money. Every one of the four lands in `ai_audit_log` either way.
+
+A rule change is gated despite sending nothing, which is worth stating since
+it looks over-cautious next to the commitment pair. A standing rule is what
+stops a later send. Saving a wrong one fails quietly — it shows up as a
+message that did not go out, days later, with nothing pointing at the cause —
+and retiring one removes a guard she put up herself.
+
+### The mutation catalog, complete
+
+Status column added 2026-09-28. "Waiting" means the tool and its executor
+have not been written; the path they plug into has been.
+
+| Store action(s) in `useStore.ts` | AI tool name | Risk tier | Status |
+|---|---|---|---|
+| `checkIn` / `checkOut` / `markAbsent` | `attendance.set` | Low | Waiting |
+| `addDailyLog` / `updateDailyLog` / `deleteDailyLog` | `dailyLog.write` | Low, **delete gated** | Waiting |
+| `addDocument` (+ `uploadDocument` in `lib/storage.ts`) / `toggleDocVisibility` / `deleteDocument` | `document.manage` | Low, **delete gated** | Waiting |
+| `addCalendarEvent` / `updateCalendarEvent` / `deleteCalendarEvent` | `calendar.mutate` | Low, **delete gated** — *added 2026-09-27* | Waiting |
+| `addLead` / `updateLead` | `lead.mutate` | Low — *added 2026-09-27* | Waiting |
+| `setWaitlist` | `waitlist.mutate` | Low — *added 2026-09-27* | Waiting |
+| `addFamily` / `updateFamily` / `addChild` / `updateChild` | `family.mutate` | Medium | Waiting |
+| `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium | Waiting |
+| `updateSettings` / `updateRates` / `updatePolicies` | `settings.mutate` | **Money** — *added 2026-09-27* | Waiting |
+| `startThread` / `sendThreadMessage` | `message.send` | **Send** | Waiting |
+| `addAnnouncement` | `announcement.send` | **Send** | Waiting |
+| `createInvoice` / `recordPayment` / `deleteInvoice` | `billing.mutate` | **Money** | Waiting |
+| `createParentLogin` (via `api/create-parent-login.ts`) | `account.create` | **Money/PII** | Waiting |
+| *(none — Ro's own tables)* | `rule.save` / `rule.retire` | Medium | **Built 2026-09-28** |
+| *(none — Ro's own tables)* | `commitment.note` / `commitment.close` | Low, ungated | **Built 2026-09-28** |
 
 Deliberately absent, because the admin console cannot do them either:
 `login` / `logout` / `bootstrap` / `pushToast` / `markSectionSeen` are
@@ -635,17 +677,27 @@ the RLS policies alongside it, not after.
 
 1. **Phase 0 — Supabase migration. Done.** Real Auth, real tables, real
    RLS, live in production. Nothing below has started.
-2. **Phase 1 — read-only + draft-only, voice included.** She can ask
-   questions (typed or spoken) and get drafted messages and spoken
-   replies; nothing sends without her tap. Zero blast radius on the
-   action side, builds a track record for Tier-0 accuracy, and gets the
-   voice pipeline proven early rather than bolted on later. Voice being
-   in v1 is about the input/output channel, not about loosening any
-   confirmation gate — those stay exactly as cautious as Phase 1 always
-   was.
-3. **Phase 2 — low-risk auto-actions.** Daily-log delivery on the rules
-   engine, the proactive notices from §5 live, undo window, daily digest
-   of what went out unattended.
+2. **Phase 1 — read-only + draft-only, voice included. Done, live.** She
+   can ask questions (typed or spoken) and get drafted messages and spoken
+   replies; nothing sends. Zero blast radius on the action side, built a
+   track record for Tier-0 accuracy, and got the voice pipeline proven
+   early rather than bolted on later. Voice being in v1 was about the
+   input/output channel, not about loosening any confirmation gate — and it
+   did not.
+3. **Phase 2 — actions, each behind her tap. In progress.** The
+   approve-and-execute path is built and proven on standing rules
+   (2026-09-28): propose, preview, tap, execute, audit, with the claim on
+   the audit row making a double tap incapable of running anything twice.
+   What remains is filling the catalog — the low-risk mutations, then the
+   send tier, then Money/PII — plus the undo window and a digest of
+   anything that ran unattended. §5's notices are already live.
+
+   Worth recording, because it inverts the original plan's instinct: the
+   rules engine was going to be built as its own slab and the send path as
+   another. Building one complete vertical slice instead — server library,
+   endpoint, tool, UI, all for a single real action — meant the second
+   action needed no new plumbing at all. Every remaining tool is a tool and
+   an executor.
 4. **Phase 3 — broader action set.** Billing reminders, enrollment
    nudges — still confirmation-gated for anything in the Money/PII tier,
    indefinitely. Full unattended autonomy on money or child-safety

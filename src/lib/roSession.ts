@@ -1,5 +1,15 @@
 import { create } from 'zustand'
-import { askRo, fetchRoStatus, RoError, type RoDraft, type RoNotice, type RoStatus, type RoToolRun } from './ro'
+import {
+  askRo,
+  confirmRoAction,
+  fetchRoStatus,
+  RoError,
+  type RoAction,
+  type RoDraft,
+  type RoNotice,
+  type RoStatus,
+  type RoToolRun,
+} from './ro'
 import { uid } from './helpers'
 
 /**
@@ -31,9 +41,29 @@ export interface RoMessage {
   role: 'user' | 'assistant'
   content: string
   drafts?: RoDraft[]
+  actions?: RoAction[]
   toolRuns?: RoToolRun[]
   notices?: RoNotice[]
   warnings?: string[]
+}
+
+/**
+ * What has happened to one proposed action, keyed by its id.
+ *
+ * Held here rather than in the card's own component state, for the same reason
+ * the conversation is: `App.tsx` remounts this whole subtree on navigation, and a
+ * card that forgot she had already approved it would offer to run the action
+ * again. The server would refuse the second run — the claim in `audit.ts` is
+ * atomic — but a button that appears to work and then reports "already done" is a
+ * bug she has to reason about, not a safeguard.
+ *
+ * An id absent from the map is pending. `failed` is left re-tappable on purpose:
+ * a request that died on the network deserves a second attempt, and one the
+ * server actually refused will simply say so again.
+ */
+export interface RoDecision {
+  state: 'working' | 'done' | 'declined' | 'failed'
+  detail: string
 }
 
 interface RoSessionState {
@@ -42,6 +72,9 @@ interface RoSessionState {
   input: string
   messages: RoMessage[]
   busy: boolean
+
+  /** Approvals and dismissals, keyed by proposal id. Absent = still pending. */
+  decisions: Record<string, RoDecision>
 
   status: RoStatus | null
   statusProblem: string | null
@@ -53,6 +86,8 @@ interface RoSessionState {
   /** Fetches status once per page load; safe to call on every mount. */
   ensureStatus: () => void
   send: (text: string) => Promise<void>
+  /** Approves or dismisses one prepared action. */
+  decide: (actionId: string, decision: 'approve' | 'decline') => Promise<void>
   clear: () => void
 }
 
@@ -64,6 +99,7 @@ export const useRoSession = create<RoSessionState>()((set, get) => ({
   input: '',
   messages: [],
   busy: false,
+  decisions: {},
   status: null,
   statusProblem: null,
   statusChecked: false,
@@ -120,6 +156,7 @@ export const useRoSession = create<RoSessionState>()((set, get) => ({
             role: 'assistant',
             content: reply.reply,
             drafts: reply.drafts,
+            actions: reply.actions,
             toolRuns: reply.toolRuns,
             notices: reply.notices,
             warnings: reply.warnings,
@@ -139,5 +176,25 @@ export const useRoSession = create<RoSessionState>()((set, get) => ({
     }
   },
 
-  clear: () => set({ messages: [], input: '' }),
+  decide: async (actionId, decision) => {
+    const existing = get().decisions[actionId]
+    // A second tap while the first is in flight, or after it settled, is ignored.
+    if (existing !== undefined && existing.state !== 'failed') return
+
+    const mark = (state: RoDecision['state'], detail: string): void => {
+      set((current) => ({ decisions: { ...current.decisions, [actionId]: { state, detail } } }))
+    }
+    mark('working', '')
+
+    try {
+      const result = await confirmRoAction(actionId, decision)
+      if (result.outcome === 'executed') mark('done', result.summary)
+      else if (result.outcome === 'declined') mark('declined', result.summary)
+      else mark('failed', result.error.length > 0 ? result.error : 'That did not go through.')
+    } catch (cause) {
+      mark('failed', cause instanceof RoError ? cause.message : 'That did not go through.')
+    }
+  },
+
+  clear: () => set({ messages: [], input: '', decisions: {} }),
 }))

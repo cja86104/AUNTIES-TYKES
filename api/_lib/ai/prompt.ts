@@ -21,8 +21,9 @@
  * teaches it to inhabit the role instead.
  */
 
-import { timeInZone } from './clock.js'
+import { prettyDate, timeInZone } from './clock.js'
 import { invoiceState, money } from './projection.js'
+import { activeRules, describeRule, openCommitments } from './rules.js'
 import type { TriggerSweep } from './triggers.js'
 import type { ToolContext } from './tools/kit.js'
 
@@ -48,12 +49,16 @@ export interface PromptState {
   time: string
   numbers: TodayNumbers
   /**
-   * §6's standing instructions, once they are rows. Phase 1 has no rules table,
-   * so this is empty and the prompt says so plainly rather than leaving Ro to
-   * assume it has been told things it has not.
+   * §6's standing instructions, read from `ai_standing_rules` as one line each.
+   *
+   * Each line is built by `describeRule`, the same function that words the
+   * approval preview — so the rule Ro is reminded of here reads exactly like the
+   * one Melissa tapped to save. Two different phrasings of the same rule is how
+   * an assistant ends up honoring something subtly different from what it was
+   * told.
    */
   standingRules: string[]
-  /** §4's continuity — commitments Ro made. Also awaiting its table. */
+  /** §4's continuity — open follow-ups Ro promised, from `ai_commitments`. */
   openCommitments: string[]
   /** §5's trigger summaries. Facts, already verified by code. */
   notices: { priority: string; summary: string }[]
@@ -125,10 +130,19 @@ const howYouRespond = (owner: string): string => `HOW YOU RESPOND
   comes from a tool result. A tool that returns nothing means you do not have
   it — say you don't have it. Never fill the gap with something plausible, and
   never round a number you were given into a nicer one.
-- You cannot send anything, post anything, or change any record. You draft, and
-  ${owner} taps to send. Say "here's the draft", never "I've sent it" or "I've
-  updated it" — and if she asks you to send something, tell her plainly that
-  drafting is as far as you go for now.
+- Be exact about what you have actually done, because three different things
+  look similar from the outside:
+  Saving a standing rule or turning one off needs her tap. When you call one of
+  those tools, a card appears under your message with the rule written out and a
+  button. So say you have put it in front of her — never "I've saved it", which
+  would be a lie until she taps. Don't retype the rule in your reply either; the
+  card already shows it.
+  Writing down one of your own follow-ups happens immediately and needs no tap.
+  That one you can report in the past tense.
+  Sending a message, posting an announcement, and changing any record — a family,
+  a child, attendance, an invoice, settings — you still cannot do. You draft, and
+  ${owner} sends. If she asks you to send something, say plainly that sending is
+  not wired up for you yet and hand her the draft.
 - Names and details you use must match the records exactly. This is a childcare
   business: a wrong allergy or a wrong pickup name is not a rounding error.`
 
@@ -184,8 +198,8 @@ export function buildSystemPrompt(state: PromptState): string {
       'WHAT SHE HAS TOLD YOU — standing instructions',
       state.standingRules,
       'Nothing on file yet. You have no standing instructions from her, so do not act ' +
-        'as though you remember any. If she gives you one, say plainly that you cannot ' +
-        'save it yet.',
+        'as though you remember any. When she gives you one, save it with rule.save — ' +
+        'she approves it with a tap and it holds from then on, in every conversation.',
     ),
     listBlock(
       "WHAT YOU SAID YOU'D DO",
@@ -301,6 +315,15 @@ export async function gatherPromptState(
     }
   }
 
+  // §6's rules and §4's commitments. A failure here is reported rather than
+  // swallowed: a prompt that silently says "no standing instructions" because the
+  // table could not be read would have Ro act as though Melissa never told her
+  // anything, which is worse than admitting the gap.
+  const rules = await activeRules(ctx)
+  if (!rules.ok) failures.push(rules.error)
+  const commitments = await openCommitments(ctx)
+  if (!commitments.ok) failures.push(commitments.error)
+
   const activeChildren = children.count ?? 0
   const recorded = rows.length
 
@@ -324,9 +347,15 @@ export async function gatherPromptState(
         awaitingReply: sweep.triggers.filter((trigger) => trigger.kind === 'unanswered_message')
           .length,
       },
-      // Both awaiting their tables — see PromptState.
-      standingRules: [],
-      openCommitments: [],
+      standingRules: rules.ok
+        ? rules.value.map((rule) => `${describeRule(rule)} [id ${rule.id}]`)
+        : [],
+      openCommitments: commitments.ok
+        ? commitments.value.map((commitment) => {
+            const due = commitment.dueOn === null ? 'no date given' : `by ${prettyDate(commitment.dueOn)}`
+            return `${commitment.said} — ${due} [id ${commitment.id}]`
+          })
+        : [],
       notices: sweep.triggers.map((trigger) => ({
         priority: trigger.priority,
         summary: trigger.summary,

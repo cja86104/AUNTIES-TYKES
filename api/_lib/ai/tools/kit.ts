@@ -17,13 +17,36 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import type { Caller } from '../caller.js'
 
-/** Phase 1 ships these two only. Send/Money/PII tiers arrive in Phase 2/3. */
-export type ToolTier = 'read' | 'draft'
+/**
+ * §7's confirmation tiers, plus the two read-only ones.
+ *
+ * `read` and `draft` change nothing. The rest do, and the tier is what an audit
+ * row records as `risk_tier` — how dangerous the action was considered at the
+ * time it was taken, which is the question a trail gets read for later.
+ *
+ * The tier does NOT decide whether an action needs her tap. That is structural:
+ * a tool needing approval has no write path of its own at all, only a `propose`,
+ * and its write lives in the executor registry that `api/ai/confirm.ts` is the
+ * sole caller of. A boolean on this interface could be forgotten by a tool added
+ * later; a missing write path cannot be.
+ */
+export type ToolTier = 'read' | 'draft' | 'low' | 'medium' | 'send' | 'money'
 
 export interface ToolContext {
   caller: Caller
   /** Today at the daycare, `yyyy-MM-dd`. Never derived from the host clock. */
   today: string
+  /**
+   * What she typed or said this turn, verbatim, before any model touched it.
+   *
+   * §8 wants the audit row to carry "the instruction that caused it", and that
+   * has to be her sentence rather than the model's paraphrase of it — a trail
+   * recording only the tool call cannot answer why something happened. It rides
+   * on the context so no tool has to be handed it separately and forget.
+   */
+  instruction: string
+  /** Which model produced the call, for §10's tier accounting in the audit row. */
+  model: string
 }
 
 export type ToolOutcome = { ok: true; data: unknown } | { ok: false; error: string }
@@ -112,6 +135,79 @@ export function readEnum<T extends string>(
  */
 export function dbFailure(label: string, error: PostgrestError): { ok: false; error: string } {
   return { ok: false, error: `Could not read ${label}: ${error.message}` }
+}
+
+/* --------------------------------- actions --------------------------------- */
+
+/**
+ * What the panel shows her before an action runs.
+ *
+ * §7: send, money and PII actions "always show a preview and require her tap",
+ * and a rule change has to be shown "in plain English before it's saved". This
+ * is that preview, and it is deliberately one shape for every action rather than
+ * a bespoke card per tool — the wording differs, the gate does not.
+ *
+ * `id` is the audit row's id. The arguments that will execute are already stored
+ * against it, so approving cannot run anything other than what this preview
+ * describes.
+ */
+export interface ActionPreview {
+  id: string
+  /** The tool that proposed it, e.g. `rule.save`. */
+  kind: string
+  title: string
+  /** The one sentence she is actually approving. */
+  summary: string
+  detail: { label: string; value: string }[]
+  confirmLabel: string
+}
+
+/** The tool result that carries a proposal. `proposed` is what chat.ts keys on. */
+export function proposed(action: ActionPreview): { ok: true; data: unknown } {
+  return { ok: true, data: { proposed: true, action } }
+}
+
+/**
+ * Reads a proposal back out of a tool result, or null if there isn't one.
+ *
+ * A tool's `data` is `unknown` by the time the handler sees it, and this is the
+ * shape that goes on to the browser and gets rendered with a button that changes
+ * something. So it is narrowed properly here rather than asserted: a malformed
+ * preview must not become a card offering to run an action it cannot describe.
+ */
+export function readActionPreview(data: unknown): ActionPreview | null {
+  if (typeof data !== 'object' || data === null) return null
+  const record = data as Record<string, unknown>
+  if (record.proposed !== true) return null
+  if (typeof record.action !== 'object' || record.action === null) return null
+
+  const action = record.action as Record<string, unknown>
+  const text = (key: string): string | null => {
+    const value = action[key]
+    return typeof value === 'string' && value.length > 0 ? value : null
+  }
+
+  const id = text('id')
+  const kind = text('kind')
+  const title = text('title')
+  const summary = text('summary')
+  const confirmLabel = text('confirmLabel')
+  if (id === null || kind === null || title === null || summary === null || confirmLabel === null) {
+    return null
+  }
+
+  const detail: { label: string; value: string }[] = []
+  const rows: unknown = action.detail
+  if (Array.isArray(rows)) {
+    for (const entry of rows) {
+      if (typeof entry !== 'object' || entry === null) continue
+      const row = entry as Record<string, unknown>
+      if (typeof row.label !== 'string' || typeof row.value !== 'string') continue
+      detail.push({ label: row.label, value: row.value })
+    }
+  }
+
+  return { id, kind, title, summary, detail, confirmLabel }
 }
 
 /** A JSON Schema object with no arguments. */

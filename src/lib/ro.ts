@@ -30,6 +30,32 @@ export interface RoDraft {
   draft: Record<string, unknown>
 }
 
+/**
+ * An action Ro has prepared and is waiting on a tap for — plan §7.
+ *
+ * The arguments are already stored server-side against `id`, so approving this
+ * runs exactly what `summary` and `detail` describe. Nothing here is sent back up
+ * except the id and the decision, which is what makes the preview trustworthy:
+ * the browser cannot alter what it is approving.
+ */
+export interface RoAction {
+  id: string
+  /** The tool that proposed it, e.g. `rule.save`. */
+  kind: string
+  title: string
+  summary: string
+  detail: { label: string; value: string }[]
+  confirmLabel: string
+}
+
+export interface RoActionResult {
+  outcome: 'executed' | 'declined' | 'failed'
+  summary: string
+  error: string
+  /** When the undo option lapses, for the actions that have one. */
+  undoUntil: string | null
+}
+
 export interface RoToolRun {
   name: string
   tier: string | null
@@ -51,6 +77,7 @@ export interface RoReply {
   tier: string
   escalated: boolean
   drafts: RoDraft[]
+  actions: RoAction[]
   toolRuns: RoToolRun[]
   notices: RoNotice[]
   quietHours: boolean
@@ -168,6 +195,24 @@ export async function fetchRoStatus(): Promise<RoStatus> {
   }
 }
 
+/**
+ * Keeps a malformed action out of the panel.
+ *
+ * The server validates the same shape before sending it, so this is the second of
+ * two checks rather than the only one — but a card without an id renders an
+ * Approve button that cannot approve anything, and that is worth one guard on
+ * each side of the wire.
+ */
+function isAction(action: RoAction): boolean {
+  return (
+    typeof action.id === 'string' &&
+    action.id.length > 0 &&
+    typeof action.summary === 'string' &&
+    typeof action.confirmLabel === 'string' &&
+    Array.isArray(action.detail)
+  )
+}
+
 function readReply(body: unknown): RoReply {
   const record = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
   const list = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
@@ -177,6 +222,7 @@ function readReply(body: unknown): RoReply {
     tier: typeof record.tier === 'string' ? record.tier : '',
     escalated: record.escalated === true,
     drafts: list<RoDraft>(record.drafts),
+    actions: list<RoAction>(record.actions).filter(isAction),
     toolRuns: list<RoToolRun>(record.toolRuns),
     notices: list<RoNotice>(record.notices),
     quietHours: record.quietHours === true,
@@ -201,6 +247,46 @@ export async function askRo(message: string, history: RoTurn[]): Promise<RoReply
   const body = await readJson(response, '/api/ai/chat')
   if (!response.ok) throw errorFrom(body, response.status)
   return readReply(body)
+}
+
+/**
+ * Approves or dismisses one prepared action.
+ *
+ * Sends the id and the decision, and nothing else. The arguments live server-side
+ * against that id, written before the preview was ever rendered, so there is no
+ * way for a tampered-with or stale page to approve something other than what it
+ * showed — §7's gate is only worth having if the thing approved and the thing run
+ * are the same thing.
+ *
+ * A 409 comes back when the action was no longer hers to decide: already done,
+ * already dismissed, or gone. That throws, and the panel shows why on the card.
+ */
+export async function confirmRoAction(
+  proposalId: string,
+  decision: 'approve' | 'decline',
+): Promise<RoActionResult> {
+  let response: Response
+  try {
+    response = await fetch('/api/ai/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      body: JSON.stringify({ proposalId, decision }),
+    })
+  } catch {
+    throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true })
+  }
+
+  const body = await readJson(response, '/api/ai/confirm')
+  if (!response.ok) throw errorFrom(body, response.status)
+
+  const record = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
+  const outcome = record.outcome
+  return {
+    outcome: outcome === 'executed' || outcome === 'declined' ? outcome : 'failed',
+    summary: typeof record.summary === 'string' ? record.summary : '',
+    error: typeof record.error === 'string' ? record.error : '',
+    undoUntil: typeof record.undoUntil === 'string' ? record.undoUntil : null,
+  }
 }
 
 /* ---------------------------------- voice --------------------------------- */

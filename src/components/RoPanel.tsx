@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Copy,
   Loader2,
+  ShieldCheck,
   Mic,
   Send,
   Sparkles,
@@ -23,11 +24,12 @@ import {
   pickRecordingMimeType,
   RoError,
   transcribeRecording,
+  type RoAction,
   type RoDraft,
   type RoNotice,
   type RoToolRun,
 } from '../lib/ro'
-import { useRoSession, type RoMessage } from '../lib/roSession'
+import { useRoSession, type RoDecision, type RoMessage } from '../lib/roSession'
 
 /**
  * Ro's console presence — plan §11.
@@ -38,9 +40,14 @@ import { useRoSession, type RoMessage } from '../lib/roSession'
  * at and dismissed, which is also why it is not a full page — a destination page
  * invites being built like one, and that fights the co-worker framing in §4.
  *
- * Phase 1 drafts and never sends, so every draft below renders as a preview with
- * a copy button and says plainly that nothing left the building. The confirmation
- * UI that replaces it in Phase 2 goes exactly here.
+ * Two different cards can hang off one of her replies, and the difference between
+ * them is the whole of §7:
+ *
+ *  - A DRAFT is wording. Nothing behind it can run, because no send tool exists
+ *    yet, so it renders with a copy button and says so.
+ *  - An ACTION is prepared and waiting. Its arguments are already stored
+ *    server-side, and the button runs exactly them. Approving is the only path to
+ *    that write — the tool that proposed it has none.
  */
 
 /* -------------------------------- draft card ------------------------------- */
@@ -91,9 +98,129 @@ function DraftCard({ entry }: { entry: RoDraft }) {
         <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{body}</p>
       )}
       <p className="mt-2.5 border-t border-slate-100 pt-2 text-xs text-slate-500">
-        Nothing has been sent. Copy it into Messages to send it yourself — Ro sending for you comes
-        later.
+        Not sent — copy it into Messages for now. An Approve &amp; send button lands here once the
+        send tool is built.
       </p>
+    </div>
+  )
+}
+
+/* ------------------------------- action card ------------------------------- */
+
+/**
+ * One prepared action, with the tap that runs it.
+ *
+ * The decision lives in the session store rather than here (see roSession.ts):
+ * this component is remounted on every navigation, and a card that forgot she had
+ * approved something would offer to run it twice.
+ *
+ * Nothing about the action is sent back up except its id — the wording below is a
+ * rendering of what the server already stored, not the payload. So there is no
+ * version of this card that can approve something other than what it displays.
+ */
+function ActionCard({ action }: { action: RoAction }) {
+  // An id with no entry is pending. Annotated because this project does not enable
+  // noUncheckedIndexedAccess, so the index signature would otherwise claim every
+  // lookup succeeds and make the pending branch below unreachable.
+  const decision: RoDecision | undefined = useRoSession((s) => s.decisions[action.id])
+  const decide = useRoSession((s) => s.decide)
+  const state: 'pending' | RoDecision['state'] =
+    decision === undefined ? 'pending' : decision.state
+  const detail = decision === undefined ? '' : decision.detail
+
+  const settled = state === 'done' || state === 'declined'
+  const tone = state === 'done' ? 'green' : state === 'failed' ? 'rose' : 'amber'
+  const label =
+    state === 'done'
+      ? 'Done'
+      : state === 'declined'
+        ? 'Dismissed'
+        : state === 'failed'
+          ? "Didn't go through"
+          : 'Waiting on you'
+
+  return (
+    <div
+      className={cx(
+        'mt-3 rounded-card border p-3',
+        state === 'done'
+          ? 'border-emerald-200 bg-emerald-50/60'
+          : state === 'failed'
+            ? 'border-rose-200 bg-rose-50/60'
+            : state === 'declined'
+              ? 'border-slate-200 bg-slate-50'
+              : 'border-sunny bg-white',
+      )}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <Badge tone={tone}>{label}</Badge>
+        <span className="text-xs font-semibold text-slate-500">{action.title}</span>
+      </div>
+
+      <p className="text-sm font-bold leading-snug text-slate-900">{action.summary}</p>
+
+      {action.detail.length > 0 && !settled && (
+        <dl className="mt-2.5 space-y-1.5 border-t border-slate-100 pt-2.5">
+          {action.detail.map((row) => (
+            <div key={row.label} className="flex gap-2 text-xs leading-relaxed">
+              <dt className="w-[5.5rem] shrink-0 font-semibold text-slate-500">{row.label}</dt>
+              <dd className="min-w-0 flex-1 whitespace-pre-wrap text-slate-700">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {state === 'pending' && (
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            onClick={() => void decide(action.id, 'approve')}
+            className="inline-flex min-h-[2.25rem] flex-1 items-center justify-center gap-1.5 rounded-control bg-brand px-3 text-sm font-semibold text-white shadow-control transition hover:bg-brand-deep"
+          >
+            <ShieldCheck size={16} strokeWidth={2} />
+            {action.confirmLabel}
+          </button>
+          <button
+            onClick={() => void decide(action.id, 'decline')}
+            className="inline-flex min-h-[2.25rem] items-center justify-center rounded-control border border-slate-300 px-3 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
+          >
+            No thanks
+          </button>
+        </div>
+      )}
+
+      {state === 'working' && (
+        <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-slate-600">
+          <Loader2 size={16} strokeWidth={2} className="animate-spin" /> Doing it…
+        </p>
+      )}
+
+      {state === 'done' && (
+        <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-emerald-800">
+          <Check size={14} strokeWidth={2.5} className="mt-0.5 shrink-0" />
+          {detail.length > 0 ? detail : 'Saved.'}
+        </p>
+      )}
+
+      {state === 'declined' && (
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          {detail.length > 0 ? detail : 'Dismissed. Nothing was changed.'}
+        </p>
+      )}
+
+      {state === 'failed' && (
+        <>
+          <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-rose-800">
+            <AlertTriangle size={14} strokeWidth={2} className="mt-0.5 shrink-0" />
+            {detail}
+          </p>
+          <button
+            onClick={() => void decide(action.id, 'approve')}
+            className="mt-2 rounded-chip px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+          >
+            Try again
+          </button>
+        </>
+      )}
     </div>
   )
 }
@@ -455,7 +582,7 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                   <span className="min-w-0 leading-tight">
                     <span className="block font-display text-sm font-extrabold text-slate-900">Ro</span>
                     <span className="block truncate text-xs text-slate-500">
-                      Reads and drafts — never sends
+                      Nothing happens without your tap
                     </span>
                   </span>
                 </div>
@@ -491,8 +618,8 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                   <div className="py-6 text-center">
                     <p className="text-sm font-semibold text-slate-700">Ask me anything about today.</p>
                     <p className="mx-auto mt-1.5 max-w-[17rem] text-sm leading-relaxed text-slate-500">
-                      Who is checked in, what is overdue, who is waiting on a reply. I can draft a
-                      message too — you send it.
+                      Who is checked in, what is overdue, who is waiting on a reply. Tell me how you
+                      want a family handled and I&rsquo;ll remember it.
                     </p>
                   </div>
                 )}
@@ -525,6 +652,9 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                             </button>
                           )}
                         </div>
+                        {(message.actions ?? []).map((action) => (
+                          <ActionCard key={action.id} action={action} />
+                        ))}
                         {(message.drafts ?? []).map((draft, index) => (
                           <DraftCard key={`${message.id}-draft-${String(index)}`} entry={draft} />
                         ))}

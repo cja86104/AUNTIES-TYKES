@@ -72,3 +72,22 @@ export function daysSince(iso: string, now: Date = new Date()): number | null {
   const today = Date.UTC(ty, tm - 1, td)
   return Math.round((today - then) / 86_400_000)
 }
+
+const PRETTY = new Intl.DateTimeFormat('en-US', {
+  // UTC on purpose, and this is the whole reason this helper exists rather than
+  // being inlined. A `yyyy-MM-dd` parses as UTC midnight, so formatting it in
+  // Eastern time renders the day before — "until Friday" shown back to her as
+  // Thursday. The value has no time in it, so it must be read in the zone it was
+  // written in, which for a bare date is UTC.
+  timeZone: 'UTC',
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+})
+
+/** A `yyyy-MM-dd` as `Fri, Oct 3`, for anything Melissa reads. */
+export function prettyDate(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso
+  const [year, month, day] = iso.split('-').map((piece) => Number(piece))
+  return PRETTY.format(new Date(Date.UTC(year, month - 1, day)))
+}

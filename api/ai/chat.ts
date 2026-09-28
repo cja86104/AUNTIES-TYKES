@@ -7,7 +7,7 @@ import { chat, type ChatMessage } from '../_lib/ai/openrouter.js'
 import { buildSystemPrompt, gatherPromptState } from '../_lib/ai/prompt.js'
 import { runTriggers } from '../_lib/ai/triggers.js'
 import { findTool, runToolCall, toolDefinitions } from '../_lib/ai/tools/index.js'
-import type { ToolContext } from '../_lib/ai/tools/kit.js'
+import { readActionPreview, type ActionPreview, type ToolContext } from '../_lib/ai/tools/kit.js'
 
 /**
  * Ro's chat turn.
@@ -30,13 +30,12 @@ import type { ToolContext } from '../_lib/ai/tools/kit.js'
  *    tiers 0 and 1 return no confidence score, so inventing a numeric threshold
  *    would be inventing a measurement.
  *
- * Phase 1 writes nothing. The catalog contains no send or mutate tool, so the
- * loop has nothing to chain a draft into.
- *
- * §8's audit log is not yet a table. Every tool run is returned to the caller for
- * the activity feed and logged server-side, which is proportionate while nothing
- * can be changed — but a durable audit table has to exist before the first write
- * tool ships, not alongside it.
+ * What this loop can and cannot cause: a tool here may PROPOSE an action, which
+ * writes a row to `ai_audit_log` and returns a preview. It cannot execute one.
+ * The writes live in `api/_lib/ai/execute.ts` behind `api/ai/confirm.ts`, so no
+ * path through this handler changes a business record, however the conversation
+ * goes. The one exception is `commitment.note`/`commitment.close`, which write to
+ * Ro's own follow-up list and nothing else.
  */
 
 const MAX_HISTORY = 20
@@ -126,7 +125,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  const ctx: ToolContext = { caller: caller.caller, today: todayInZone() }
+  // `instruction` is her sentence, verbatim, so §8's audit rows record what caused
+  // an action rather than the model's paraphrase of it. `model` is filled in each
+  // round once the tier that answered is known.
+  const ctx: ToolContext = {
+    caller: caller.caller,
+    today: todayInZone(),
+    instruction: turn.message,
+    model: '',
+  }
   const warnings: string[] = []
 
   // Today's state, read before the model is involved in anything.
@@ -144,10 +151,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     instruction === null
       ? buildSystemPrompt(state)
       : `${buildSystemPrompt(state)}\n\n---\n\nNOTE ON WHAT SHE JUST SAID\n\n` +
-        `That reads like a standing instruction (${instruction.shape}). You cannot ` +
-        `save standing instructions yet — there is nowhere to put them. Acknowledge ` +
-        `it plainly, say you will not remember it after this conversation, and answer ` +
-        `anything else she asked in the same message.`
+        `That reads like a standing instruction (${instruction.shape}) — a plain regex ` +
+        `spotted the shape, not you, so treat it as a hint and not a verdict. If it is ` +
+        `one, save it with rule.save: resolve the family first if it names one, put her ` +
+        `own words in said and your reading of it in summary. She approves it with a ` +
+        `tap, so tell her it is waiting rather than that it is saved. If the shape ` +
+        `matched something that was not actually an instruction, ignore this note. ` +
+        `Either way, answer anything else she asked in the same message.`
 
   const messages: ChatMessage[] = [
     { role: 'system', content: systemPrompt },
@@ -162,6 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   const tools = toolDefinitions()
   const runs: RunRecord[] = []
   const drafts: DraftRecord[] = []
+  const actions: ActionPreview[] = []
 
   let tier: ModelTier = 'intent'
   let escalated = false
@@ -208,6 +219,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       continue
     }
 
+    // Whichever tier answered is the one that chose these calls, so it is the one
+    // an audit row should name.
+    ctx.model = result.model
+
     messages.push({ role: 'assistant', content: result.content, tool_calls: result.toolCalls })
 
     for (const call of result.toolCalls) {
@@ -225,6 +240,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       if (run.outcome.ok) {
         const draft = extractDraft(run.name, run.outcome.data)
         if (draft !== null) drafts.push(draft)
+        const action = readActionPreview(run.outcome.data)
+        if (action !== null) actions.push(action)
       }
 
       messages.push({
@@ -250,6 +267,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     tier,
     escalated,
     drafts,
+    actions,
     toolRuns: runs,
     notices: sweep.triggers,
     quietHours: sweep.quietHours,
