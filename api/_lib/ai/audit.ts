@@ -53,6 +53,8 @@ export interface Proposal {
   outcome: AuditOutcome
   familyId: string | null
   familyLabel: string
+  childId: string | null
+  childLabel: string
 }
 
 export type AuditResult<T> = { ok: true; value: T } | { ok: false; error: string }
@@ -121,7 +123,8 @@ export async function record(
   return write(ctx, input, outcome, detail)
 }
 
-const PROPOSAL_COLUMNS = 'id, tool, risk_tier, arguments, instruction, outcome, family_id, family_label'
+const PROPOSAL_COLUMNS =
+  'id, tool, risk_tier, arguments, instruction, outcome, family_id, family_label, child_id, child_label'
 
 /**
  * Claims a proposal for execution, atomically.
@@ -186,6 +189,8 @@ export async function claimProposal(
       outcome: row.outcome,
       familyId: row.family_id,
       familyLabel: row.family_label,
+      childId: row.child_id,
+      childLabel: row.child_label,
     },
   }
 }

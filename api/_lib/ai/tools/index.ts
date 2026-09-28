@@ -21,6 +21,8 @@
 import type { ToolDefinition } from '../openrouter.js'
 import { draftTools } from './drafts.js'
 import { readTools } from './reads.js'
+import { officeTools } from './office.js'
+import { recordTools } from './records.js'
 import { ruleTools } from './rules.js'
 import { sendTools } from './sends.js'
 import type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
@@ -28,7 +30,7 @@ import type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
 export type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
 
 /** Everything Ro can do, in the order the model sees it. */
-export const roTools: ToolSpec[] = [...readTools, ...draftTools, ...ruleTools, ...sendTools]
+export const roTools: ToolSpec[] = [...readTools, ...draftTools, ...ruleTools, ...sendTools, ...recordTools, ...officeTools]
 
 const byName = new Map<string, ToolSpec>(roTools.map((tool) => [tool.name, tool]))
 

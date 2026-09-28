@@ -27,6 +27,7 @@ import { uid } from './ids.js'
 import { retireRule, saveRule, type SendTarget } from './rules.js'
 import { readPendingRule } from './tools/rules.js'
 import { readInt, readString, type ToolContext } from './tools/kit.js'
+import { attendanceId, stampTime } from './tools/records.js'
 
 /**
  * How long "undo" stays offered after a send — §8's undo window.
@@ -288,11 +289,315 @@ const sendAnnouncementExecutor: Executor = {
   },
 }
 
+/**
+ * Sets attendance, mirroring `checkIn` / `checkOut` / `markAbsent` in useStore.ts.
+ *
+ * `attendance` carries `unique (child_id, date)`, so this reads before it writes
+ * rather than blind-inserting — the same shape the store's own upsert-by-hand
+ * takes. Re-read at execution, not trusted from the proposal: she may have
+ * checked the child in from the attendance sheet in the meantime.
+ */
+const attendanceExecutor: Executor = {
+  tool: 'attendance.set',
+  run: async (ctx, proposal) => {
+    const childId = readString(proposal.arguments, 'childId')
+    const date = readString(proposal.arguments, 'date')
+    const action = readString(proposal.arguments, 'action')
+    const note = readString(proposal.arguments, 'note') ?? ''
+    if (childId === null || date === null || action === null) {
+      return { ok: false, error: 'That attendance change is missing who or when it was for' }
+    }
+
+    const existing = await ctx.caller.db
+      .from('attendance')
+      .select('id, check_out')
+      .eq('child_id', childId)
+      .eq('date', date)
+      .maybeSingle()
+    if (existing.error !== null) {
+      return { ok: false, error: `Could not read that attendance record: ${existing.error.message}` }
+    }
+
+    const at = stampTime()
+    const label = proposal.childLabel.length > 0 ? proposal.childLabel : 'They'
+
+    if (action === 'out') {
+      if (existing.data === null) return { ok: false, error: 'There is no record for them that day' }
+      if (existing.data.check_out !== null) return { ok: false, error: 'They were already checked out' }
+      const done = await ctx.caller.db
+        .from('attendance')
+        .update({ check_out: at, status: 'checked-out' })
+        .eq('id', existing.data.id)
+      if (done.error !== null) return { ok: false, error: `Could not check them out: ${done.error.message}` }
+      return { ok: true, summary: `${label} checked out at ${at}.`, targets: [existing.data.id] }
+    }
+
+    const patch =
+      action === 'absent'
+        ? { status: 'absent' as const, check_in: null, check_out: null, note }
+        : { status: 'present' as const, check_in: at, check_out: null }
+
+    if (existing.data !== null) {
+      const done = await ctx.caller.db.from('attendance').update(patch).eq('id', existing.data.id)
+      if (done.error !== null) return { ok: false, error: `Could not update that record: ${done.error.message}` }
+      return {
+        ok: true,
+        summary: action === 'absent' ? `${label} marked absent.` : `${label} checked in at ${at}.`,
+        targets: [existing.data.id],
+      }
+    }
+
+    const id = attendanceId()
+    const created = await ctx.caller.db
+      .from('attendance')
+      .insert({ id, child_id: childId, date, note: action === 'absent' ? note : '', ...patch })
+    if (created.error !== null) {
+      return { ok: false, error: `Could not record that: ${created.error.message}` }
+    }
+    return {
+      ok: true,
+      summary: action === 'absent' ? `${label} marked absent.` : `${label} checked in at ${at}.`,
+      targets: [id],
+    }
+  },
+}
+
+/** Writes or updates one daily log, mirroring `addDailyLog` / `updateDailyLog`. */
+const dailyLogExecutor: Executor = {
+  tool: 'dailyLog.write',
+  run: async (ctx, proposal) => {
+    const childId = readString(proposal.arguments, 'childId')
+    const date = readString(proposal.arguments, 'date')
+    if (childId === null || date === null) {
+      return { ok: false, error: 'That log is missing who or when it was for' }
+    }
+
+    const rawFields = proposal.arguments.fields
+    const fields: Record<string, string> = {}
+    if (typeof rawFields === 'object' && rawFields !== null) {
+      for (const [key, value] of Object.entries(rawFields as Record<string, unknown>)) {
+        if (typeof value === 'string') fields[key] = value
+      }
+    }
+    const rawActivities = proposal.arguments.activities
+    const activities = Array.isArray(rawActivities)
+      ? rawActivities.filter((entry): entry is string => typeof entry === 'string')
+      : null
+
+    // Re-read rather than trusting the proposal's logId: she may have written the
+    // log herself between reading this and tapping it.
+    const existing = await ctx.caller.db
+      .from('daily_logs')
+      .select('id')
+      .eq('child_id', childId)
+      .eq('date', date)
+      .maybeSingle()
+    if (existing.error !== null) {
+      return { ok: false, error: `Could not read that log: ${existing.error.message}` }
+    }
+
+    const label = proposal.childLabel.length > 0 ? proposal.childLabel : 'that child'
+
+    if (existing.data !== null) {
+      // Typed rather than a loose record: the generated Update shape rejects an
+      // index signature, and a silent cast here would let a stray key through to
+      // a child's record.
+      const patch: {
+        meals?: string
+        naps?: string
+        potty?: string
+        mood?: string
+        notes?: string
+        activities?: string[]
+      } = {}
+      if (fields.meals !== undefined) patch.meals = fields.meals
+      if (fields.naps !== undefined) patch.naps = fields.naps
+      if (fields.potty !== undefined) patch.potty = fields.potty
+      if (fields.mood !== undefined) patch.mood = fields.mood
+      if (fields.notes !== undefined) patch.notes = fields.notes
+      if (activities !== null) patch.activities = activities
+      const done = await ctx.caller.db.from('daily_logs').update(patch).eq('id', existing.data.id)
+      if (done.error !== null) return { ok: false, error: `Could not update that log: ${done.error.message}` }
+      return { ok: true, summary: `Updated ${label}'s log.`, targets: [existing.data.id] }
+    }
+
+    const id = uid('dl')
+    const created = await ctx.caller.db.from('daily_logs').insert({
+      id,
+      child_id: childId,
+      date,
+      meals: fields.meals ?? '',
+      naps: fields.naps ?? '',
+      potty: fields.potty ?? '',
+      mood: fields.mood ?? '',
+      notes: fields.notes ?? '',
+      activities: activities ?? [],
+      // Written as her, the same as a log typed into the console.
+      author: ctx.caller.name.length > 0 ? ctx.caller.name : 'Aunties Tykes',
+      author_id: ctx.caller.id,
+    })
+    if (created.error !== null) {
+      return { ok: false, error: `Could not save that log: ${created.error.message}` }
+    }
+    return { ok: true, summary: `Saved ${label}'s log.`, targets: [id] }
+  },
+}
+
+/** Adds or changes one calendar event, mirroring `addCalendarEvent` / `updateCalendarEvent`. */
+const calendarExecutor: Executor = {
+  tool: 'calendar.mutate',
+  run: async (ctx, proposal) => {
+    const eventId = readString(proposal.arguments, 'eventId')
+    const kind = readString(proposal.arguments, 'kind')
+    const title = readString(proposal.arguments, 'title')
+    const note = readString(proposal.arguments, 'note')
+    const startsOn = readString(proposal.arguments, 'startsOn')
+    const endsOn = readString(proposal.arguments, 'endsOn')
+    const closesAt = readString(proposal.arguments, 'closesAt')
+    const rawVisible = proposal.arguments.visibleToParents
+    const visible = typeof rawVisible === 'boolean' ? rawVisible : null
+
+    if (eventId === null) {
+      if (kind === null || title === null || startsOn === null) {
+        return { ok: false, error: 'That event is missing its kind, title or date' }
+      }
+      const id = uid('cal')
+      const created = await ctx.caller.db.from('calendar_events').insert({
+        id,
+        kind: kind as 'closure' | 'early_close' | 'activity' | 'reminder',
+        title,
+        note: note ?? '',
+        starts_on: startsOn,
+        ends_on: endsOn,
+        closes_at: closesAt,
+        visible_to_parents: visible ?? true,
+        created_by: ctx.caller.id,
+      })
+      if (created.error !== null) {
+        return { ok: false, error: `Could not add that to the calendar: ${created.error.message}` }
+      }
+      return { ok: true, summary: `"${title}" is on the calendar.`, targets: [id] }
+    }
+
+    // Only the fields she was shown are written; anything omitted keeps its value.
+    const patch: {
+      kind?: 'closure' | 'early_close' | 'activity' | 'reminder'
+      title?: string
+      note?: string
+      starts_on?: string
+      ends_on?: string | null
+      closes_at?: string | null
+      visible_to_parents?: boolean
+    } = {}
+    if (kind !== null) patch.kind = kind as 'closure' | 'early_close' | 'activity' | 'reminder'
+    if (title !== null) patch.title = title
+    if (note !== null) patch.note = note
+    if (startsOn !== null) patch.starts_on = startsOn
+    if (endsOn !== null) patch.ends_on = endsOn
+    if (closesAt !== null) patch.closes_at = closesAt
+    if (visible !== null) patch.visible_to_parents = visible
+    if (Object.keys(patch).length === 0) return { ok: false, error: 'There was nothing to change' }
+
+    const done = await ctx.caller.db.from('calendar_events').update(patch).eq('id', eventId).select('id')
+    if (done.error !== null) return { ok: false, error: `Could not change that event: ${done.error.message}` }
+    if (done.data.length === 0) return { ok: false, error: 'That event no longer exists' }
+    return { ok: true, summary: 'Calendar updated.', targets: [eventId] }
+  },
+}
+
+/** Records or updates one enquiry, mirroring `addLead` / `updateLead`. */
+const leadExecutor: Executor = {
+  tool: 'lead.mutate',
+  run: async (ctx, proposal) => {
+    const leadId = readString(proposal.arguments, 'leadId')
+    const parentName = readString(proposal.arguments, 'parentName')
+    const email = readString(proposal.arguments, 'email')
+    const phone = readString(proposal.arguments, 'phone')
+    const childAges = readString(proposal.arguments, 'childAges')
+    const message = readString(proposal.arguments, 'message')
+    const tourDate = readString(proposal.arguments, 'tourDate')
+    const status = readString(proposal.arguments, 'status')
+
+    if (leadId === null) {
+      if (parentName === null) return { ok: false, error: 'That enquiry has no parent name' }
+      const id = uid('ld')
+      const created = await ctx.caller.db.from('leads').insert({
+        id,
+        parent_name: parentName,
+        email: email ?? '',
+        phone: phone ?? '',
+        child_ages: childAges ?? '',
+        message: message ?? '',
+        tour_date: tourDate,
+        // The console's own default for a new lead.
+        status: status ?? 'New inquiry',
+      })
+      if (created.error !== null) {
+        return { ok: false, error: `Could not save that enquiry: ${created.error.message}` }
+      }
+      return { ok: true, summary: `Saved the enquiry from ${parentName}.`, targets: [id] }
+    }
+
+    const patch: {
+      parent_name?: string
+      email?: string
+      phone?: string
+      child_ages?: string
+      message?: string
+      tour_date?: string | null
+      status?: string
+    } = {}
+    if (parentName !== null) patch.parent_name = parentName
+    if (email !== null) patch.email = email
+    if (phone !== null) patch.phone = phone
+    if (childAges !== null) patch.child_ages = childAges
+    if (message !== null) patch.message = message
+    if (tourDate !== null) patch.tour_date = tourDate
+    if (status !== null) patch.status = status
+    if (Object.keys(patch).length === 0) return { ok: false, error: 'There was nothing to change' }
+
+    const done = await ctx.caller.db.from('leads').update(patch).eq('id', leadId).select('id')
+    if (done.error !== null) return { ok: false, error: `Could not update that enquiry: ${done.error.message}` }
+    if (done.data.length === 0) return { ok: false, error: 'That enquiry no longer exists' }
+    return { ok: true, summary: 'Enquiry updated.', targets: [leadId] }
+  },
+}
+
+/** Shows or hides one document, mirroring `toggleDocVisibility`. */
+const documentExecutor: Executor = {
+  tool: 'document.manage',
+  run: async (ctx, proposal) => {
+    const documentId = readString(proposal.arguments, 'documentId')
+    const rawVisible = proposal.arguments.visibleToParents
+    if (documentId === null || typeof rawVisible !== 'boolean') {
+      return { ok: false, error: 'That change is missing the document or what to do with it' }
+    }
+    const done = await ctx.caller.db
+      .from('documents')
+      .update({ visible_to_parents: rawVisible })
+      .eq('id', documentId)
+      .select('id, title')
+    if (done.error !== null) return { ok: false, error: `Could not change that: ${done.error.message}` }
+    const row = done.data[0]
+    if (row === undefined) return { ok: false, error: 'That document no longer exists' }
+    return {
+      ok: true,
+      summary: rawVisible ? `"${row.title}" is visible to parents now.` : `"${row.title}" is hidden from parents.`,
+      targets: [documentId],
+    }
+  },
+}
+
 const executors: Executor[] = [
   saveRuleExecutor,
   retireRuleExecutor,
   sendMessageExecutor,
   sendAnnouncementExecutor,
+  attendanceExecutor,
+  dailyLogExecutor,
+  calendarExecutor,
+  leadExecutor,
+  documentExecutor,
 ]
 
 const byTool = new Map<string, Executor>(executors.map((executor) => [executor.tool, executor]))

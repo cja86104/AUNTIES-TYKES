@@ -143,7 +143,7 @@ business settings, thread creation, and every deletion. The complete map is
 below, and the audit is the reason it is worth trusting: it was derived from
 `useStore.ts` rather than from memory of what the app does.
 
-### Built and live — 22 tools
+### Built and live — 27 tools
 
 **Reads (15).** `family.find` · `family.get` · `roster.list` ·
 `attendance.today` · `attendance.history` · `dailyLog.list` · `invoice.list` ·
@@ -169,6 +169,20 @@ at the tap and not only at the preview, and both open a five-minute undo. Their
 validations mirror `AdminMessages.tsx` exactly: a family, a subject, and at
 least a sentence.
 
+**Record and office changes (5), added 2026-09-28.** `attendance.set` ·
+`dailyLog.write` · `calendar.mutate` · `lead.mutate` · `document.manage`. All
+propose and wait for her tap. §7 allows Low actions to auto-run "once trust is
+established"; trust is not established on day one, and the switch is cheap when
+she wants it — an auto-running tool is one that calls its executor directly
+instead of `propose`.
+
+**None of the five can delete**, which is the one line drawn across this group.
+§3 already gates deletions regardless of tier because this app has no trash, and
+§8's undo covers sends rather than deletes. Removing a calendar event, a document
+or a daily log stays in the console until it gets a pass of its own with wording
+that says plainly it cannot be taken back. `document.manage` also cannot upload,
+for a duller reason: an upload needs a file and Ro has no file.
+
 **Actions (4), added 2026-09-28.** `rule.save` and `rule.retire` propose and
 wait for her tap; `commitment.note` and `commitment.close` write straight
 away. The difference is not a flag — `rule.save` contains no write at all.
@@ -191,12 +205,12 @@ have not been written; the path they plug into has been.
 
 | Store action(s) in `useStore.ts` | AI tool name | Risk tier | Status |
 |---|---|---|---|
-| `checkIn` / `checkOut` / `markAbsent` | `attendance.set` | Low | Waiting |
-| `addDailyLog` / `updateDailyLog` / `deleteDailyLog` | `dailyLog.write` | Low, **delete gated** | Waiting |
-| `addDocument` (+ `uploadDocument` in `lib/storage.ts`) / `toggleDocVisibility` / `deleteDocument` | `document.manage` | Low, **delete gated** | Waiting |
-| `addCalendarEvent` / `updateCalendarEvent` / `deleteCalendarEvent` | `calendar.mutate` | Low, **delete gated** — *added 2026-09-27* | Waiting |
-| `addLead` / `updateLead` | `lead.mutate` | Low — *added 2026-09-27* | Waiting |
-| `setWaitlist` | `waitlist.mutate` | Low — *added 2026-09-27* | Waiting |
+| `checkIn` / `checkOut` / `markAbsent` | `attendance.set` | Low | **Built 2026-09-28** |
+| `addDailyLog` / `updateDailyLog` / ~~`deleteDailyLog`~~ | `dailyLog.write` | Low | **Built 2026-09-28** — write/update only, no delete |
+| ~~`addDocument`~~ / `toggleDocVisibility` / ~~`deleteDocument`~~ | `document.manage` | Low | **Built 2026-09-28** — visibility only; upload needs a file Ro doesn't have |
+| `addCalendarEvent` / `updateCalendarEvent` / ~~`deleteCalendarEvent`~~ | `calendar.mutate` | Low | **Built 2026-09-28** — add/update only |
+| `addLead` / `updateLead` | `lead.mutate` | Low | **Built 2026-09-28** |
+| ~~`setWaitlist`~~ | ~~`waitlist.mutate`~~ | — | **Cancelled 2026-09-28 — see below** |
 | `addFamily` / `updateFamily` / `addChild` / `updateChild` | `family.mutate` | Medium | Waiting |
 | `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium | Waiting |
 | `updateSettings` / `updateRates` / `updatePolicies` | `settings.mutate` | **Money** — *added 2026-09-27* | Waiting |
@@ -218,6 +232,24 @@ trash, so a deleted daily log or invoice is gone, and §8's undo window covers
 sends rather than deletes. And `settings.mutate` is filed under Money rather
 than Medium because `updateRates` changes the rate card every future invoice
 is built from — a quiet edit there is a pricing change, not a preference.
+
+**`waitlist.mutate` was cancelled on 2026-09-28, and this table was wrong to
+list it.** `setWaitlist` exists in `useStore.ts` and nothing calls it; no page
+reads `waitlist_prospects`. The app's real waitlist is a child whose `status` is
+`'waitlist'`, which `AdminChildren.tsx` filters on. A tool writing to
+`waitlist_prospects` would have looked like it worked and been invisible to
+Melissa forever — worse than not having the tool. Putting a child on the
+waitlist means changing their status, which belongs with the child mutations in
+the Money/PII pass. Worth noting how it got in here: this table was derived from
+the store's action surface, and a store action existing is not the same as the
+app using it. Two orphans have now been found that way — this and migration
+0005's three tables below. Anything still marked Waiting should be checked
+against a page that actually calls it before it is built.
+
+Also worth recording for whoever picks this up: `persist.waitlist` implements
+`setWaitlist` by deleting every row in `waitlist_prospects` and re-inserting the
+array. Even if that table were adopted, an AI tool must not mirror that shape —
+one stale list and the waitlist is gone. Row-level writes, always.
 
 **A schema note that lands on `family.mutate` when it is built.** Migration
 0005 created `family_contacts`, `pickup_authorizations` and `pickup_events`,
@@ -744,6 +776,13 @@ the RLS policies alongside it, not after.
    until something could send, the rules engine guarded nothing, and the
    generic send gate had no consumer and so had never run. The remaining
    sections are now the low-risk mutations, then Money/PII.
+
+   The low-risk mutations landed the same day. Five tools, five executors, no
+   new endpoint, no new table, and one tool from §3's list cancelled outright
+   after reading the code it was supposed to mirror. What is left is the
+   Money/PII pass: invoices and payments, new families and children, enrollment
+   decisions, parent logins, and the rate card — plus a deliberate pass on
+   deletions, which nothing in Ro can do yet on purpose.
 4. **Phase 3 — broader action set.** Billing reminders, enrollment
    nudges — still confirmation-gated for anything in the Money/PII tier,
    indefinitely. Full unattended autonomy on money or child-safety
