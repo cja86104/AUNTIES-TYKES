@@ -50,6 +50,29 @@ import { useRoSession, type RoDecision, type RoMessage } from '../lib/roSession'
  *    that write — the tool that proposed it has none.
  */
 
+/**
+ * 50ms of silence, for unlocking audio playback on iOS.
+ *
+ * Safari will only start audio from inside a user gesture, and it judges that by
+ * the call stack, not by whether a tap happened recently. `fetchSpeech` takes
+ * several seconds, so by the time the real audio arrives the tap is long over and
+ * `play()` is refused. The way through is to play something — anything —
+ * synchronously on the tap, because once an element has played inside a gesture
+ * iOS will let that same element play again later.
+ *
+ * So: one audio element for the whole panel, primed with this on the first tap,
+ * then re-pointed at each reply. 8-bit PCM silence is 128, not 0.
+ */
+const SILENT_WAV =
+  'data:audio/wav;base64,' +
+  'UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICA' +
+  'gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA' +
+  'gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA' +
+  'gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA' +
+  'gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA' +
+  'gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA' +
+  'gICAgICAgICAgICAgICAgICAgICAgICAgICAgICA'
+
 /* -------------------------------- draft card ------------------------------- */
 
 function field(draft: Record<string, unknown>, key: string): string {
@@ -397,9 +420,12 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, setOpen])
 
+  // Desktop only. On a phone, focusing on open throws the keyboard up over half
+  // the panel before she has read anything, and — until the size fix above — took
+  // the page zoomed in with it. She taps the box when she wants to type.
   useEffect(() => {
-    if (open) inputRef.current?.focus()
-  }, [open])
+    if (open && !narrow) inputRef.current?.focus()
+  }, [open, narrow])
 
   // Keep the newest message in view, including right after a remount.
   useEffect(() => {
@@ -510,7 +536,17 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
     }
   }, [pushToast, setInput, startMeter, stopMeter])
 
-  /** Tap to listen. Never autoplay — §11, and every browser's gesture rule. */
+  /**
+   * Tap to listen. Never autoplay — §11, and every browser's gesture rule.
+   *
+   * Everything before the first `await` runs inside the tap, and that is load
+   * bearing on iOS: one shared element is created and primed with silence there,
+   * so it is already allowed to play by the time the real audio arrives several
+   * seconds later. Creating `new Audio(url)` after the fetch — which is what this
+   * did — produces an element that has never played inside a gesture, and Safari
+   * refuses it every time. Desktop Chrome allows it, which is why this worked
+   * everywhere except the phone.
+   */
   const listen = useCallback(
     async (message: RoMessage) => {
       if (speakingId === message.id) {
@@ -518,24 +554,54 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
         setSpeakingId(null)
         return
       }
-      audioRef.current?.pause()
+
+      // ---- synchronous: still inside the tap ----
+      let audio = audioRef.current
+      if (audio === null) {
+        audio = new Audio()
+        audioRef.current = audio
+      }
+      audio.pause()
+      // Cleared before the primer: otherwise the 50ms of silence ends, fires the
+      // handler, and wipes the playing state while the real audio is still being
+      // fetched — the Stop button would flick back to Listen on its own.
+      audio.onended = null
+      audio.src = SILENT_WAV
+      // Primed on every tap rather than once behind a flag. It is inaudible and
+      // costs nothing, and the flag had a failure mode: changing `src` while this
+      // play() is pending rejects it with AbortError, which is not a real failure
+      // but would have latched the flag off.
+      //
+      // Not awaited — what matters is that play() is CALLED inside the gesture,
+      // not that it finished before we move on.
+      void audio.play().catch(() => {})
+      // ---- the gesture ends here ----
+
       if (audioUrlRef.current !== null) {
         URL.revokeObjectURL(audioUrlRef.current)
         audioUrlRef.current = null
       }
       setSpeakingId(message.id)
+
       try {
         const url = await fetchSpeech(message.content)
         audioUrlRef.current = url
-        const audio = new Audio(url)
-        audioRef.current = audio
         audio.onended = () => setSpeakingId(null)
+        audio.src = url
         await audio.play()
       } catch (cause) {
         setSpeakingId(null)
+        // A blocked autoplay and a failed request both land here and need
+        // opposite responses from her, so they are not reported as one thing.
+        const blocked = cause instanceof DOMException && cause.name === 'NotAllowedError'
         pushToast({
           tone: 'error',
-          title: cause instanceof RoError ? cause.message : 'Could not play that',
+          title: blocked
+            ? 'Your phone blocked the playback'
+            : cause instanceof RoError
+              ? cause.message
+              : 'Could not play that',
+          description: blocked ? 'Tap Listen once more — it should play this time.' : undefined,
         })
       }
     },
@@ -784,7 +850,11 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                           ? 'One moment…'
                           : 'Ask Ro…'
                     }
-                    className="max-h-32 min-h-[2.75rem] w-full resize-none rounded-control border border-slate-300 px-3 py-2.5 text-sm leading-relaxed text-slate-900 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/15"
+                    // text-base below sm for the same reason `fieldBase` in ui.tsx
+                    // has it: iOS Safari force-zooms the page whenever a focused
+                    // field computes under 16px, and it does not zoom back out.
+                    // This box was a raw textarea and missed that convention.
+                    className="max-h-32 min-h-[2.75rem] w-full resize-none rounded-control border border-slate-300 px-3 py-2.5 text-base leading-relaxed text-slate-900 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/15 sm:text-sm"
                   />
                   <button
                     onClick={() => void send(input)}
