@@ -1,26 +1,45 @@
-# AI Admin Assistant — Planning Doc (v3 — live app, real voice pricing, real personality)
+# AI Admin Assistant — Planning Doc (v4 — decisions locked, nothing blocking Phase 1)
 
 **Status:** Plan only. Nothing in §§3–11 has been built yet — `api/` holds
 exactly one server function today (`create-parent-login.ts`, from the Auth
-migration), nothing AI-related. No locked file has been touched to produce
-this doc.
-**Drafted:** September 2026, with Claude (Cowork). **Updated September 26**
-— the app itself is no longer pre-launch. Three things changed from the
-v2 draft: (1) the Supabase migration this plan was written to wait for is
-done and live, so §2 below describes a starting line, not a countdown to
-tonight; (2) the voice pricing in §9 was optimistic — real OpenRouter rates
-pulled this week showed the actual TTS model's input/output prices are
-wildly lopsided in a way v2 never explained, so it's rewritten with
-verified numbers and a cheaper pick; (3) §§4–5 got a real pass on
-personality and proactive behavior — the v2 version leaned so hard on
-"don't invent facts" that the result was six hardcoded trigger conditions
-with no AI judgment anywhere in them, which reads exactly like what it is:
-a rules engine wearing a chat UI. That's fixed below without giving up the
-guardrail that made it safe.
+migration), nothing AI-related. Unlike earlier drafts, that's no longer
+paired with an open decision or a permission gate — see the changelog below
+and §12. There is nothing left to resolve before Phase 1 starts.
 
-**Working name used throughout:** *Ro*. Placeholder from the planning
-conversation, not a locked decision — swap it for whatever you or Melissa
-land on. Nothing else in this plan depends on the specific name.
+**Drafted:** September 2026, with Claude (Cowork). **Updated September 27**
+— the three open items in the old §14 are all closed, so this pass locks
+each one in at the section it actually affects rather than leaving them as
+a standalone list:
+
+1. **Single client, not a reusable product.** This is built specifically for
+   Aunties Tykes. The tool catalog, the rules engine, and the schema in §3
+   and §6 don't need a business/tenant abstraction anywhere — one owner, one
+   set of families, exactly like the rest of this app already assumes.
+2. **Cost is not a constraint.** The studio's own OpenRouter key pays for
+   this with no spend cap. The tiered routing in §10 stays exactly as
+   designed — it was never purely a cost measure, it's also the right model
+   for each job's latency and capability needs — so don't read "budget's
+   not an issue" as a reason to cut a tier or default everything to one
+   model.
+3. **Name and voice are final.** See below.
+
+Also folded in this pass: `.claude/PROTECTED-AREAS.md` is retired (§12) —
+there is no more "ask" tier for any file this build touches, so nothing
+here pauses to request permission mid-build. And §11 now describes the
+interface actually agreed on — a persistent icon and slide-over panel in
+the `AdminLayout` shell — replacing the placeholder `/admin/assistant`
+route from the original draft, which was never built and was superseded
+before it was.
+
+**Name: *Ro*. Locked** — not a placeholder anymore, this is what ships and
+what's in front of Melissa.
+
+**Voice: female, neutral, professional** — not the over-enthusiastic
+assistant-bot register, and not curt or commanding either; the calm middle
+of that range. This is one instruction that governs two different things:
+the written personality in §4 (already close — "warm but efficient" was
+already aiming here from the text side) and the literal TTS voice
+selection in §9, which now has an actual pick instead of an open slot.
 
 ---
 
@@ -72,17 +91,66 @@ raw SQL. It gets a fixed list of named functions — the same shape as the
 store actions this app already has — each one already scoped to one family
 and already validated exactly like the UI form that calls it today.
 
-| Existing store action (`useStore.ts`) | AI tool name | Risk tier |
+**Revised 2026-09-27.** The owner's requirement is that Ro can eventually do
+anything the admin console can do — "if Melissa says we have a new family to
+add, it should be able and ready to complete it." The original table below
+covered nine tools and was audited against the store's actual action surface
+on that instruction; it was missing the calendar, leads, the waitlist,
+business settings, thread creation, and every deletion. The complete map is
+below, and the audit is the reason it is worth trusting: it was derived from
+`useStore.ts` rather than from memory of what the app does.
+
+### Built in Phase 1 — read and draft (17 tools, live)
+
+`family.find` · `family.get` · `roster.list` · `attendance.today` ·
+`attendance.history` · `dailyLog.list` · `invoice.list` · `invoice.get` ·
+`thread.list` · `thread.get` · `document.list` · `enrollment.list` ·
+`calendar.upcoming` · `settings.get` — all reads, all on the caller's own JWT
+so RLS decides what comes back. Plus `message.draft`, `announcement.draft`
+and `dailyLog.draft`, which prepare wording and stop.
+
+### Phase 2/3 — the mutation catalog, complete
+
+| Store action(s) in `useStore.ts` | AI tool name | Risk tier |
 |---|---|---|
 | `checkIn` / `checkOut` / `markAbsent` | `attendance.set` | Low |
-| `addDailyLog` | `dailyLog.create` | Low |
-| `addAnnouncement` | `announcement.send` | **Send** |
-| `sendThreadMessage` | `message.send` | **Send** |
-| `addDocument` / `toggleDocVisibility` | `document.manage` | Low |
-| `createInvoice` / `recordPayment` | `billing.mutate` | **Money** |
+| `addDailyLog` / `updateDailyLog` / `deleteDailyLog` | `dailyLog.write` | Low, **delete gated** |
+| `addDocument` (+ `uploadDocument` in `lib/storage.ts`) / `toggleDocVisibility` / `deleteDocument` | `document.manage` | Low, **delete gated** |
+| `addCalendarEvent` / `updateCalendarEvent` / `deleteCalendarEvent` | `calendar.mutate` | Low, **delete gated** — *added 2026-09-27* |
+| `addLead` / `updateLead` | `lead.mutate` | Low — *added 2026-09-27* |
+| `setWaitlist` | `waitlist.mutate` | Low — *added 2026-09-27* |
 | `addFamily` / `updateFamily` / `addChild` / `updateChild` | `family.mutate` | Medium |
-| `createParentLogin` | `account.create` | **Money/PII** |
 | `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium |
+| `updateSettings` / `updateRates` / `updatePolicies` | `settings.mutate` | **Money** — *added 2026-09-27* |
+| `startThread` / `sendThreadMessage` | `message.send` | **Send** |
+| `addAnnouncement` | `announcement.send` | **Send** |
+| `createInvoice` / `recordPayment` / `deleteInvoice` | `billing.mutate` | **Money** |
+| `createParentLogin` (via `api/create-parent-login.ts`) | `account.create` | **Money/PII** |
+
+Deliberately absent, because the admin console cannot do them either:
+`login` / `logout` / `bootstrap` / `pushToast` / `markSectionSeen` are
+plumbing, `submitEnrollment` is the public form, and `acknowledgeDocument` is
+a parent's action on their own account.
+
+**Two tier calls worth stating, since neither was in the original table.**
+Deletions are gated regardless of the tier they sit in: this app has no
+trash, so a deleted daily log or invoice is gone, and §8's undo window covers
+sends rather than deletes. And `settings.mutate` is filed under Money rather
+than Medium because `updateRates` changes the rate card every future invoice
+is built from — a quiet edit there is a pricing change, not a preference.
+
+**A schema note that lands on `family.mutate` when it is built.** Migration
+0005 created `family_contacts`, `pickup_authorizations` and `pickup_events`,
+backfilling the first from `families.secondary` / `families.emergency`, with
+the intent that the app move onto the new table. That move never happened —
+`db.ts`, `persist.ts` and `useStore.ts` contain no reference to any of the
+three, and `AdminFamilyDetail.tsx` still reads the jsonb columns. So the
+jsonb columns remain the live source of truth, which is what Phase 1's
+`family.get` reads, correctly matching the UI. But the backfilled
+`family_contacts` rows have been drifting from the jsonb ever since, and
+pickup authorizations have no UI at all. Whoever builds `family.mutate` must
+write the same columns the UI writes and not the orphaned table; whoever
+finishes the 0005 migration has to move Ro's read at the same time.
 
 The model's only job is to figure out *which tool, with which arguments* a
 sentence (typed or spoken) maps to. It cannot invent a tool, and a tool it
@@ -156,6 +224,16 @@ system prompt as traits the model is told to embody, not left to whatever
   named behavior in the prompt: when an instruction contradicts a fact Ro
   actually has, say so once, plainly, before complying — she can still be
   overridden, she just doesn't silently swallow the contradiction first.
+
+**Calibration, now that the register is locked (female, neutral,
+professional — see the top of this doc).** Every bullet above still holds,
+but the target reading is the calm middle of that range, not either edge.
+"Warm but efficient" is not "upbeat" — Ro doesn't open with enthusiasm she
+doesn't need to perform. "A co-worker with opinions" is not "the boss" —
+she states a read and defers to Melissa's call, she doesn't direct her. If
+a draft reply reads like it belongs in a cheerful onboarding email, or
+like it's issuing an instruction rather than offering one, that's the
+tell it drifted off the target, in either direction.
 
 This is a fixed block in the system prompt, the same way a companion
 product's personality bio is fixed — not something the model infers fresh
@@ -284,15 +362,42 @@ PII tier.
 
 ## 8. Guardrails specific to a childcare + money app
 
-*(Carried over from the original draft, unchanged — still the right list.)*
+*(Carried over from the original draft. One item — PII minimization — was
+reversed by an explicit owner decision on September 27, 2026 while Phase 1
+was being built; it is struck through below rather than deleted, so the
+reasoning that produced it and the reasoning that overrode it both stay on
+the record. The rest is unchanged and still the right list.)*
 
 - **Audit log.** Every AI-initiated action stores the instruction that
   caused it, the tool called, the arguments, and who/what it touched.
 - **No invented facts about a child.** Message drafting is templated: the
   model rephrases fields it's handed, never states anything about a
-  specific child that isn't already in a record.
-- **PII minimization in prompts.** Tier-0/1 model calls get first names
-  and internal IDs, not full addresses, DOB, or anything payment-related.
+  specific child that isn't already in a record. **Still in force, and more
+  load-bearing than before** — see the reversal below, which means there is
+  now more real detail available for a draft to get subtly wrong.
+- ~~**PII minimization in prompts.** Tier-0/1 model calls get first names
+  and internal IDs, not full addresses, DOB, or anything payment-related.~~
+  **Reversed 2026-09-27 — Ro sees the whole record.** Full names, dates of
+  birth, allergies, medications, family and emergency contact details,
+  payment method and reference, and the business's own contact fields are
+  all handed to the model. The owner's reasoning: this is a single-admin
+  app, Melissa is the only human who ever sees Ro's output, and restricting
+  what Ro knows only makes it worse at the job it exists to do. On payments
+  specifically — the app stores invoices and hand-recorded payments, never
+  card or bank details, so "payment-related" here means a method string and
+  a check number alongside family information Ro already has, not a
+  credential.
+
+  What this trades away, stated plainly so it is a known cost rather than an
+  oversight: the limit was never about who can see the screen, it was about
+  what leaves the building. Every field now travels to third-party
+  inference providers over OpenRouter — an Ant Group model at Tier 0, an
+  Alibaba model at Tier 1, Anthropic at Tier 2 (§10). If that ever needs
+  narrowing, because a client asks, an acquirer's diligence asks, or a tier
+  is repointed at a provider with different terms, the single place to
+  narrow it is `api/_lib/ai/projection.ts` — its `Brief` shapes are the
+  contract for what a tool may return, and its header carries this same
+  decision record.
 - **Rate limit / blast-radius cap.** A hard ceiling on sends-per-hour and a
   same-message-to-N-families threshold that forces confirmation
   regardless of rule state.
@@ -363,6 +468,30 @@ mechanism (server generates a file, client plays it through a tapped
 on OpenRouter, so there's still exactly one provider and one key across
 chat, transcription, and speech.
 
+**Voice selection, now that "female, neutral, professional" is locked
+in.** Gemini's TTS voices carry short tone labels in Google's own docs
+(Bright, Firm, Informative, Warm, and so on) but not a gender tag — the
+male/female split below is from a widely-used third-party reference
+(ComfyUI-Gemini_TTS), not Google directly, so it's worth a one-time listen
+check against the real API before this ships, the same spirit as the
+iPhone Safari check below.
+
+- **Primary pick: `Erinome`** — documented as "clear and precise." That's
+  the neutral-professional read: composed and competent without leaning
+  warm or brisk either way.
+- **If that reads too flat once you hear it: `Sulafat`** — "warm and
+  welcoming." Closer to §4's "warm but efficient" language, if the
+  neutral pick undersells the co-worker warmth once it's actually
+  speaking.
+
+**Fallback voice, `gpt-4o-mini-tts`:** OpenAI's own docs don't label
+gender or tone for its 13 voices the way Google's do, so there's no
+verified pick here yet — this path only matters if the Gemini endpoint is
+down, so it's not worth guessing at. Run a few of the newer voices
+(`marin`, `cedar` are what OpenAI itself recommends for this model)
+through openai.fm and pick whichever reads closest to the same target
+before this fallback path is ever live.
+
 If voice quality becomes the deciding factor later — ElevenLabs is
 meaningfully more natural-sounding than either of the above — that's a
 deliberate upgrade to evaluate on its own, not a v1 default; it'd be a
@@ -425,31 +554,47 @@ defending to a client, not "AI costs," full stop.
 
 ## 11. Interface
 
-- New admin route, `/admin/assistant` — a chat panel following the
-  existing `AdminLayout` shell and `ui.tsx` components. New page under the
-  admin tree, so it inherits the locked-area conversation in §12.
+- **A persistent icon in the `AdminLayout` shell, opening a slide-over
+  panel — not a separate route.** Confirmed over a dedicated
+  `/admin/assistant` page: Melissa's mid-task on whatever admin page she's
+  on when she needs Ro, and a route switch loses that context for no
+  reason. The icon and panel live in `AdminLayout.tsx` itself, so Ro is
+  reachable from every admin page without leaving it.
 - **Both typed and spoken input from day one.** A microphone control next
   to the text input, using the OpenRouter/Whisper pipeline from §9 — not
   the browser's own speech recognition.
 - **Every Ro reply gets a tap-to-listen control**, using the OpenRouter
-  TTS pipeline from §9. Off by default per message (she taps to hear it,
-  it doesn't talk at her unprompted), always available.
+  TTS pipeline from §9, with the voice picked there. Off by default per
+  message (she taps to hear it, it doesn't talk at her unprompted),
+  always available.
 - Every AI action surfaces as a running activity feed — "Sent to: Brooks,
   Okafor, Chen — tap to view" — doubling as the audit log's UI. The
   proactive notices from §5 land in the same feed, ranked by priority.
+- The panel is a good fit as a slide-over specifically because it's meant
+  to be glanced at and dismissed, not lived in — a full route would
+  invite building it like a destination page, which fights the
+  "co-worker at your elbow" framing in §4.
 
 ---
 
-## 12. What this touches that's currently locked
+## 12. Permission state — nothing gated anymore
 
-Building this for real reaches into files `PROTECTED-AREAS.md` denies:
-`src/store/**` (new actions need to exist somewhere), a new page under
-`src/pages/admin/**`, and possibly `src/types.ts` for rule/audit schemas.
-Per that file's own instructions: stop and ask the owner first — the
-owner and the client are the same person for this feature, so the lock
-should be lifted deliberately when you actually start building, not
-worked around, and re-applied once it's signed off the same way the rest
-of the portal was.
+`.claude/PROTECTED-AREAS.md` and the `ask` list in `.claude/settings.json`
+are retired as of September 27, 2026. Both existed to keep in-progress
+public-site work from bleeding into the admin/parent portal after it was
+signed off; that concern doesn't apply to this build, which touches
+`src/store/**`, new components, and `src/types.ts` on purpose. There is no
+file in this codebase that pauses to ask permission before an edit —
+building this doesn't reach into anything locked, because nothing is
+locked.
+
+One file still deserves the same care a lock would have forced anyway,
+just because of what it does rather than a permission rule:
+**`src/lib/useFamilyScope.ts`** is the single place family data gets
+filtered client-side, and it's meant to move in lockstep with the
+Postgres RLS policies doing the same job server-side. Any change here
+gets the same re-verification `ARCHITECTURE.md` already calls for — check
+the RLS policies alongside it, not after.
 
 ---
 
@@ -476,40 +621,47 @@ of the portal was.
 
 ---
 
-## 14. Decisions this plan still doesn't make for you
+## 14. Decisions — all resolved as of September 27
 
-- **Single-client or reusable?** Still open — does the rules engine and
-  tool catalog get built generic/multi-tenant now, or specific to Aunties
-  Tykes? Worth deciding before Phase 0's schema work is final.
-- **Whose OpenRouter key pays for her usage** — your studio account with a
-  per-client cap, or a key she holds herself? Affects margin and how this
-  attributes as a cost center if Aunties Tykes is ever part of an
-  acquisition conversation.
-- **Ro's actual name and voice selection** — placeholder name and no
-  voice picked yet. Low-stakes, easy to change later, but pick something
-  before it's in front of Melissa as a finished thing.
+Nothing left open here. For the record, since this section used to be the
+running list:
 
-Resolved since the last draft: voice ships in v1, not deferred. Provider
-stays OpenRouter-only across chat, transcription, and speech, rather than
-splitting to a second vendor for voice.
+- **Single-client or reusable?** Single client — built specifically for
+  Aunties Tykes, no multi-tenant abstraction anywhere in §3 or §6.
+- **Whose OpenRouter key pays for her usage?** The studio's own key, no
+  spend cap. Doesn't change how §10's tiers are chosen — see the header
+  changelog.
+- **Ro's actual name and voice selection?** Name's locked (*Ro*). Voice is
+  picked in §9 (`Erinome` on Gemini, with `Sulafat` as the warmer
+  alternate) pending the one listen-check that section calls for.
+
+Resolved earlier and still holding: voice ships in v1, not deferred.
+Provider stays OpenRouter-only across chat, transcription, and speech,
+rather than splitting to a second vendor for voice.
 
 ---
 
 ## 15. Suggested next step
 
-Phase 0 is done, so this is no longer "finish the migration first" — it's
-"start Phase 1." §3's tool catalog and §5's trigger queries, against the
-real Supabase tables that now exist, are the next concrete build targets.
+Phase 0 is done, every decision in §14 is closed, and §12 confirms
+nothing is permission-gated. This is no longer "finish the migration
+first" or "wait on a decision" — it's just "start Phase 1." §3's tool
+catalog and §5's trigger queries, against the real Supabase tables that
+now exist, are the next concrete build targets.
 
-One thing to check before that starts, unrelated to this plan's content:
-`.env.local` currently has `AI_ASSISTANT_ENABLED` set twice — `false` in
-the AI section with the "don't flip this on at initial deploy" comment
-right above it, and `true` again in a stray line near the bottom of the
-file. Nothing reads that flag yet since none of the AI server functions
-exist, so it's inert today — but whichever value wins by the time Phase 1
-code ships depends on dotenv's own last-one-wins behavior, not on anyone's
-intent, which is exactly how a safety flag gets shipped backwards by
-accident. Worth cleaning up now while it's free, not after it's live.
+Two small pieces of upkeep, done alongside this update while they were
+already in view:
+
+- The earlier `AI_ASSISTANT_ENABLED` duplicate in `.env.local` (set both
+  `false` and `true` in two different places) is gone — confirmed a
+  single `false` remains, correctly gating both text and voice off until
+  Phase 1 has a track record.
+- `.env.local`'s `AI_MODEL_TTS` pointed at `openai/gpt-4o-mini-tts` —
+  that's §9's fallback, not the pick. It now points at
+  `google/gemini-3.8-flash-lite-tts`, with `AI_MODEL_TTS_FALLBACK` and
+  `AI_MODEL_TTS_VOICE=Erinome` added alongside it so the actual voice
+  pick from §9 lives in config next to the model, not just in this
+  document.
 
 ---
 

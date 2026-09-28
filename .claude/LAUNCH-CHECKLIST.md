@@ -86,8 +86,11 @@ do not reintroduce it, and do not describe the daycare as licensed anywhere.
 - [ ] Login's zod schema accepts a 4-character password while
       `api/create-parent-login.ts` requires 8. Harmless (the server rejects),
       but the two should agree.
-- [ ] 4 `react-hooks/exhaustive-deps` warnings in `src/pages/parent/*` — the
-      `t` function is omitted from `useMemo` deps.
+- [x] ~~4 `react-hooks/exhaustive-deps` warnings in `src/pages/parent/*`~~ —
+      fixed 2026-09-26: all three `tabs` memos (`ParentAttendance.tsx`,
+      `ParentBilling.tsx`, `ParentDailyReports.tsx`) were missing `t` from
+      their deps — a real staleness bug, not just lint noise, since tab
+      labels wouldn't re-translate on a language switch. `t` added to each.
 - [ ] Add per-page Open Graph if link previews per route matter — the static
       block in `index.html` covers every shared link with one card today, and
       social scrapers do not run JavaScript, so true per-page previews need
@@ -95,6 +98,6 @@ do not reintroduce it, and do not describe the daycare as licensed anywhere.
 
 ## Verified
 
-`lint` and `typecheck` exit 0 (4 known warnings, 0 errors); zero `@ts-ignore` /
+`lint` and `typecheck` exit 0 (0 warnings, 0 errors as of 2026-09-26); zero `@ts-ignore` /
 `as any` / `eslint-disable` in `src/`; every `commit()` in the store passes a
 sync function, enforced by the type signature rather than by review.

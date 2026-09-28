@@ -32,8 +32,9 @@ npm run preview    # serve the production build
 ```
 
 **Non-negotiable:** `npm run lint` and `npm run typecheck` must both exit 0
-before any change is called done. Lint currently reports 4 known
-`react-hooks/exhaustive-deps` warnings in `src/pages/parent/*` and 0 errors.
+before any change is called done. Both currently exit 0 with zero warnings
+and zero errors — the last 3 `react-hooks/exhaustive-deps` warnings were
+fixed 2026-09-26. Keep it at zero.
 
 ## Code standards (Allen Code Co)
 
@@ -109,3 +110,6 @@ every public page.
 
 - `.claude/ARCHITECTURE.md` — routes, data model, store, security boundary
 - `.claude/LAUNCH-CHECKLIST.md` — what is still outstanding before launch
+- `AI-ADMIN-ASSISTANT-PLAN.md` + `.claude/AI-ASSISTANT-BUILD-HANDOFF.md` —
+  the AI admin assistant ("Ro"): full spec and, respectively, a start-here
+  briefing for whichever session begins writing it. Read the handoff first.

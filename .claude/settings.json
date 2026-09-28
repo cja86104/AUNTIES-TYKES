@@ -2,19 +2,6 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "deny": [],
-    "ask": [
-      "Edit(src/components/ui.tsx)",
-      "Write(src/components/ui.tsx)",
-      "Edit(src/index.css)",
-      "Write(src/index.css)",
-      "Edit(tailwind.config.js)",
-      "Write(tailwind.config.js)",
-      "Edit(src/lib/helpers.ts)",
-      "Write(src/lib/helpers.ts)",
-      "Edit(src/App.tsx)",
-      "Write(src/App.tsx)",
-      "Edit(package.json)",
-      "Write(package.json)"
-    ]
+    "ask": []
   }
 }
