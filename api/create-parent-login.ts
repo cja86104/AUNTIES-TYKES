@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '../src/lib/database.types'
+import type { Database } from '../src/lib/database.types.js'
 
 /**
  * Creates a parent portal account.

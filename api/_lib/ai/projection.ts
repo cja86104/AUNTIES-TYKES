@@ -31,7 +31,7 @@
  * is now more real detail available to get wrong.
  */
 
-import type { Contact, EnrollmentChildDraft, LineItem } from '../../../src/types'
+import type { Contact, EnrollmentChildDraft, LineItem } from '../../../src/types.js'
 
 /* ------------------------------- brief shapes ------------------------------ */
 

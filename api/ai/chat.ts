@@ -1,13 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { authenticateAdmin } from '../_lib/ai/caller'
-import { todayInZone } from '../_lib/ai/clock'
-import { loadAiConfig, type ModelTier } from '../_lib/ai/config'
-import { matchStandingInstruction, type InstructionMatch } from '../_lib/ai/instructions'
-import { chat, type ChatMessage } from '../_lib/ai/openrouter'
-import { buildSystemPrompt, gatherPromptState } from '../_lib/ai/prompt'
-import { runTriggers } from '../_lib/ai/triggers'
-import { findTool, runToolCall, toolDefinitions } from '../_lib/ai/tools'
-import type { ToolContext } from '../_lib/ai/tools/kit'
+import { authenticateAdmin } from '../_lib/ai/caller.js'
+import { todayInZone } from '../_lib/ai/clock.js'
+import { loadAiConfig, type ModelTier } from '../_lib/ai/config.js'
+import { matchStandingInstruction, type InstructionMatch } from '../_lib/ai/instructions.js'
+import { chat, type ChatMessage } from '../_lib/ai/openrouter.js'
+import { buildSystemPrompt, gatherPromptState } from '../_lib/ai/prompt.js'
+import { runTriggers } from '../_lib/ai/triggers.js'
+import { findTool, runToolCall, toolDefinitions } from '../_lib/ai/tools/index.js'
+import type { ToolContext } from '../_lib/ai/tools/kit.js'
 
 /**
  * Ro's chat turn.

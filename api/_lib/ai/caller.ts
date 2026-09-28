@@ -15,7 +15,7 @@
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '../../../src/lib/database.types'
+import type { Database } from '../../../src/lib/database.types.js'
 
 export type AiDb = SupabaseClient<Database>
 

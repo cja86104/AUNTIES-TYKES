@@ -21,10 +21,10 @@
  * teaches it to inhabit the role instead.
  */
 
-import { timeInZone } from './clock'
-import { invoiceState, money } from './projection'
-import type { TriggerSweep } from './triggers'
-import type { ToolContext } from './tools/kit'
+import { timeInZone } from './clock.js'
+import { invoiceState, money } from './projection.js'
+import type { TriggerSweep } from './triggers.js'
+import type { ToolContext } from './tools/kit.js'
 
 export interface TodayNumbers {
   activeChildren: number

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { loadAiConfig } from '../_lib/ai/config'
-import { authenticateAdmin } from '../_lib/ai/caller'
+import { loadAiConfig } from '../_lib/ai/config.js'
+import { authenticateAdmin } from '../_lib/ai/caller.js'
 
 /**
  * Whether Ro is available, and what she can do.

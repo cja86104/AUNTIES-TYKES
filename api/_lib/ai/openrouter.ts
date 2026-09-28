@@ -16,7 +16,7 @@
  * a status code and a real message.
  */
 
-import type { AiConfig, ModelTier } from './config'
+import type { AiConfig, ModelTier } from './config.js'
 
 const BASE_URL = 'https://openrouter.ai/api/v1'
 

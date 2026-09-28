@@ -15,7 +15,7 @@
  */
 
 import type { PostgrestError } from '@supabase/supabase-js'
-import type { Caller } from '../caller'
+import type { Caller } from '../caller.js'
 
 /** Phase 1 ships these two only. Send/Money/PII tiers arrive in Phase 2/3. */
 export type ToolTier = 'read' | 'draft'

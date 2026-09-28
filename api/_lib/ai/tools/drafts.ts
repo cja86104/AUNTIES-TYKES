@@ -20,7 +20,7 @@ import {
   schema,
   type ToolOutcome,
   type ToolSpec,
-} from './kit'
+} from './kit.js'
 
 const MAX_BODY = 4000
 const MAX_SUBJECT = 200

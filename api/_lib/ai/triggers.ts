@@ -20,9 +20,9 @@
  * so Phase 2 has something to dedupe and cool down against.
  */
 
-import { daysSince, timeInZone } from './clock'
-import { invoiceState, money } from './projection'
-import type { ToolContext } from './tools/kit'
+import { daysSince, timeInZone } from './clock.js'
+import { invoiceState, money } from './projection.js'
+import type { ToolContext } from './tools/kit.js'
 
 export type TriggerKind =
   | 'daily_log_missing'

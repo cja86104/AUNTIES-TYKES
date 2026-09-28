@@ -12,12 +12,12 @@
  * 2/3 job, and a tool that is not in this array cannot be called by any prompt.
  */
 
-import type { ToolDefinition } from '../openrouter'
-import { draftTools } from './drafts'
-import { readTools } from './reads'
-import type { ToolContext, ToolOutcome, ToolSpec } from './kit'
+import type { ToolDefinition } from '../openrouter.js'
+import { draftTools } from './drafts.js'
+import { readTools } from './reads.js'
+import type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
 
-export type { ToolContext, ToolOutcome, ToolSpec } from './kit'
+export type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
 
 /** Everything Ro can do this phase, in the order the model sees it. */
 export const phase1Tools: ToolSpec[] = [...readTools, ...draftTools]

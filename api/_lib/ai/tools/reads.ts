@@ -14,8 +14,8 @@
  * Nothing in this file writes.
  */
 
-import type { Contact } from '../../../../src/types'
-import { daysSince, shiftDays } from '../clock'
+import type { Contact } from '../../../../src/types.js'
+import { daysSince, shiftDays } from '../clock.js'
 import {
   invoiceState,
   type AttendanceBrief,
@@ -30,7 +30,7 @@ import {
   type SettingsBrief,
   type ThreadBrief,
   type ThreadMessageBrief,
-} from '../projection'
+} from '../projection.js'
 import {
   dbFailure,
   NO_ARGS,
@@ -43,7 +43,7 @@ import {
   schema,
   type ToolOutcome,
   type ToolSpec,
-} from './kit'
+} from './kit.js'
 
 /* ------------------------------- column lists ------------------------------ */
 // Nothing is withheld: full contact details, dates of birth, allergies,

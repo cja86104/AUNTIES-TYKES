@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { authenticateAdmin } from '../_lib/ai/caller'
-import { loadAiConfig } from '../_lib/ai/config'
-import { speak } from '../_lib/ai/openrouter'
+import { authenticateAdmin } from '../_lib/ai/caller.js'
+import { loadAiConfig } from '../_lib/ai/config.js'
+import { speak } from '../_lib/ai/openrouter.js'
 
 /**
  * Ro's reply as audio — plan §9's output half.

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { authenticateAdmin } from '../_lib/ai/caller'
-import { loadAiConfig } from '../_lib/ai/config'
-import { transcribe, TRANSCRIBABLE_FORMATS, type TranscribableFormat } from '../_lib/ai/openrouter'
+import { authenticateAdmin } from '../_lib/ai/caller.js'
+import { loadAiConfig } from '../_lib/ai/config.js'
+import { transcribe, TRANSCRIBABLE_FORMATS, type TranscribableFormat } from '../_lib/ai/openrouter.js'
 
 /**
  * Her voice to text — plan §9's input half.
