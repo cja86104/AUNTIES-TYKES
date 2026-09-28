@@ -91,6 +91,14 @@ export interface AttemptLog {
 
 export type ChatResult = ChatSuccess | AiFailure
 
+/**
+ * Room for a reply plus a round of tool-call arguments.
+ *
+ * Ro's prose is short by design, but a tool call carrying a drafted message body
+ * is not, and a cut-off tool call is malformed JSON rather than a short answer.
+ */
+const DEFAULT_MAX_TOKENS = 2048
+
 const DEFAULT_TIMEOUT_MS = 30_000
 
 function headers(config: AiConfig): Record<string, string> {
@@ -190,7 +198,21 @@ function errorDetail(body: unknown, fallback: string): string {
     const error = body.error
     if (typeof error === 'string' && error.trim().length > 0) return error.trim().slice(0, 300)
     if (isRecord(error) && typeof error.message === 'string' && error.message.length > 0) {
-      return error.message.slice(0, 300)
+      // OpenRouter reports an upstream failure as the bare phrase "Provider
+      // returned error" and puts the reason the provider actually gave in
+      // metadata.raw. Reporting only the wrapper cost real diagnosis time once;
+      // the useful half is pulled up here so the next one says what went wrong.
+      const raw = isRecord(error.metadata) ? error.metadata.raw : undefined
+      const provider = isRecord(error.metadata) ? error.metadata.provider_name : undefined
+      const detail =
+        typeof raw === 'string' && raw.trim().length > 0
+          ? raw.trim()
+          : isRecord(raw)
+            ? JSON.stringify(raw)
+            : ''
+      const who = typeof provider === 'string' && provider.length > 0 ? ` [${provider}]` : ''
+      if (detail.length > 0) return `${error.message}${who}: ${detail}`.slice(0, 400)
+      return `${error.message}${who}`.slice(0, 300)
     }
     if (typeof body.message === 'string' && body.message.length > 0) {
       return body.message.slice(0, 300)
@@ -324,13 +346,22 @@ export async function chat(
   }
 
   for (const model of models) {
-    const payload: Record<string, unknown> = { model, messages: request.messages }
+    const payload: Record<string, unknown> = {
+      model,
+      messages: request.messages,
+      // Always sent, never conditional. Anthropic's API requires max_tokens on
+      // every request, so omitting it made the escalation tier — and only the
+      // escalation tier — fail with OpenRouter's generic "Provider returned
+      // error", while the OpenAI-compatible tiers 0 and 1 were unaffected and
+      // hid the problem. Escalation is rare, so this sat latent until a turn
+      // actually needed it.
+      max_tokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
+    }
     if (request.tools !== undefined && request.tools.length > 0) {
       payload.tools = request.tools
       payload.tool_choice = request.toolChoice ?? 'auto'
     }
     if (request.temperature !== undefined) payload.temperature = request.temperature
-    if (request.maxTokens !== undefined) payload.max_tokens = request.maxTokens
 
     const result = await postJson(`${BASE_URL}/chat/completions`, config, payload, timeoutMs)
 

@@ -201,12 +201,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // what happened to a "Monday rundown" that spent eight rounds looking up
     // family names. Forbidding tools on the final call guarantees an answer from
     // whatever was gathered, which is always better than an apology.
+    // Tools are omitted entirely rather than sent with tool_choice: 'none'. A
+    // request with no tools cannot call one under any provider's rules, whereas
+    // 'none' is a newer field whose support varies — and this runs against three
+    // different providers.
     const lastCall = round === MAX_ROUNDS - 1
-    const result = await chat(config.config, tier, {
-      messages,
-      tools,
-      toolChoice: lastCall ? 'none' : 'auto',
-    })
+    const result = await chat(
+      config.config,
+      tier,
+      lastCall ? { messages } : { messages, tools, toolChoice: 'auto' },
+    )
 
     if (!result.ok) {
       console.error('[ro] tier failed', tier, JSON.stringify(result.attempts))
