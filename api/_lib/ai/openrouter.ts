@@ -109,6 +109,17 @@ function isFatal(status: number): boolean {
   return status === 401 || status === 403
 }
 
+/**
+ * Names a model together with the variable that set it.
+ *
+ * A model id alone is not actionable when four variables can hold one: the fix
+ * is always "change variable X", so the message says X.
+ */
+function named(config: AiConfig, model: string): string {
+  const source = config.modelSources[model]
+  return source === undefined ? model : `${source} (${model})`
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -316,7 +327,7 @@ export async function chat(
     error:
       last === undefined
         ? `The ${tier} tier could not be reached`
-        : `The ${tier} tier could not be reached: ${last.detail}`,
+        : `The ${tier} tier could not be reached — ${named(config, last.model)}: ${last.detail}`,
     status: 502,
     attempts,
   }
@@ -456,7 +467,10 @@ export async function transcribe(
   const last = attempts[attempts.length - 1]
   return {
     ok: false,
-    error: last === undefined ? 'Could not transcribe that' : `Could not transcribe that: ${last.detail}`,
+    error:
+      last === undefined
+        ? 'Could not transcribe that'
+        : `Could not transcribe that — ${named(config, last.model)}: ${last.detail}`,
     status: 502,
     attempts,
   }
@@ -527,7 +541,10 @@ export async function speak(
   const last = attempts[attempts.length - 1]
   return {
     ok: false,
-    error: last === undefined ? 'Could not generate speech' : `Could not generate speech: ${last.detail}`,
+    error:
+      last === undefined
+        ? 'Could not generate speech'
+        : `Could not generate speech — ${named(config, last.model)}: ${last.detail}`,
     status: 502,
     attempts,
   }

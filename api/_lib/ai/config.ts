@@ -48,6 +48,14 @@ export interface AiConfig {
   /** Speech-to-text model ids, in order. */
   stt: string[]
   tts: SpeechConfig
+  /**
+   * Which environment variable supplied each model id.
+   *
+   * Only for error messages, and it earns its keep: "openai/gpt-4o-mini-tts does
+   * not exist" sends you hunting through four TTS variables, while "AI_MODEL_TTS
+   * (openai/gpt-4o-mini-tts) does not exist" names the one to change.
+   */
+  modelSources: Record<string, string>
   /** Master switch. False means every Ro endpoint refuses. */
   enabled: boolean
   requireConfirmationForSends: boolean
@@ -152,6 +160,16 @@ export function loadAiConfig(): ConfigResult {
   const maxSendsPerHour = count('AI_MAX_SENDS_PER_HOUR', missing, malformed)
   const maxRecipientsPerAction = count('AI_MAX_RECIPIENTS_PER_ACTION', missing, malformed)
 
+  // Built after the reads above so every id is attributed, including duplicates
+  // across variables (last one wins, which is fine for a diagnostic).
+  const modelSources: Record<string, string> = {}
+  for (const tier of Object.keys(models) as ModelTier[]) {
+    for (const id of models[tier]) modelSources[id] = TIER_ENV[tier]
+  }
+  for (const id of stt) modelSources[id] = 'AI_MODEL_STT'
+  if (primaryTts !== null) modelSources[primaryTts] = 'AI_MODEL_TTS'
+  if (fallbackTts !== null) modelSources[fallbackTts] = 'AI_MODEL_TTS_FALLBACK'
+
   const problems: string[] = []
   if (missing.length > 0) problems.push(`missing ${missing.join(', ')}`)
   problems.push(...malformed)
@@ -172,6 +190,7 @@ export function loadAiConfig(): ConfigResult {
       models,
       stt,
       tts: { models: ttsModels, voices },
+      modelSources,
       enabled,
       requireConfirmationForSends,
       maxSendsPerHour,

@@ -173,6 +173,9 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
   const [busy, setBusy] = useState(false)
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
+  /** 0–1 input level, so she can see the mic is picking her up. */
+  const [level, setLevel] = useState(0)
+  const [seconds, setSeconds] = useState(0)
   const [speakingId, setSpeakingId] = useState<string | null>(null)
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -182,6 +185,8 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
   const streamRef = useRef<MediaStream | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioUrlRef = useRef<string | null>(null)
+  const meterRef = useRef<{ context: AudioContext; frame: number } | null>(null)
+  const tickRef = useRef<number | null>(null)
 
   useBodyScrollLock(open)
 
@@ -219,6 +224,11 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
       streamRef.current?.getTracks().forEach((track) => track.stop())
       audioRef.current?.pause()
       if (audioUrlRef.current !== null) URL.revokeObjectURL(audioUrlRef.current)
+      if (meterRef.current !== null) {
+        cancelAnimationFrame(meterRef.current.frame)
+        void meterRef.current.context.close()
+      }
+      if (tickRef.current !== null) window.clearInterval(tickRef.current)
     },
     [],
   )
@@ -286,10 +296,60 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
     [messages],
   )
 
+  /** Stops the meter, the timer, and the stream's analyser. */
+  const stopMeter = useCallback(() => {
+    if (meterRef.current !== null) {
+      cancelAnimationFrame(meterRef.current.frame)
+      void meterRef.current.context.close()
+      meterRef.current = null
+    }
+    if (tickRef.current !== null) {
+      window.clearInterval(tickRef.current)
+      tickRef.current = null
+    }
+    setLevel(0)
+  }, [])
+
   /** Stops the recorder; the transcript lands in the box for her to send. */
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop()
     setRecording(false)
+    stopMeter()
+  }, [stopMeter])
+
+  /**
+   * Watches the input level with a Web Audio analyser.
+   *
+   * This is measurement of the local stream, not speech recognition — §9's ban is
+   * on browser speech APIs, and there is no `webkitSpeechRecognition` here. It
+   * exists because transcription only happens after the recorder stops, so
+   * without it a working recording is indistinguishable from a dead microphone.
+   */
+  const startMeter = useCallback((stream: MediaStream) => {
+    try {
+      const context = new AudioContext()
+      const analyser = context.createAnalyser()
+      analyser.fftSize = 512
+      context.createMediaStreamSource(stream).connect(analyser)
+      const samples = new Uint8Array(analyser.frequencyBinCount)
+
+      const read = () => {
+        analyser.getByteTimeDomainData(samples)
+        let sum = 0
+        for (const sample of samples) {
+          const centred = (sample - 128) / 128
+          sum += centred * centred
+        }
+        // RMS, scaled so ordinary speech fills most of the meter.
+        const rms = Math.sqrt(sum / samples.length)
+        setLevel(Math.min(1, rms * 4))
+        if (meterRef.current !== null) meterRef.current.frame = requestAnimationFrame(read)
+      }
+      meterRef.current = { context, frame: requestAnimationFrame(read) }
+    } catch {
+      // A browser without Web Audio still records; it just gets no meter.
+      setLevel(0)
+    }
   }, [])
 
   const startRecording = useCallback(async () => {
@@ -309,6 +369,7 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
       recorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop())
         streamRef.current = null
+        stopMeter()
         const blob = new Blob(chunksRef.current, { type: mimeType })
         chunksRef.current = []
         setTranscribing(true)
@@ -331,6 +392,9 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
       recorderRef.current = recorder
       recorder.start()
       setRecording(true)
+      setSeconds(0)
+      tickRef.current = window.setInterval(() => setSeconds((value) => value + 1), 1000)
+      startMeter(stream)
     } catch {
       pushToast({
         tone: 'error',
@@ -338,7 +402,7 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
         description: 'Allow microphone access for this site, then try again.',
       })
     }
-  }, [pushToast])
+  }, [pushToast, startMeter, stopMeter])
 
   /** Tap to listen. Never autoplay — §11, and every browser's gesture rule. */
   const listen = useCallback(
@@ -498,6 +562,46 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
               </div>
 
               <div className="border-t border-slate-200 bg-white px-3 py-3">
+                {(recording || transcribing) && (
+                  <div className="mb-2.5 flex items-center gap-3 rounded-control bg-slate-50 px-3 py-2">
+                    {recording ? (
+                      <>
+                        <span className="flex h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-rose-500" />
+                        <span className="shrink-0 font-mono text-xs font-bold tabular-nums text-slate-700">
+                          {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
+                        </span>
+                        {/* Proof the microphone is live. Transcription only happens
+                            after Stop, so without this a good recording and a dead
+                            mic look exactly the same. */}
+                        <span className="flex flex-1 items-end gap-[3px]" aria-hidden="true">
+                          {Array.from({ length: 14 }, (_, index) => {
+                            const lit = level * 14 > index
+                            return (
+                              <span
+                                key={index}
+                                className={cx(
+                                  'w-full rounded-sm transition-all duration-75',
+                                  lit ? 'bg-brand' : 'bg-slate-200',
+                                )}
+                                style={{ height: lit ? `${String(6 + index)}px` : '4px' }}
+                              />
+                            )
+                          })}
+                        </span>
+                        <span className="shrink-0 text-xs font-semibold text-slate-500">
+                          Tap ■ when done
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Loader2 size={16} strokeWidth={2} className="shrink-0 animate-spin text-brand" />
+                        <span className="text-xs font-semibold text-slate-600">
+                          Typing out what you said…
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-end gap-2">
                   {voiceIn && (
                     <button
@@ -532,7 +636,13 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                       }
                     }}
                     rows={1}
-                    placeholder={recording ? 'Listening…' : 'Ask Ro…'}
+                    placeholder={
+                      recording
+                        ? "Recording — your words appear when you tap ■"
+                        : transcribing
+                          ? 'One moment…'
+                          : 'Ask Ro…'
+                    }
                     className="max-h-32 min-h-[2.75rem] w-full resize-none rounded-control border border-slate-300 px-3 py-2.5 text-sm leading-relaxed text-slate-900 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/15"
                   />
                   <button

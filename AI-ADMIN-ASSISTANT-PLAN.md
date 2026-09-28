@@ -446,7 +446,17 @@ correcting quietly.
 | Model | Input / Output per 1M | Real cost per minute of speech |
 |---|---|---|
 | `google/gemini-3.8-flash-lite-tts` — **pick** | $0.50 / $6 | roughly half a cent |
-| `openai/gpt-4o-mini-tts` — fallback | $0.60 / $12 | roughly a penny |
+| `openai/gpt-4o-mini-tts-2025-12-15` — fallback | $0.60 / $12 | roughly a penny |
+
+**Correction, 2026-09-27.** This row previously read `openai/gpt-4o-mini-tts`,
+undated. That slug does not exist on OpenRouter and returns "Model ... does not
+exist" — OpenRouter's own TTS documentation names the dated
+`openai/gpt-4o-mini-tts-2025-12-15`. Found when speech was first tried against
+the live deployment. `google/gemini-3.8-flash-lite-tts` is confirmed present and
+is unaffected. A related check still outstanding: OpenRouter exposes a
+`supported_voices` array per speech model on its models endpoint, so `Erinome`
+should be confirmed against that list rather than against the third-party
+reference §9 took it from.
 
 **Why the output price is so much higher than the input price, on both of
 these — this isn't a mistake, and it's true of every TTS model, not just
