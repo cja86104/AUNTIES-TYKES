@@ -74,8 +74,40 @@ export class RoError extends Error {
 }
 
 const DEV_SERVER_HINT =
-  "Ro's server functions aren't running. `npm run dev` serves the app but not " +
+  "Ro's server functions aren't reachable. `npm run dev` serves the app but not " +
   '`/api/*` — use `vercel dev` instead, or try this on the deployed site.'
+
+/**
+ * Turns a non-JSON response into a message that says which of three different
+ * problems it is.
+ *
+ * They are easy to confuse and were confused here: all three produce a body that
+ * is not JSON, so reporting them identically as "not running" hid a crashed
+ * function behind a dev-server message. The status code separates them —
+ * 5xx is Vercel's HTML error page for a function that threw, 404 is nothing
+ * deployed at that path, and a 200 carrying HTML is Vite's SPA fallback.
+ */
+function nonJsonError(path: string, status: number): RoError {
+  if (status >= 500) {
+    return new RoError(
+      `Ro's server function crashed (HTTP ${String(status)} at ${path}). This is a server ` +
+        'error, not a missing endpoint — check the Vercel function logs. A missing ' +
+        'environment variable is the usual cause: every AI_MODEL_* value, ' +
+        'OPENROUTER_API_KEY and SUPABASE_SERVICE_ROLE_KEY have to be set in the Vercel ' +
+        'project, not just in .env.local, which is never deployed.',
+      { status },
+    )
+  }
+  if (status === 404) {
+    return new RoError(
+      `Nothing answered at ${path} (404). In local dev that means \`npm run dev\` instead ` +
+        'of `vercel dev`. On a deployed site it means the function did not ship — check ' +
+        "the deployment's Functions list.",
+      { apiUnavailable: true, status },
+    )
+  }
+  return new RoError(DEV_SERVER_HINT, { apiUnavailable: true, status })
+}
 
 async function authHeader(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession()
@@ -90,11 +122,9 @@ async function authHeader(): Promise<Record<string, string>> {
  * Checked by content type rather than by parsing and catching: Vite's fallback
  * returns a perfectly valid 200, so the status code alone cannot tell these apart.
  */
-async function readJson(response: Response): Promise<unknown> {
+async function readJson(response: Response, path: string): Promise<unknown> {
   const type = response.headers.get('content-type') ?? ''
-  if (!type.includes('application/json')) {
-    throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true, status: response.status })
-  }
+  if (!type.includes('application/json')) throw nonJsonError(path, response.status)
   try {
     return (await response.json()) as unknown
   } catch {
@@ -120,11 +150,8 @@ export async function fetchRoStatus(): Promise<RoStatus> {
   }
 
   // A 404 is the other shape the dev server takes, depending on the route.
-  if (response.status === 404) {
-    throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true, status: 404 })
-  }
 
-  const body = await readJson(response)
+  const body = await readJson(response, '/api/ai/status')
   if (!response.ok) throw errorFrom(body, response.status)
 
   const record = body as Record<string, unknown>
@@ -167,11 +194,8 @@ export async function askRo(message: string, history: RoTurn[]): Promise<RoReply
     throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true })
   }
 
-  if (response.status === 404) {
-    throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true, status: 404 })
-  }
 
-  const body = await readJson(response)
+  const body = await readJson(response, '/api/ai/chat')
   if (!response.ok) throw errorFrom(body, response.status)
   return readReply(body)
 }
@@ -264,11 +288,8 @@ export async function transcribeRecording(blob: Blob): Promise<string> {
     throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true })
   }
 
-  if (response.status === 404) {
-    throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true, status: 404 })
-  }
 
-  const body = await readJson(response)
+  const body = await readJson(response, '/api/ai/transcribe')
   if (!response.ok) throw errorFrom(body, response.status)
 
   const text = (body as Record<string, unknown>).text
@@ -296,12 +317,9 @@ export async function fetchSpeech(text: string): Promise<string> {
     throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true })
   }
 
-  if (response.status === 404) {
-    throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true, status: 404 })
-  }
   if (!response.ok) {
     // This endpoint answers with audio on success and JSON on failure.
-    const body = await readJson(response)
+    const body = await readJson(response, '/api/ai/speak')
     throw errorFrom(body, response.status)
   }
 

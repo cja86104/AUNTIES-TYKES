@@ -134,3 +134,6 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Artifacts the mounted filesystem leaves when a file is replaced while open.
+.fuse_hidden*
