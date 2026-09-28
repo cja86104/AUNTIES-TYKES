@@ -266,6 +266,79 @@ export type SettingsRow = {
   updated_at: string
 }
 
+/* ------------------------------ Ro's own tables ----------------------------- */
+// supabase/migrations/0013_ai_assistant.sql. Owner-only by RLS: these carry no
+// parent-facing policy, so a family's session sees none of these rows.
+
+export type AiOutcomeDb = 'proposed' | 'confirmed' | 'executed' | 'failed' | 'declined' | 'undone'
+export type AiRuleKindDb = 'contact_hold' | 'payment_expectation' | 'reminder' | 'manual'
+export type AiRuleChannelDb = 'any' | 'message' | 'announcement'
+export type AiCommitmentStatusDb = 'open' | 'kept' | 'dropped'
+
+/**
+ * One AI-initiated action. Note the absence of foreign keys on `family_id` and
+ * `child_id`: an audit row outlives the rows it describes, so the labels are
+ * captured at write time and never resolved again. See the migration's comment.
+ */
+export type AiAuditLogRow = {
+  id: string
+  at: string
+  actor_id: string | null
+  actor_name: string
+  /** What she actually said, before any model touched it. */
+  instruction: string
+  tool: string
+  risk_tier: string
+  arguments: Record<string, unknown>
+  family_id: string | null
+  family_label: string
+  child_id: string | null
+  child_label: string
+  /** Invoice ids, thread ids, recipient lists — whatever else it touched. */
+  targets: unknown[]
+  outcome: AiOutcomeDb
+  error: string
+  model: string
+  undo_until: string | null
+  undone_at: string | null
+}
+
+/** A standing instruction, as a row that ordinary code checks before a send. */
+export type AiStandingRuleRow = {
+  id: string
+  created_at: string
+  created_by: string | null
+  kind: AiRuleKindDb
+  /** Her words, so the rule can be explained back in the form she gave it. */
+  said: string
+  /** The plain English shown to her before saving (§7). */
+  summary: string
+  /** NULL applies the rule to every family. */
+  family_id: string | null
+  family_label: string
+  channel: AiRuleChannelDb
+  /** Explicit, never inferred from `kind` — see the migration's comment. */
+  blocks_sends: boolean
+  /** Last date the rule applies; NULL is indefinite. */
+  hold_until: string | null
+  details: Record<string, unknown>
+  active: boolean
+  retired_at: string | null
+}
+
+/** Something Ro said it would follow up on. */
+export type AiCommitmentRow = {
+  id: string
+  created_at: string
+  said: string
+  due_on: string | null
+  family_id: string | null
+  family_label: string
+  status: AiCommitmentStatusDb
+  closed_at: string | null
+  closed_note: string
+}
+
 type Table<Row, Required extends keyof Row> = {
   Row: Row
   Insert: Insertable<Row, Required>
@@ -294,6 +367,9 @@ export type Database = {
       waitlist_prospects: Table<WaitlistProspectRow, 'child_name' | 'age_group'>
       settings: Table<SettingsRow, 'id'>
       calendar_events: Table<CalendarEventRow, 'id' | 'kind' | 'title' | 'starts_on'>
+      ai_audit_log: Table<AiAuditLogRow, 'id' | 'tool'>
+      ai_standing_rules: Table<AiStandingRuleRow, 'id' | 'kind' | 'said' | 'summary'>
+      ai_commitments: Table<AiCommitmentRow, 'id' | 'said'>
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -309,6 +385,10 @@ export type Database = {
       document_category: DocumentCategoryDb
       enrollment_status: EnrollmentStatusDb
       calendar_event_kind: CalendarEventKindDb
+      ai_outcome: AiOutcomeDb
+      ai_rule_kind: AiRuleKindDb
+      ai_rule_channel: AiRuleChannelDb
+      ai_commitment_status: AiCommitmentStatusDb
     }
     CompositeTypes: { [_ in never]: never }
   }
