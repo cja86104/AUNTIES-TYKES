@@ -14,23 +14,20 @@ import {
   X,
 } from 'lucide-react'
 import { Badge } from './ui'
-import { cx, uid } from '../lib/helpers'
+import { cx } from '../lib/helpers'
 import { useStore } from '../store/useStore'
 import { useBodyScrollLock } from '../lib/useBodyScrollLock'
 import {
-  askRo,
   canRecord,
-  fetchRoStatus,
   fetchSpeech,
   pickRecordingMimeType,
   RoError,
   transcribeRecording,
   type RoDraft,
   type RoNotice,
-  type RoStatus,
   type RoToolRun,
-  type RoTurn,
 } from '../lib/ro'
+import { useRoSession, type RoMessage } from '../lib/roSession'
 
 /**
  * Ro's console presence — plan §11.
@@ -45,16 +42,6 @@ import {
  * a copy button and says plainly that nothing left the building. The confirmation
  * UI that replaces it in Phase 2 goes exactly here.
  */
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  drafts?: RoDraft[]
-  toolRuns?: RoToolRun[]
-  notices?: RoNotice[]
-  warnings?: string[]
-}
 
 /* -------------------------------- draft card ------------------------------- */
 
@@ -149,28 +136,59 @@ function Activity({ runs, notices }: { runs: RoToolRun[]; notices: RoNotice[] })
   )
 }
 
+/* ------------------------------ narrow viewport ---------------------------- */
+
+/**
+ * True on a phone-width screen.
+ *
+ * Decides whether the panel behaves as a modal. On a phone it is full-width and
+ * necessarily covers the app, so it takes a backdrop and locks the page behind
+ * it. On a wider screen it must NOT: Ro stays open until Melissa closes her, and
+ * a backdrop over the console she is trying to use would make the app
+ * unclickable while Ro is open.
+ */
+function useNarrowViewport(): boolean {
+  const query = '(max-width: 639px)'
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(query).matches,
+  )
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    const onChange = (event: MediaQueryListEvent) => setNarrow(event.matches)
+    media.addEventListener('change', onChange)
+    setNarrow(media.matches)
+    return () => media.removeEventListener('change', onChange)
+  }, [])
+  return narrow
+}
+
 /* --------------------------------- panel ---------------------------------- */
 
 export interface RoAssistantProps {
-  /**
-   * Called when the panel opens, so the shell can close its own overlays first.
-   * `useBodyScrollLock` restores one saved offset and documents that overlays are
-   * never stacked, so the nav drawer and this panel must not be open together.
-   */
+  /** Called when the panel opens, so the shell can close its own overlays. */
   onOpen?: () => void
 }
 
 export default function RoAssistant({ onOpen }: RoAssistantProps) {
   const pushToast = useStore((s) => s.pushToast)
 
-  const [status, setStatus] = useState<RoStatus | null>(null)
-  const [statusProblem, setStatusProblem] = useState<string | null>(null)
-  const [statusChecked, setStatusChecked] = useState(false)
+  // Conversation state lives in the store, not here: App.tsx remounts this whole
+  // subtree on every navigation (see roSession.ts), and the thread has to
+  // survive that. Only what is genuinely tied to this mount stays local — the
+  // microphone, the meter, the audio element.
+  const open = useRoSession((s) => s.open)
+  const setOpen = useRoSession((s) => s.setOpen)
+  const input = useRoSession((s) => s.input)
+  const setInput = useRoSession((s) => s.setInput)
+  const messages = useRoSession((s) => s.messages)
+  const busy = useRoSession((s) => s.busy)
+  const send = useRoSession((s) => s.send)
+  const clear = useRoSession((s) => s.clear)
+  const status = useRoSession((s) => s.status)
+  const statusProblem = useRoSession((s) => s.statusProblem)
+  const statusChecked = useRoSession((s) => s.statusChecked)
+  const ensureStatus = useRoSession((s) => s.ensureStatus)
 
-  const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [busy, setBusy] = useState(false)
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
   /** 0–1 input level, so she can see the mic is picking her up. */
@@ -188,37 +206,16 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
   const meterRef = useRef<{ context: AudioContext; frame: number } | null>(null)
   const tickRef = useRef<number | null>(null)
 
-  useBodyScrollLock(open)
+  const narrow = useNarrowViewport()
+  // Only a phone-width panel freezes the page behind it. On a wider screen the
+  // console stays usable with Ro open, which is the whole point of her staying.
+  useBodyScrollLock(open && narrow)
 
   useEffect(() => {
-    let cancelled = false
-    fetchRoStatus()
-      .then((result) => {
-        if (cancelled) return
-        setStatus(result)
-        // A server that cannot read its own config says so in the panel rather
-        // than disappearing, so the missing variable names reach someone.
-        if (result.misconfigured === true && result.reason !== undefined) {
-          setStatusProblem(
-            `${result.reason}. Every AI_MODEL_* value, OPENROUTER_API_KEY and ` +
-              'OPENROUTER_SITE_URL/NAME must be set in the Vercel project — .env.local ' +
-              'is not deployed.',
-          )
-        }
-      })
-      .catch((cause: unknown) => {
-        if (cancelled) return
-        setStatusProblem(cause instanceof RoError ? cause.message : 'Could not reach Ro.')
-      })
-      .finally(() => {
-        if (!cancelled) setStatusChecked(true)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    ensureStatus()
+  }, [ensureStatus])
 
-  // Release the microphone and any playing audio when the panel unmounts.
+  // Release the microphone and any playing audio when this mount goes away.
   useEffect(
     () => () => {
       streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -240,63 +237,18 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open])
+  }, [open, setOpen])
 
   useEffect(() => {
     if (open) inputRef.current?.focus()
   }, [open])
 
-  // Keep the newest message in view as the conversation grows.
+  // Keep the newest message in view, including right after a remount.
   useEffect(() => {
     const node = scrollRef.current
     if (node !== null) node.scrollTop = node.scrollHeight
-  }, [messages, busy])
+  }, [messages, busy, open])
 
-  const send = useCallback(
-    async (text: string) => {
-      const trimmed = text.trim()
-      if (trimmed.length === 0) return
-
-      const history: RoTurn[] = messages.map((message) => ({
-        role: message.role,
-        content: message.content,
-      }))
-
-      setMessages((previous) => [
-        ...previous,
-        { id: uid('ro'), role: 'user', content: trimmed },
-      ])
-      setInput('')
-      setBusy(true)
-
-      try {
-        const reply = await askRo(trimmed, history)
-        setMessages((previous) => [
-          ...previous,
-          {
-            id: uid('ro'),
-            role: 'assistant',
-            content: reply.reply,
-            drafts: reply.drafts,
-            toolRuns: reply.toolRuns,
-            notices: reply.notices,
-            warnings: reply.warnings,
-          },
-        ])
-      } catch (cause) {
-        const message = cause instanceof RoError ? cause.message : 'Ro could not answer that.'
-        setMessages((previous) => [
-          ...previous,
-          { id: uid('ro'), role: 'assistant', content: message, warnings: ['failed'] },
-        ])
-      } finally {
-        setBusy(false)
-      }
-    },
-    [messages],
-  )
-
-  /** Stops the meter, the timer, and the stream's analyser. */
   const stopMeter = useCallback(() => {
     if (meterRef.current !== null) {
       cancelAnimationFrame(meterRef.current.frame)
@@ -310,7 +262,6 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
     setLevel(0)
   }, [])
 
-  /** Stops the recorder; the transcript lands in the box for her to send. */
   const stopRecording = useCallback(() => {
     recorderRef.current?.stop()
     setRecording(false)
@@ -320,10 +271,10 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
   /**
    * Watches the input level with a Web Audio analyser.
    *
-   * This is measurement of the local stream, not speech recognition — §9's ban is
-   * on browser speech APIs, and there is no `webkitSpeechRecognition` here. It
-   * exists because transcription only happens after the recorder stops, so
-   * without it a working recording is indistinguishable from a dead microphone.
+   * Measurement of the local stream, not speech recognition — §9's ban is on
+   * browser speech APIs and there is no `webkitSpeechRecognition` here. It exists
+   * because transcription only happens after the recorder stops, so without it a
+   * working recording and a dead microphone look identical.
    */
   const startMeter = useCallback((stream: MediaStream) => {
     try {
@@ -332,7 +283,6 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
       analyser.fftSize = 512
       context.createMediaStreamSource(stream).connect(analyser)
       const samples = new Uint8Array(analyser.frequencyBinCount)
-
       const read = () => {
         analyser.getByteTimeDomainData(samples)
         let sum = 0
@@ -340,14 +290,11 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
           const centred = (sample - 128) / 128
           sum += centred * centred
         }
-        // RMS, scaled so ordinary speech fills most of the meter.
-        const rms = Math.sqrt(sum / samples.length)
-        setLevel(Math.min(1, rms * 4))
+        setLevel(Math.min(1, Math.sqrt(sum / samples.length) * 4))
         if (meterRef.current !== null) meterRef.current.frame = requestAnimationFrame(read)
       }
       meterRef.current = { context, frame: requestAnimationFrame(read) }
     } catch {
-      // A browser without Web Audio still records; it just gets no meter.
       setLevel(0)
     }
   }, [])
@@ -375,10 +322,11 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
         setTranscribing(true)
         transcribeRecording(blob)
           .then((text) => {
-            // Into the box rather than straight out: §9 says treat the
-            // transcript as if she had typed it, and typed text waits for send.
-            // One tap to fix a misheard name beats Ro answering the wrong question.
-            setInput((previous) => (previous.length > 0 ? `${previous} ${text}` : text))
+            // Into the box rather than straight out: §9 says treat the transcript
+            // as if she had typed it, and typed text waits for send. One tap to
+            // fix a misheard name beats answering the wrong question.
+            const current = useRoSession.getState().input
+            setInput(current.length > 0 ? `${current} ${text}` : text)
             inputRef.current?.focus()
           })
           .catch((cause: unknown) => {
@@ -402,11 +350,11 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
         description: 'Allow microphone access for this site, then try again.',
       })
     }
-  }, [pushToast, startMeter, stopMeter])
+  }, [pushToast, setInput, startMeter, stopMeter])
 
   /** Tap to listen. Never autoplay — §11, and every browser's gesture rule. */
   const listen = useCallback(
-    async (message: Message) => {
+    async (message: RoMessage) => {
       if (speakingId === message.id) {
         audioRef.current?.pause()
         setSpeakingId(null)
@@ -439,7 +387,7 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
   // Hidden only when Ro is deliberately switched off. A failed status call or a
   // broken server config leaves the control visible, because the panel can then
   // explain why — hiding it in those cases looks identical to the feature not
-  // existing, which is exactly how a missing env var went unnoticed once already.
+  // existing, which is how a missing env var went unnoticed once already.
   const deliberatelyOff = status !== null && !status.enabled && status.misconfigured !== true
   if (!statusChecked || deliberatelyOff) return null
 
@@ -454,50 +402,81 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
           onOpen?.()
           setOpen(true)
         }}
-        className="inline-flex min-h-[2.75rem] items-center gap-2 rounded-control border border-slate-300 px-3 text-sm font-semibold text-slate-600 transition hover:border-brand hover:text-brand sm:min-h-0 sm:py-2"
+        className={cx(
+          'inline-flex min-h-[2.75rem] items-center gap-2 rounded-control border px-3 text-sm font-semibold transition sm:min-h-0 sm:py-2',
+          open
+            ? 'border-brand bg-brand-tint text-brand'
+            : 'border-slate-300 text-slate-600 hover:border-brand hover:text-brand',
+        )}
         aria-label="Ask Ro"
+        aria-expanded={open}
       >
         <Sparkles size={20} strokeWidth={1.75} />
         <span className="hidden sm:inline">Ro</span>
+        {messages.length > 0 && !open && (
+          <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand px-1.5 text-xs font-bold text-white">
+            {messages.filter((message) => message.role === 'assistant').length}
+          </span>
+        )}
       </button>
 
       <AnimatePresence>
         {open && (
           <>
-            <motion.div
-              className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-            />
+            {/* Phone only. On a wider screen there is no backdrop at all, so the
+                console stays clickable with Ro open — she stays until Melissa
+                closes her, and a blocking overlay would make that unusable. */}
+            {narrow && (
+              <motion.div
+                className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm sm:hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setOpen(false)}
+              />
+            )}
             <motion.aside
               role="dialog"
-              aria-modal="true"
+              // Modal on a phone, where it covers everything; not modal on a wider
+              // screen, where the app behind it stays in use.
+              aria-modal={narrow}
               aria-label="Ro, your operations partner"
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 320, damping: 34 }}
-              className="fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-canvas shadow-raised sm:w-[26rem]"
+              className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-slate-200 bg-canvas shadow-raised sm:w-[26rem]"
             >
               <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3.5">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-tint text-brand">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand">
                     <Sparkles size={20} strokeWidth={1.75} />
                   </span>
-                  <span className="leading-tight">
+                  <span className="min-w-0 leading-tight">
                     <span className="block font-display text-sm font-extrabold text-slate-900">Ro</span>
-                    <span className="block text-xs text-slate-500">Reads and drafts — never sends</span>
+                    <span className="block truncate text-xs text-slate-500">
+                      Reads and drafts — never sends
+                    </span>
                   </span>
                 </div>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-control text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-                  aria-label="Close"
-                >
-                  <X size={20} strokeWidth={1.75} />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {messages.length > 0 && (
+                    <button
+                      onClick={clear}
+                      className="rounded-chip px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                      title="Start a new conversation"
+                    >
+                      New
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-control text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                    aria-label="Close"
+                  >
+                    <X size={20} strokeWidth={1.75} />
+                  </button>
+                </div>
               </header>
 
               <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
@@ -638,7 +617,7 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                     rows={1}
                     placeholder={
                       recording
-                        ? "Recording — your words appear when you tap ■"
+                        ? 'Recording — your words appear when you tap ■'
                         : transcribing
                           ? 'One moment…'
                           : 'Ask Ro…'
