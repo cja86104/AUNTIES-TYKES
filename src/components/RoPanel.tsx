@@ -11,6 +11,7 @@ import {
   Send,
   Sparkles,
   Square,
+  Undo2,
   Volume2,
   X,
 } from 'lucide-react'
@@ -141,6 +142,35 @@ function DraftCard({ entry }: { entry: RoDraft }) {
  * rendering of what the server already stored, not the payload. So there is no
  * version of this card that can approve something other than what it displays.
  */
+/** Seconds left on an undo window, or 0 when there isn't one. */
+function undoSecondsLeft(until: string | null): number {
+  if (until === null) return 0
+  return Math.max(0, Math.ceil((new Date(until).getTime() - Date.now()) / 1000))
+}
+
+/**
+ * Ticks down an undo window once a second, and stops at zero.
+ *
+ * The countdown is the whole point of showing it: "Undo" with no clock invites
+ * her to assume it is still there, and §8's window is short. The interval is tied
+ * to the deadline rather than to a mount, so it survives this card being
+ * remounted by a navigation with the right number still on it.
+ */
+function useUndoCountdown(until: string | null): number {
+  const [left, setLeft] = useState(() => undoSecondsLeft(until))
+  useEffect(() => {
+    setLeft(undoSecondsLeft(until))
+    if (until === null) return
+    const id = window.setInterval(() => {
+      const next = undoSecondsLeft(until)
+      setLeft(next)
+      if (next <= 0) window.clearInterval(id)
+    }, 1000)
+    return () => window.clearInterval(id)
+  }, [until])
+  return left
+}
+
 function ActionCard({ action }: { action: RoAction }) {
   // An id with no entry is pending. Annotated because this project does not enable
   // noUncheckedIndexedAccess, so the index signature would otherwise claim every
@@ -151,16 +181,22 @@ function ActionCard({ action }: { action: RoAction }) {
     decision === undefined ? 'pending' : decision.state
   const detail = decision === undefined ? '' : decision.detail
 
-  const settled = state === 'done' || state === 'declined'
-  const tone = state === 'done' ? 'green' : state === 'failed' ? 'rose' : 'amber'
+  const undoLeft = useUndoCountdown(decision?.undoUntil ?? null)
+  const problem = decision?.problem ?? ''
+
+  const settled = state === 'done' || state === 'declined' || state === 'undone'
+  const tone =
+    state === 'done' ? 'green' : state === 'failed' ? 'rose' : state === 'undone' ? 'neutral' : 'amber'
   const label =
     state === 'done'
       ? 'Done'
       : state === 'declined'
         ? 'Dismissed'
-        : state === 'failed'
-          ? "Didn't go through"
-          : 'Waiting on you'
+        : state === 'undone'
+          ? 'Pulled back'
+          : state === 'failed'
+            ? "Didn't go through"
+            : 'Waiting on you'
 
   return (
     <div
@@ -170,7 +206,7 @@ function ActionCard({ action }: { action: RoAction }) {
           ? 'border-emerald-200 bg-emerald-50/60'
           : state === 'failed'
             ? 'border-rose-200 bg-rose-50/60'
-            : state === 'declined'
+            : state === 'declined' || state === 'undone'
               ? 'border-slate-200 bg-slate-50'
               : 'border-sunny bg-white',
       )}
@@ -218,9 +254,32 @@ function ActionCard({ action }: { action: RoAction }) {
       )}
 
       {state === 'done' && (
-        <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-emerald-800">
-          <Check size={14} strokeWidth={2.5} className="mt-0.5 shrink-0" />
-          {detail.length > 0 ? detail : 'Saved.'}
+        <>
+          <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-emerald-800">
+            <Check size={14} strokeWidth={2.5} className="mt-0.5 shrink-0" />
+            {detail.length > 0 ? detail : 'Saved.'}
+          </p>
+          {undoLeft > 0 && (
+            <button
+              onClick={() => void decide(action.id, 'undo')}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-chip border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
+            >
+              <Undo2 size={14} strokeWidth={2} />
+              Undo · {Math.floor(undoLeft / 60)}:{(undoLeft % 60).toString().padStart(2, '0')}
+            </button>
+          )}
+          {problem.length > 0 && (
+            <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-rose-800">
+              <AlertTriangle size={14} strokeWidth={2} className="mt-0.5 shrink-0" />
+              {problem}
+            </p>
+          )}
+        </>
+      )}
+
+      {state === 'undone' && (
+        <p className="mt-2 text-xs leading-relaxed text-slate-600">
+          {detail.length > 0 ? detail : 'Pulled back.'}
         </p>
       )}
 
@@ -584,11 +643,18 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
       setSpeakingId(message.id)
 
       try {
-        const url = await fetchSpeech(message.content)
+        const { url, trimmed } = await fetchSpeech(message.content)
         audioUrlRef.current = url
         audio.onended = () => setSpeakingId(null)
         audio.src = url
         await audio.play()
+        if (trimmed) {
+          pushToast({
+            tone: 'info',
+            title: 'Reading the first part',
+            description: 'That reply was too long to read out in full.',
+          })
+        }
       } catch (cause) {
         setSpeakingId(null)
         // A blocked autoplay and a failed request both land here and need
@@ -715,8 +781,8 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                   <div className="py-6 text-center">
                     <p className="text-sm font-semibold text-slate-700">Ask me anything about today.</p>
                     <p className="mx-auto mt-1.5 max-w-[17rem] text-sm leading-relaxed text-slate-500">
-                      Who is checked in, what is overdue, who is waiting on a reply. Tell me how you
-                      want a family handled and I&rsquo;ll remember it.
+                      Who is checked in, what is overdue, who is waiting on a reply. I can write a
+                      message and send it once you&rsquo;ve read it.
                     </p>
                   </div>
                 )}

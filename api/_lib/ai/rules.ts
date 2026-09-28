@@ -107,8 +107,23 @@ export async function activeRules(ctx: ToolContext): Promise<RulesResult<Standin
   return { ok: true, value: data.map(toRule) }
 }
 
+/** Who a send reaches, for the gate below. */
+export interface SendTarget {
+  /** The families it lands in front of, or 'all' when it reaches every one. */
+  familyIds: string[] | 'all'
+  channel: Exclude<RuleChannel, 'any'>
+}
+
 /**
  * The send-time gate. Returns the rules that forbid this send, empty if none.
+ *
+ * Takes an audience rather than one family, which it did not originally, and the
+ * difference is not cosmetic. "Don't message the Brooks family" has to stop an
+ * announcement going to everyone, because everyone includes the Brooks family. A
+ * check written around a single family id silently skipped exactly that case: the
+ * rule named a family, the send named none, so they never matched and the
+ * announcement went out. The blast-radius rule is the one that most needs the
+ * gate, so it is the one it must not miss.
  *
  * Fails CLOSED by design: if the rules cannot be read, the caller is told so and
  * must refuse the send. The alternative — treating an unreadable rules table as
@@ -117,7 +132,7 @@ export async function activeRules(ctx: ToolContext): Promise<RulesResult<Standin
  */
 export async function rulesBlocking(
   ctx: ToolContext,
-  target: { familyId: string | null; channel: Exclude<RuleChannel, 'any'> },
+  target: SendTarget,
 ): Promise<RulesResult<StandingRule[]>> {
   // A rule with no family applies to everyone, so it cannot be filtered out in
   // SQL alongside a specific family without an `or`. Fetched, then narrowed here.
@@ -133,11 +148,14 @@ export async function rulesBlocking(
 
   const today = ctx.today
   const blocking = data.map(toRule).filter((rule) => {
-    if (rule.familyId !== null && rule.familyId !== target.familyId) return false
     if (rule.channel !== 'any' && rule.channel !== target.channel) return false
     // A hold with no end date is indefinite; one with an end date covers that day.
     if (rule.holdUntil !== null && rule.holdUntil < today) return false
-    return true
+    // A rule with no family is about everyone, so it always applies. A rule about
+    // one family applies whenever this send reaches that family — including when
+    // it reaches them by reaching everybody.
+    if (rule.familyId === null) return true
+    return target.familyIds === 'all' || target.familyIds.includes(rule.familyId)
   })
   return { ok: true, value: blocking }
 }

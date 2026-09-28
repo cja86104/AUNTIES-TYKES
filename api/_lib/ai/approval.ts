@@ -22,15 +22,36 @@
  *  4. Run it, then settle the row with what actually happened.
  */
 
-import { claimProposal, declineProposal, settle } from './audit.js'
+import {
+  abandonUndo,
+  claimProposal,
+  claimUndo,
+  declineProposal,
+  sendsInLastHour,
+  settle,
+} from './audit.js'
 import { findExecutor } from './execute.js'
 import { rulesBlocking } from './rules.js'
 import type { ToolContext } from './tools/kit.js'
 
-export type Decision = 'approve' | 'decline'
+/**
+ * §8's hard ceilings on how much can go out in an hour.
+ *
+ * Sized for what this business actually is: a home daycare with about a dozen
+ * families. Normal use never comes close — a busy morning is a handful of
+ * messages. These are not a budget to spend, they are a tripwire for something
+ * having gone wrong: a loop, a misread instruction, an announcement re-posted
+ * over and over. Both are counted, because they fail differently. Twenty single
+ * messages is a stuck process; two announcements to everyone, twice, is a small
+ * number of actions that reached every parent four times.
+ */
+const MAX_SEND_ACTIONS_PER_HOUR = 20
+const MAX_RECIPIENTS_PER_HOUR = 120
+
+export type Decision = 'approve' | 'decline' | 'undo'
 
 export interface ConfirmBody {
-  outcome?: 'executed' | 'declined' | 'failed'
+  outcome?: 'executed' | 'declined' | 'failed' | 'undone'
   summary?: string
   error?: string
   undoUntil?: string | null
@@ -53,6 +74,27 @@ export async function settleProposal(
   proposalId: string,
   decision: Decision,
 ): Promise<ConfirmResult> {
+  if (decision === 'undo') {
+    const claimed = await claimUndo(ctx, proposalId)
+    if (!claimed.ok) return { status: 409, body: { error: claimed.error } }
+
+    const executor = findExecutor(claimed.value.tool)
+    if (executor?.undo === undefined) {
+      const error = `I cannot take back a ${claimed.value.tool}.`
+      await abandonUndo(ctx, claimed.value.id, error)
+      return { status: 200, body: { outcome: 'executed', error } }
+    }
+
+    const result = await executor.undo(ctx, claimed.value.targets)
+    if (!result.ok) {
+      // The claim goes back: it was not undone, and the trail must keep saying
+      // the thing went out, because it did.
+      await abandonUndo(ctx, claimed.value.id, result.error)
+      return { status: 200, body: { outcome: 'executed', error: result.error } }
+    }
+    return { status: 200, body: { outcome: 'undone', summary: result.summary } }
+  }
+
   if (decision === 'decline') {
     const declined = await declineProposal(ctx, proposalId)
     if (!declined.ok) return { status: 500, body: { error: declined.error } }
@@ -71,7 +113,9 @@ export async function settleProposal(
     return { status: 200, body: { outcome: 'failed', error } }
   }
 
-  // §7's send-time rule check, on the generic path so no executor can skip it.
+  // §7's send-time rule check and §8's ceilings, both on the generic path so no
+  // executor can skip either. Declaring `sendTarget` is what opts a tool in, and
+  // it is the only thing that does — there is no per-tool flag to forget.
   if (executor.sendTarget !== undefined) {
     const target = executor.sendTarget(proposal)
     if (target !== null) {
@@ -88,6 +132,32 @@ export async function settleProposal(
         const error = `I stopped that — one of your own rules says not to: ${summaries.join('; ')}`
         await settle(ctx, proposal.id, 'failed', { error })
         return { status: 200, body: { outcome: 'failed', error, blockedBy: summaries } }
+      }
+
+      // Checked here, after the claim, which costs her this proposal if it trips.
+      // That is the intended trade: at these ceilings a trip means something is
+      // wrong, and a hard stop with a row in the trail saying so is worth more
+      // than a smoother retry. It also cannot be raced by a double tap, because
+      // the claim above already happened.
+      const reach = executor.recipientCount?.(proposal) ?? 1
+      const sent = await sendsInLastHour(ctx)
+      if (!sent.ok) {
+        // Fails closed, for the same reason the rule check does.
+        await settle(ctx, proposal.id, 'failed', { error: sent.error })
+        return { status: 200, body: { outcome: 'failed', error: sent.error } }
+      }
+      const overActions = sent.value.actions + 1 > MAX_SEND_ACTIONS_PER_HOUR
+      const overRecipients = sent.value.recipients + reach > MAX_RECIPIENTS_PER_HOUR
+      if (overActions || overRecipients) {
+        const error = overActions
+          ? `That would be ${String(sent.value.actions + 1)} sends in an hour, and I cap it at ` +
+            `${String(MAX_SEND_ACTIONS_PER_HOUR)}. Nothing went out. If that many really are ` +
+            'meant to go, send them from Messages yourself — the cap is on me, not on you.'
+          : `That would reach ${String(sent.value.recipients + reach)} families in an hour, and I ` +
+            `cap it at ${String(MAX_RECIPIENTS_PER_HOUR)}. Nothing went out. If it really is meant ` +
+            'to go, send it from Messages yourself — the cap is on me, not on you.'
+        await settle(ctx, proposal.id, 'failed', { error })
+        return { status: 200, body: { outcome: 'failed', error } }
       }
     }
   }

@@ -60,6 +60,15 @@ export interface ToolContext {
    * in a later turn is a real request and gets its own card.
    */
   proposedThisTurn: Map<string, ActionPreview>
+  /**
+   * Read results already produced this turn, keyed by tool and arguments.
+   *
+   * A model with a round budget can spend it re-asking the same question — a
+   * live turn ran `family.find` four times and then ran out. Reads are pure, so
+   * the second identical call cannot learn anything new; it is answered from here
+   * with a note saying so, which costs nothing and tells the model to stop.
+   */
+  seenThisTurn: Map<string, ToolOutcome>
 }
 
 export type ToolOutcome = { ok: true; data: unknown } | { ok: false; error: string }

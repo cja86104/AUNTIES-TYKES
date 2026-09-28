@@ -1,17 +1,16 @@
 /**
- * Ro's drafting tools — the other half of what Phase 1 ships.
+ * Wording Ro prepares that has no send behind it yet.
  *
- * Plan §13.2: "she can ask questions and get drafted messages and spoken
- * replies; nothing sends without her tap." These tools produce a draft and stop.
- * There is no send tool in the catalog at all this phase, so there is nothing
- * for the model to chain a draft into — the gate is the absence of the tool, not
- * a flag on it.
+ * `message.draft` and `announcement.draft` used to live here and were removed on
+ * 2026-09-28, when `message.send` and `announcement.send` were built. A send
+ * proposal already IS a draft — she reads the wording, and taps or dismisses —
+ * so keeping both only gave the model a way to hand her a copy-it-yourself dead
+ * end when she had asked for something to go out. That was the single thing the
+ * owner said defeated the purpose of the feature.
  *
- * Why drafting is a tool rather than just prose in Ro's reply: it forces the
- * recipient to be resolved to a real family id through a real lookup, which is
- * what §7's "showing her the resolved list" needs and what §8's audit log
- * records. A draft addressed to "the Chen family" in free text would be neither
- * checkable nor auditable.
+ * `dailyLog.draft` stays because there is genuinely nothing to send it with: a
+ * daily log is a record, `dailyLog.write` is a later section, and until then the
+ * honest offer is wording she can paste into the form herself.
  */
 
 import {
@@ -23,172 +22,11 @@ import {
 } from './kit.js'
 
 const MAX_BODY = 4000
-const MAX_SUBJECT = 200
 
 function readBody(args: Record<string, unknown>, key: string, limit: number): string | null {
   const raw = readString(args, key)
   if (raw === null) return null
   return raw.slice(0, limit)
-}
-
-const messageDraft: ToolSpec = {
-  name: 'message.draft',
-  tier: 'draft',
-  description:
-    'Prepare a message to one family for the owner to review. This does NOT send ' +
-    'anything — it returns a draft she approves with a tap, and there is no tool ' +
-    'that sends. Write only what the records actually say: never state something ' +
-    "about a child that isn't in a daily log, an attendance record or an invoice. " +
-    'Pass threadId to reply inside an existing thread, or omit it to start a new one.',
-  parameters: schema(
-    {
-      familyId: { type: 'string', description: 'From family.find or roster.list' },
-      body: { type: 'string', description: "The message, in the owner's voice" },
-      subject: { type: 'string', description: 'Required when starting a new thread' },
-      threadId: { type: 'string', description: 'To reply inside an existing thread' },
-    },
-    ['familyId', 'body'],
-  ),
-  execute: async (args, ctx): Promise<ToolOutcome> => {
-    const familyId = readString(args, 'familyId')
-    const body = readBody(args, 'body', MAX_BODY)
-    if (familyId === null) return { ok: false, error: 'A familyId is required' }
-    if (body === null) return { ok: false, error: 'A message body is required' }
-
-    const family = await ctx.caller.db
-      .from('families')
-      .select('id, name')
-      .eq('id', familyId)
-      .maybeSingle()
-    if (family.error !== null) return dbFailure('that family', family.error)
-    if (family.data === null) {
-      // No such family: answer with the miss rather than drafting to a guess.
-      return { ok: true, data: { drafted: false, reason: 'no family has that id', familyId } }
-    }
-
-    const threadId = readString(args, 'threadId')
-    let subject = readBody(args, 'subject', MAX_SUBJECT)
-
-    if (threadId !== null) {
-      const thread = await ctx.caller.db
-        .from('threads')
-        .select('id, family_id, subject')
-        .eq('id', threadId)
-        .maybeSingle()
-      if (thread.error !== null) return dbFailure('that thread', thread.error)
-      if (thread.data === null) {
-        return { ok: true, data: { drafted: false, reason: 'no thread has that id', threadId } }
-      }
-      if (thread.data.family_id !== familyId) {
-        // Refused rather than silently re-addressed: a reply landing in another
-        // family's thread is exactly the cross-family leak RLS exists to stop.
-        return {
-          ok: true,
-          data: {
-            drafted: false,
-            reason: 'that thread belongs to a different family',
-            threadId,
-            familyId,
-          },
-        }
-      }
-      subject = thread.data.subject
-    } else if (subject === null) {
-      return { ok: false, error: 'A subject is required to start a new thread' }
-    }
-
-    return {
-      ok: true,
-      data: {
-        drafted: true,
-        sent: false,
-        draft: {
-          kind: 'thread_message',
-          familyId,
-          familyName: family.data.name,
-          threadId,
-          subject,
-          body,
-          recipientCount: 1,
-        },
-      },
-    }
-  },
-}
-
-const announcementDraft: ToolSpec = {
-  name: 'announcement.draft',
-  tier: 'draft',
-  description:
-    'Prepare an announcement for the owner to review, either to every family or ' +
-    'to one. This does NOT post or send it. State only what the records support. ' +
-    'The resolved recipient list comes back with the draft so she can see exactly ' +
-    'who it would reach before approving it.',
-  parameters: schema(
-    {
-      title: { type: 'string' },
-      body: { type: 'string' },
-      audience: {
-        type: 'string',
-        description: "The literal 'all', or a single family id",
-      },
-    },
-    ['title', 'body', 'audience'],
-  ),
-  execute: async (args, ctx): Promise<ToolOutcome> => {
-    const title = readBody(args, 'title', MAX_SUBJECT)
-    const body = readBody(args, 'body', MAX_BODY)
-    const audience = readString(args, 'audience')
-    if (title === null) return { ok: false, error: 'A title is required' }
-    if (body === null) return { ok: false, error: 'A body is required' }
-    if (audience === null) return { ok: false, error: "An audience is required ('all' or a family id)" }
-
-    if (audience === 'all') {
-      const families = await ctx.caller.db.from('families').select('id, name').limit(500)
-      if (families.error !== null) return dbFailure('families', families.error)
-      return {
-        ok: true,
-        data: {
-          drafted: true,
-          sent: false,
-          draft: {
-            kind: 'announcement',
-            audience: 'all',
-            title,
-            body,
-            recipientCount: families.data.length,
-            recipients: families.data.map((row) => row.name),
-          },
-        },
-      }
-    }
-
-    const family = await ctx.caller.db
-      .from('families')
-      .select('id, name')
-      .eq('id', audience)
-      .maybeSingle()
-    if (family.error !== null) return dbFailure('that family', family.error)
-    if (family.data === null) {
-      return { ok: true, data: { drafted: false, reason: 'no family has that id', audience } }
-    }
-
-    return {
-      ok: true,
-      data: {
-        drafted: true,
-        sent: false,
-        draft: {
-          kind: 'announcement',
-          audience: family.data.id,
-          title,
-          body,
-          recipientCount: 1,
-          recipients: [family.data.name],
-        },
-      },
-    }
-  },
 }
 
 const dailyLogDraft: ToolSpec = {
@@ -242,4 +80,4 @@ const dailyLogDraft: ToolSpec = {
   },
 }
 
-export const draftTools: ToolSpec[] = [messageDraft, announcementDraft, dailyLogDraft]
+export const draftTools: ToolSpec[] = [dailyLogDraft]

@@ -148,6 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     instruction: turn.message,
     model: '',
     proposedThisTurn: new Map(),
+    seenThisTurn: new Map(),
   }
   const warnings: string[] = []
 
@@ -195,7 +196,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   let reply = ''
 
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
-    const result = await chat(config.config, tier, { messages, tools, toolChoice: 'auto' })
+    // The last round is reserved for prose. Without this, a model that keeps
+    // reaching for tools simply runs out and she gets nothing — which is exactly
+    // what happened to a "Monday rundown" that spent eight rounds looking up
+    // family names. Forbidding tools on the final call guarantees an answer from
+    // whatever was gathered, which is always better than an apology.
+    const lastCall = round === MAX_ROUNDS - 1
+    const result = await chat(config.config, tier, {
+      messages,
+      tools,
+      toolChoice: lastCall ? 'none' : 'auto',
+    })
 
     if (!result.ok) {
       console.error('[ro] tier failed', tier, JSON.stringify(result.attempts))
@@ -223,6 +234,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     if (wantsDraft && tier === 'intent') {
       tier = 'drafting'
       continue
+    }
+    if (result.toolCalls.some((call) => findTool(call.function.name)?.tier === 'send')) {
+      // The wording a parent actually reads is Tier 1's job, the same as a draft.
+      if (tier === 'intent') {
+        tier = 'drafting'
+        continue
+      }
     }
 
     // An invented tool name is the signal to escalate — see the header.

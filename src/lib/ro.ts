@@ -49,7 +49,7 @@ export interface RoAction {
 }
 
 export interface RoActionResult {
-  outcome: 'executed' | 'declined' | 'failed'
+  outcome: 'executed' | 'declined' | 'failed' | 'undone'
   summary: string
   error: string
   /** When the undo option lapses, for the actions that have one. */
@@ -263,7 +263,7 @@ export async function askRo(message: string, history: RoTurn[]): Promise<RoReply
  */
 export async function confirmRoAction(
   proposalId: string,
-  decision: 'approve' | 'decline',
+  decision: 'approve' | 'decline' | 'undo',
 ): Promise<RoActionResult> {
   let response: Response
   try {
@@ -281,8 +281,13 @@ export async function confirmRoAction(
 
   const record = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
   const outcome = record.outcome
+  const known = outcome === 'executed' || outcome === 'declined' || outcome === 'undone'
   return {
-    outcome: outcome === 'executed' || outcome === 'declined' ? outcome : 'failed',
+    // A failed undo comes back as `executed` WITH an error: the thing is still
+    // sent, which is the outcome that matters, and the error says why it could
+    // not be pulled back. Collapsing that into 'failed' would tell her the send
+    // failed, which is the opposite of what happened.
+    outcome: known ? outcome : 'failed',
     summary: typeof record.summary === 'string' ? record.summary : '',
     error: typeof record.error === 'string' ? record.error : '',
     undoUntil: typeof record.undoUntil === 'string' ? record.undoUntil : null,
@@ -393,8 +398,12 @@ export async function transcribeRecording(blob: Blob): Promise<string> {
  *
  * The caller owns the URL and must `URL.revokeObjectURL` it when the element is
  * done, or a long session leaks a blob per reply played.
+ *
+ * `trimmed` is set when the reply was too long to speak in full and only the
+ * first part was read. The panel tells her, because audio that stops early with
+ * no explanation reads as a bug.
  */
-export async function fetchSpeech(text: string): Promise<string> {
+export async function fetchSpeech(text: string): Promise<{ url: string; trimmed: boolean }> {
   let response: Response
   try {
     response = await fetch('/api/ai/speak', {
@@ -414,5 +423,5 @@ export async function fetchSpeech(text: string): Promise<string> {
 
   const blob = await response.blob()
   if (blob.size === 0) throw new RoError('The audio came back empty.')
-  return URL.createObjectURL(blob)
+  return { url: URL.createObjectURL(blob), trimmed: response.headers.get('X-Ro-Trimmed') === '1' }
 }

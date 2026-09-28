@@ -22,12 +22,13 @@ import type { ToolDefinition } from '../openrouter.js'
 import { draftTools } from './drafts.js'
 import { readTools } from './reads.js'
 import { ruleTools } from './rules.js'
+import { sendTools } from './sends.js'
 import type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
 
 export type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
 
 /** Everything Ro can do, in the order the model sees it. */
-export const roTools: ToolSpec[] = [...readTools, ...draftTools, ...ruleTools]
+export const roTools: ToolSpec[] = [...readTools, ...draftTools, ...ruleTools, ...sendTools]
 
 const byName = new Map<string, ToolSpec>(roTools.map((tool) => [tool.name, tool]))
 
@@ -102,6 +103,42 @@ export async function runToolCall(
     }
   }
 
+  // A read asked twice in one turn is answered once. Reads only, and only on an
+  // exact argument match: a tool that changes something must always run, and a
+  // different question is a different question.
+  const key = `${spec.name}:${call.arguments.trim()}`
+  if (spec.tier === 'read') {
+    const seen = ctx.seenThisTurn.get(key)
+    if (seen !== undefined) {
+      return { name: spec.name, rawArguments: call.arguments, tier: spec.tier, outcome: repeat(seen) }
+    }
+  }
+
   const outcome = await spec.execute(parsed as Record<string, unknown>, ctx)
+  if (spec.tier === 'read' && outcome.ok) ctx.seenThisTurn.set(key, outcome)
   return { name: spec.name, rawArguments: call.arguments, tier: spec.tier, outcome }
+}
+
+/**
+ * The same answer again, with a note telling the model it is the same answer.
+ *
+ * The note is the point — handing back identical data silently would let the
+ * loop keep going. The shape is preserved so nothing downstream has to know this
+ * happened.
+ */
+function repeat(outcome: ToolOutcome): ToolOutcome {
+  if (!outcome.ok) return outcome
+  if (typeof outcome.data !== 'object' || outcome.data === null || Array.isArray(outcome.data)) {
+    return outcome
+  }
+  return {
+    ok: true,
+    data: {
+      ...(outcome.data as Record<string, unknown>),
+      alreadyAsked:
+        'You already called this with these exact arguments a moment ago, and this is ' +
+        'the same answer. Nothing has changed. Do not call it again — answer her with ' +
+        'what you have.',
+    },
+  }
 }

@@ -112,6 +112,18 @@ export interface AttendanceBrief {
 export interface DailyLogBrief {
   id: string
   childId: string
+  /**
+   * The child's name, alongside their id.
+   *
+   * Every label like this one exists for the same reason, recorded here once:
+   * a tool that hands back `chi_9f2…` and no name forces the model to spend a
+   * whole round looking it up, and a reply that mentions four children costs four
+   * rounds before a word is written. One "Monday rundown" ran the round budget
+   * dry doing exactly that — `attendance.today`, then `family.find` four times —
+   * and produced no answer at all. Resolving labels server-side is one small
+   * query here instead of a model call each.
+   */
+  childName: string
   date: string
   meals: string
   naps: string
@@ -125,6 +137,8 @@ export interface DailyLogBrief {
 export interface ThreadBrief {
   id: string
   familyId: string
+  /** The family's name, so a thread never needs a follow-up lookup to be named. */
+  familyName: string
   subject: string
   updatedAt: string
   /** Who wrote the most recent message: 'admin', 'parent', or null if empty. */
@@ -189,6 +203,8 @@ export interface CalendarEventBrief {
   closesAt: string | null
   /** Set only on a single-child schedule exception. */
   childId: string | null
+  /** That child's name, when there is one. */
+  childName: string | null
   visibleToParents: boolean
 }
 

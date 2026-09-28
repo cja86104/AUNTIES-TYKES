@@ -59,11 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       input: config.config.stt.length > 0,
       output: speakable.length > 0,
     },
-    // Sending is still not wired up: there is no send tool in the catalog, so this
-    // is a statement about the code rather than a switch that could be flipped on.
-    canSend: false,
-    // She can propose actions that change something — standing rules, so far —
-    // each one gated behind a preview and her tap in /api/ai/confirm.
+    // True since 2026-09-28, and it means "she can prepare a send", never "she can
+    // send unattended" — every send goes through a preview and her tap in
+    // /api/ai/confirm, which §7 has no exception to.
+    canSend: true,
     canAct: true,
     requiresConfirmationForSends: config.config.requireConfirmationForSends,
   })

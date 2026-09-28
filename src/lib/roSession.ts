@@ -62,8 +62,19 @@ export interface RoMessage {
  * server actually refused will simply say so again.
  */
 export interface RoDecision {
-  state: 'working' | 'done' | 'declined' | 'failed'
+  state: 'working' | 'done' | 'declined' | 'failed' | 'undone'
   detail: string
+  /**
+   * When the undo option lapses, for a send that has one. Null means no undo is
+   * on offer — either the action cannot be taken back, or the window has passed.
+   */
+  undoUntil: string | null
+  /**
+   * Something that went wrong AFTER the action succeeded — an undo that could not
+   * be completed. Kept apart from `detail` so a failed pull-back does not
+   * overwrite the record of the send having worked.
+   */
+  problem: string
 }
 
 interface RoSessionState {
@@ -87,7 +98,7 @@ interface RoSessionState {
   ensureStatus: () => void
   send: (text: string) => Promise<void>
   /** Approves or dismisses one prepared action. */
-  decide: (actionId: string, decision: 'approve' | 'decline') => Promise<void>
+  decide: (actionId: string, decision: 'approve' | 'decline' | 'undo') => Promise<void>
   clear: () => void
 }
 
@@ -181,21 +192,60 @@ export const useRoSession = create<RoSessionState>()((set, get) => ({
 
   decide: async (actionId, decision) => {
     const existing = get().decisions[actionId]
-    // A second tap while the first is in flight, or after it settled, is ignored.
-    if (existing !== undefined && existing.state !== 'failed') return
+    // A second tap while the first is in flight is always ignored. After it has
+    // settled, only two things may still be tapped: a failed action can be
+    // retried, and a completed send can be undone while its window is open.
+    if (existing !== undefined) {
+      if (existing.state === 'working') return
+      if (decision === 'undo' ? existing.state !== 'done' : existing.state !== 'failed') return
+    }
 
-    const mark = (state: RoDecision['state'], detail: string): void => {
-      set((current) => ({ decisions: { ...current.decisions, [actionId]: { state, detail } } }))
+    const previous = existing
+    const mark = (
+      state: RoDecision['state'],
+      detail: string,
+      extra: { undoUntil?: string | null; problem?: string } = {},
+    ): void => {
+      set((current) => ({
+        decisions: {
+          ...current.decisions,
+          [actionId]: {
+            state,
+            detail,
+            undoUntil: extra.undoUntil ?? null,
+            problem: extra.problem ?? '',
+          },
+        },
+      }))
     }
     mark('working', '')
 
     try {
       const result = await confirmRoAction(actionId, decision)
-      if (result.outcome === 'executed') mark('done', result.summary)
-      else if (result.outcome === 'declined') mark('declined', result.summary)
-      else mark('failed', result.error.length > 0 ? result.error : 'That did not go through.')
+      if (result.outcome === 'executed') {
+        // Reached either by approving, or by an undo that could not be completed
+        // — in which case the send stands and `error` says why it could not be
+        // pulled back. The original summary is kept in that case.
+        const undoFailed = decision === 'undo' && result.error.length > 0
+        mark('done', undoFailed ? (previous?.detail ?? result.summary) : result.summary, {
+          undoUntil: undoFailed ? (previous?.undoUntil ?? null) : result.undoUntil,
+          problem: undoFailed ? result.error : '',
+        })
+      } else if (result.outcome === 'undone') {
+        mark('undone', result.summary)
+      } else if (result.outcome === 'declined') {
+        mark('declined', result.summary)
+      } else {
+        mark('failed', result.error.length > 0 ? result.error : 'That did not go through.')
+      }
     } catch (cause) {
-      mark('failed', cause instanceof RoError ? cause.message : 'That did not go through.')
+      const message = cause instanceof RoError ? cause.message : 'That did not go through.'
+      // A refused undo must not erase the fact that the send worked.
+      if (decision === 'undo' && previous !== undefined) {
+        mark('done', previous.detail, { undoUntil: previous.undoUntil, problem: message })
+      } else {
+        mark('failed', message)
+      }
     }
   },
 

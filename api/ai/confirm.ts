@@ -28,8 +28,8 @@ function readBody(raw: unknown): Incoming | string {
   const proposalId = typeof body.proposalId === 'string' ? body.proposalId.trim() : ''
   if (proposalId.length === 0 || proposalId.length > 120) return 'A proposalId is required'
   const decision = body.decision
-  if (decision !== 'approve' && decision !== 'decline') {
-    return "decision must be 'approve' or 'decline'"
+  if (decision !== 'approve' && decision !== 'decline' && decision !== 'undo') {
+    return "decision must be 'approve', 'decline' or 'undo'"
   }
   return { proposalId, decision }
 }
@@ -70,8 +70,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     today: todayInZone(),
     instruction: '',
     model: '',
-    // Nothing proposes anything here; this endpoint only runs what already was.
+    // Nothing proposes anything here, and nothing reads twice; this endpoint only
+    // runs what was already proposed.
     proposedThisTurn: new Map(),
+    seenThisTurn: new Map(),
   }
 
   const result = await settleProposal(ctx, body.proposalId, body.decision)

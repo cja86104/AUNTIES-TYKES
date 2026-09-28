@@ -211,6 +211,74 @@ export async function declineProposal(
   return { ok: true, value: data.length > 0 }
 }
 
+export interface UndoableAction {
+  id: string
+  tool: string
+  targets: unknown[]
+  familyLabel: string
+}
+
+/**
+ * Claims an executed action for undoing — §8's undo window.
+ *
+ * Same compare-and-swap shape as `claimProposal`, with the window as an extra
+ * condition, so an expired undo and a second tap both simply fail to match. The
+ * row is marked undone BEFORE the rows are actually removed, which is the wrong
+ * order for honesty and is why `abandonUndo` exists: if the removal then fails,
+ * the claim is put back and the trail goes on saying the thing was sent, because
+ * it still was. A trail that claims something was pulled back when it wasn't is
+ * worse than no undo at all.
+ */
+export async function claimUndo(
+  ctx: ToolContext,
+  id: string,
+  now: Date = new Date(),
+): Promise<AuditResult<UndoableAction>> {
+  const stamp = now.toISOString()
+  const claimed = await ctx.caller.db
+    .from('ai_audit_log')
+    .update({ outcome: 'undone', undone_at: stamp })
+    .eq('id', id)
+    .eq('outcome', 'executed')
+    .gt('undo_until', stamp)
+    .select('id, tool, targets, family_label')
+
+  if (claimed.error !== null) {
+    return { ok: false, error: `Could not undo that: ${claimed.error.message}` }
+  }
+  const row = claimed.data[0]
+  if (row === undefined) {
+    const existing = await ctx.caller.db
+      .from('ai_audit_log')
+      .select('outcome, undo_until')
+      .eq('id', id)
+      .maybeSingle()
+    if (existing.error !== null) {
+      return { ok: false, error: `Could not undo that: ${existing.error.message}` }
+    }
+    if (existing.data === null) return { ok: false, error: 'That action no longer exists' }
+    if (existing.data.outcome === 'undone') return { ok: false, error: 'That was already pulled back.' }
+    if (existing.data.outcome !== 'executed') {
+      return { ok: false, error: `That never went out (${existing.data.outcome}), so there is nothing to undo.` }
+    }
+    return { ok: false, error: 'The undo window for that has closed.' }
+  }
+
+  return {
+    ok: true,
+    value: { id: row.id, tool: row.tool, targets: row.targets, familyLabel: row.family_label },
+  }
+}
+
+/** Puts a claimed undo back, when the removal itself failed. */
+export async function abandonUndo(ctx: ToolContext, id: string, error: string): Promise<void> {
+  const { error: writeError } = await ctx.caller.db
+    .from('ai_audit_log')
+    .update({ outcome: 'executed', undone_at: null, error: error.slice(0, 2000) })
+    .eq('id', id)
+  if (writeError !== null) console.error('[ro] abandonUndo failed', id, writeError.message)
+}
+
 /** Moves a proposal to its final state. */
 export async function settle(
   ctx: ToolContext,
@@ -231,6 +299,39 @@ export async function settle(
   // A failed audit update must not mask the outcome of the action itself, which
   // has already happened by this point. Logged loudly, not thrown.
   if (error !== null) console.error('[ro] audit settle failed', id, outcome, error.message)
+}
+
+/**
+ * How much has actually gone out in the last hour — §8's rate limit, measured.
+ *
+ * Counts from the audit trail rather than from a counter, because the trail is
+ * the thing that cannot drift: every send that happened has a row, whether it was
+ * started from Ro, retried, or later undone. Undone sends are counted too. They
+ * reached the portal before they were pulled back, so for the purpose of "is
+ * something going wrong right now" they happened.
+ */
+export async function sendsInLastHour(
+  ctx: ToolContext,
+  now: Date = new Date(),
+): Promise<AuditResult<{ actions: number; recipients: number }>> {
+  const since = new Date(now.getTime() - 3_600_000).toISOString()
+  const { data, error } = await ctx.caller.db
+    .from('ai_audit_log')
+    .select('arguments, outcome')
+    .eq('risk_tier', 'send')
+    .gte('at', since)
+    .limit(500)
+  if (error !== null) return { ok: false, error: `Could not check the send history: ${error.message}` }
+
+  let actions = 0
+  let recipients = 0
+  for (const row of data) {
+    if (row.outcome !== 'executed' && row.outcome !== 'undone') continue
+    actions += 1
+    const count = row.arguments.recipientCount
+    recipients += typeof count === 'number' && Number.isFinite(count) ? Math.max(1, count) : 1
+  }
+  return { ok: true, value: { actions, recipients } }
 }
 
 /** The recent trail, for the activity feed. */

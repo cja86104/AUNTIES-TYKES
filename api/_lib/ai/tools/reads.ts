@@ -41,6 +41,7 @@ import {
   readSearchTerm,
   readString,
   schema,
+  type ToolContext,
   type ToolOutcome,
   type ToolSpec,
 } from './kit.js'
@@ -198,6 +199,29 @@ function groupPayments(rows: PaymentRowShape[]): Map<string, PaymentBrief[]> {
 }
 
 /* ---------------------------------- tools --------------------------------- */
+
+/* --------------------------------- labels ---------------------------------- */
+/**
+ * Id-to-name maps, so no tool hands back a bare id.
+ *
+ * Both tables are tiny — a dozen families, a few dozen children — so this is one
+ * cheap query that saves a model round per name. The alternative is what actually
+ * happened in production: `attendance.today` returned `fam_…` ids, and the model
+ * spent four consecutive rounds on `family.find` resolving them, ran out of
+ * rounds, and answered nothing. A name the database can supply must never cost a
+ * model call.
+ */
+async function familyLabels(ctx: ToolContext): Promise<Map<string, string>> {
+  const families = await ctx.caller.db.from('families').select('id, name').limit(MAX_ROWS)
+  if (families.error !== null) return new Map()
+  return new Map(families.data.map((row) => [row.id, row.name]))
+}
+
+async function childLabels(ctx: ToolContext): Promise<Map<string, string>> {
+  const children = await ctx.caller.db.from('children').select('id, name').limit(MAX_ROWS)
+  if (children.error !== null) return new Map()
+  return new Map(children.data.map((row) => [row.id, row.name]))
+}
 
 const familyFind: ToolSpec = {
   name: 'family.find',
@@ -378,12 +402,14 @@ const attendanceToday: ToolSpec = {
     if (records.error !== null) return dbFailure("today's attendance", records.error)
 
     const byChild = new Map(records.data.map((row) => [row.child_id, row]))
+    const familyNames = await familyLabels(ctx)
     const lines = children.data.map((child) => {
       const record = byChild.get(child.id)
-      const line: AttendanceBrief & { childName: string; familyId: string } = {
+      const line: AttendanceBrief & { childName: string; familyId: string; familyName: string } = {
         childId: child.id,
         childName: child.name,
         familyId: child.family_id,
+        familyName: familyNames.get(child.family_id) ?? '',
         date,
         // 'not recorded' is not an attendance_status value in the schema — it is
         // this tool's word for "no row exists yet", which is what §5's
@@ -482,9 +508,11 @@ const dailyLogList: ToolSpec = {
     const logs = await query.order('date', { ascending: false }).limit(MAX_ROWS)
     if (logs.error !== null) return dbFailure('daily logs', logs.error)
 
+    const childNames = await childLabels(ctx)
     const list: DailyLogBrief[] = logs.data.map((row) => ({
       id: row.id,
       childId: row.child_id,
+      childName: childNames.get(row.child_id) ?? '',
       date: row.date,
       meals: row.meals,
       naps: row.naps,
@@ -628,11 +656,13 @@ const threadList: ToolSpec = {
       if (!latest.has(row.thread_id)) latest.set(row.thread_id, { role: row.from_role, at: row.at })
     }
 
+    const familyNames = await familyLabels(ctx)
     const all: ThreadBrief[] = threads.data.map((row) => {
       const last = latest.get(row.id)
       return {
         id: row.id,
         familyId: row.family_id,
+        familyName: familyNames.get(row.family_id) ?? '',
         subject: row.subject,
         updatedAt: row.updated_at,
         lastFrom: last?.role ?? null,
@@ -819,6 +849,7 @@ const calendarUpcoming: ToolSpec = {
       .limit(MAX_ROWS)
     if (events.error !== null) return dbFailure('the calendar', events.error)
 
+    const childNames = await childLabels(ctx)
     const list: CalendarEventBrief[] = events.data
       .filter((row) => (row.ends_on ?? row.starts_on) >= ctx.today)
       .map((row) => ({
@@ -830,6 +861,7 @@ const calendarUpcoming: ToolSpec = {
         endsOn: row.ends_on,
         closesAt: row.closes_at,
         childId: row.child_id,
+        childName: row.child_id === null ? null : (childNames.get(row.child_id) ?? null),
         visibleToParents: row.visible_to_parents,
       }))
     return { ok: true, data: { from: ctx.today, through: end, count: list.length, events: list } }

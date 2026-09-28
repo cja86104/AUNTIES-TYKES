@@ -89,18 +89,41 @@ remaining mutation in the table below is a matter of adding a tool and an
 executor, not new plumbing — and notably not a new endpoint, so the Vercel
 function count stops growing here.
 
-**Not done:** the mutation tools themselves, marked in the table below.
+**Done 2026-09-28, the same day:** the send tier. `message.send` and
+`announcement.send` are live, each one proposing and waiting for her tap, with
+§7's standing-rule check now firing for real at send time, §8's hourly
+ceilings, and a five-minute undo that genuinely removes the rows.
+
+**Not done:** the remaining mutation tools, marked in the table below.
 
 One thing worth watching, from live use rather than from this plan: the
 Tier-0 model answers correctly but slowly, and TTS takes well over five
 seconds to start. Both are deferred to a tuning pass after the catalog is
 complete — they are latency, not correctness.
 
-Email (Resend) is wired for real sending now; there is still no payment
-processor — invoices are statements, payment is recorded by hand outside
-the app, same as before. That doesn't change how the `billing.mutate` tool
-in §3 is scoped, since its job is keeping the record straight, not moving
-money.
+**Correction, 2026-09-28.** This paragraph used to open "Email (Resend) is
+wired for real sending now." That is not true of the code and appears never
+to have been. `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS` and `EMAIL_FROM_NAME`
+are set in `.env.local`, and nothing reads any of them: no Resend import
+anywhere in `src/` or `api/`, no SMTP, no edge function (there is no
+`supabase/functions` directory at all), and no trigger on `thread_messages`
+or `announcements` — the only functions in the schema are `is_admin()` and
+`current_family_id()`. It was found while building §12's send tools, which
+had to know what "send" means before they could word a confirmation honestly.
+
+So **a send is a database row and nothing else.** The parent sees it when
+they open their portal, live, since those tables are in the realtime
+publication; they are not emailed or texted. `AdminMessages.tsx` already
+words its own toast that way ("will see it in their portal"), so the app has
+been correct about this all along and only this document was wrong. Two
+things follow: Ro must never say a family has been notified, only that it is
+in their portal — and §8's undo is unusually complete here, because nothing
+has left the building to be recalled.
+
+There is still no payment processor — invoices are statements, payment is
+recorded by hand outside the app, same as before. That doesn't change how the
+`billing.mutate` tool in §3 is scoped, since its job is keeping the record
+straight, not moving money.
 
 ---
 
@@ -128,8 +151,23 @@ below, and the audit is the reason it is worth trusting: it was derived from
 `enrollment.list` · `calendar.upcoming` · `settings.get` · `rule.list` — all
 on the caller's own JWT, so RLS decides what comes back.
 
-**Drafts (3).** `message.draft` · `announcement.draft` · `dailyLog.draft` —
-prepare wording and stop. No send tool exists for them to chain into yet.
+**Drafts (1).** `dailyLog.draft` — prepares wording and stops. It is the only
+one left: `message.draft` and `announcement.draft` were **removed** on
+2026-09-28 when the send tools landed. A send proposal already is a draft —
+she reads the wording and taps or dismisses — so keeping both only gave the
+model a way to hand her a copy-it-yourself dead end when she had asked for
+something to go out, which is the single thing the owner said defeated the
+purpose of the feature. `dailyLog.draft` survives because there is genuinely
+nothing to send it with: a daily log is a record, `dailyLog.write` is a later
+section, and until then the honest offer is wording she can paste in herself.
+
+**Sends (2), added 2026-09-28.** `message.send` and `announcement.send`
+propose and wait for her tap — §7 allows no exception, including for a spoken
+"send it". Both resolve the recipient list through the same family-scoped
+queries the admin UI uses and show it to her, both re-check her standing rules
+at the tap and not only at the preview, and both open a five-minute undo. Their
+validations mirror `AdminMessages.tsx` exactly: a family, a subject, and at
+least a sentence.
 
 **Actions (4), added 2026-09-28.** `rule.save` and `rule.retire` propose and
 wait for her tap; `commitment.note` and `commitment.close` write straight
@@ -162,8 +200,8 @@ have not been written; the path they plug into has been.
 | `addFamily` / `updateFamily` / `addChild` / `updateChild` | `family.mutate` | Medium | Waiting |
 | `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium | Waiting |
 | `updateSettings` / `updateRates` / `updatePolicies` | `settings.mutate` | **Money** — *added 2026-09-27* | Waiting |
-| `startThread` / `sendThreadMessage` | `message.send` | **Send** | Waiting |
-| `addAnnouncement` | `announcement.send` | **Send** | Waiting |
+| `startThread` / `sendThreadMessage` | `message.send` | **Send** | **Built 2026-09-28** |
+| `addAnnouncement` | `announcement.send` | **Send** | **Built 2026-09-28** |
 | `createInvoice` / `recordPayment` / `deleteInvoice` | `billing.mutate` | **Money** | Waiting |
 | `createParentLogin` (via `api/create-parent-login.ts`) | `account.create` | **Money/PII** | Waiting |
 | *(none — Ro's own tables)* | `rule.save` / `rule.retire` | Medium | **Built 2026-09-28** |
@@ -698,6 +736,14 @@ the RLS policies alongside it, not after.
    endpoint, tool, UI, all for a single real action — meant the second
    action needed no new plumbing at all. Every remaining tool is a tool and
    an executor.
+
+   That held. The send tier shipped the same day and added no endpoint, no
+   table and no new gate — two tools, two executors, and one field
+   (`sendTarget`) whose presence is what opts a tool into the rule check and
+   the ceilings. Sends were taken before §11's low-risk mutations on purpose:
+   until something could send, the rules engine guarded nothing, and the
+   generic send gate had no consumer and so had never run. The remaining
+   sections are now the low-risk mutations, then Money/PII.
 4. **Phase 3 — broader action set.** Billing reminders, enrollment
    nudges — still confirmation-gated for anything in the Money/PII tier,
    indefinitely. Full unattended autonomy on money or child-safety
