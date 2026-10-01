@@ -182,6 +182,30 @@ export interface ActionPreview {
   summary: string
   detail: { label: string; value: string }[]
   confirmLabel: string
+  /**
+   * Set when approving needs something only she can type at the tap — today, a
+   * parent login's password. The card shows a field for it and sends it with the
+   * approval, straight to `api/ai/confirm.ts`.
+   *
+   * The value itself is never part of a preview, a proposal's stored arguments,
+   * a tool result or anything a model reads. That is why it is collected on the
+   * card instead of being an argument: an argument is written to the audit log
+   * and was produced by the model, and a password must be neither.
+   */
+  secret?: ActionSecret
+}
+
+/** What the card's secret field asks for. Describes the field; never holds a value. */
+export interface ActionSecret {
+  label: string
+  minLength: number
+  maxLength: number
+  /**
+   * Shown with "Copy login details" once it has worked — the same text the
+   * console's account dialog copies. The password half comes from the card's own
+   * field; the server never sends it back.
+   */
+  share: { familyName: string; email: string }
 }
 
 /**
@@ -259,7 +283,34 @@ export function readActionPreview(data: unknown): ActionPreview | null {
     }
   }
 
-  return { id, kind, title, summary, detail, confirmLabel }
+  const secret = readActionSecret(action.secret)
+  return secret === null
+    ? { id, kind, title, summary, detail, confirmLabel }
+    : { id, kind, title, summary, detail, confirmLabel, secret }
+}
+
+/** The secret-field description, narrowed, or null when absent or malformed. */
+function readActionSecret(raw: unknown): ActionSecret | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const secret = raw as Record<string, unknown>
+  const share = secret.share
+  if (typeof share !== 'object' || share === null) return null
+  const shareRecord = share as Record<string, unknown>
+  if (
+    typeof secret.label !== 'string' ||
+    typeof secret.minLength !== 'number' ||
+    typeof secret.maxLength !== 'number' ||
+    typeof shareRecord.familyName !== 'string' ||
+    typeof shareRecord.email !== 'string'
+  ) {
+    return null
+  }
+  return {
+    label: secret.label,
+    minLength: secret.minLength,
+    maxLength: secret.maxLength,
+    share: { familyName: shareRecord.familyName, email: shareRecord.email },
+  }
 }
 
 /** A JSON Schema object with no arguments. */

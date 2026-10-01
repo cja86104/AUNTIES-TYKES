@@ -26,6 +26,11 @@ import type { Proposal } from './audit.js'
 import { uid } from './ids.js'
 import { retireRule, saveRule, type SendTarget } from './rules.js'
 import { readPendingRule } from './tools/rules.js'
+import { readAmount, readInvoiceBalance, readMethod, toCents } from './tools/billing.js'
+import { DEFAULT_TEACHER, exactPattern, pickHue, readPendingFamily } from './tools/families.js'
+import { emailInUse, LOGIN_SECRET, readPendingLogin } from './tools/accounts.js'
+import { createParentAccount } from '../parentLogin.js'
+import { money } from './projection.js'
 import { readInt, readString, type ToolContext } from './tools/kit.js'
 import { attendanceId, stampTime } from './tools/records.js'
 
@@ -65,7 +70,19 @@ export type ExecutionOutcome =
 
 export interface Executor {
   tool: string
-  run: (ctx: ToolContext, proposal: Proposal) => Promise<ExecutionOutcome>
+  /**
+   * `secret` is the value she typed on the card at her tap, or null. Only an
+   * executor that declares `secret` below is ever handed one — approval.ts
+   * refuses a secret sent for any other — and it must not be returned, logged or
+   * put into an outcome.
+   */
+  run: (ctx: ToolContext, proposal: Proposal, secret: string | null) => Promise<ExecutionOutcome>
+  /**
+   * Declared by an executor that needs a value typed at her tap. approval.ts
+   * checks the length BEFORE claiming the proposal, so a short password leaves
+   * the card live to correct rather than spent.
+   */
+  secret?: { minLength: number; maxLength: number }
   /**
    * Set by anything that sends. Declaring it opts the executor into the
    * standing-rule check and the rate limit; returning null means this particular
@@ -588,6 +605,221 @@ const documentExecutor: Executor = {
   },
 }
 
+/**
+ * Records one payment, mirroring `recordPayment` in useStore.ts.
+ *
+ * The balance is read again here rather than trusted from the proposal: a payment
+ * may have been recorded from the invoice page between her reading this card and
+ * tapping it. If what is owed has dropped below the amount she approved, nothing
+ * is written — recording a smaller figure than the one on the card would be
+ * running something she did not approve, and recording the full one would
+ * overpay the invoice. She is told the new balance and can ask again.
+ *
+ * No undo, deliberately, matching the console: §8's undo window is about sends,
+ * and the invoice page has no way to remove a recorded payment either.
+ */
+const recordPaymentExecutor: Executor = {
+  tool: 'payment.record',
+  run: async (ctx, proposal) => {
+    const invoiceId = readString(proposal.arguments, 'invoiceId')
+    const amount = readAmount(proposal.arguments, 'amount')
+    const method = readMethod(proposal.arguments, 'method')
+    const reference = readString(proposal.arguments, 'reference') ?? ''
+    if (invoiceId === null || amount === null || method === null) {
+      return { ok: false, error: 'That payment is missing its invoice, amount or method' }
+    }
+
+    const invoice = await readInvoiceBalance(ctx, invoiceId)
+    if (!invoice.ok) return { ok: false, error: invoice.error }
+    if (!invoice.found) return { ok: false, error: 'That invoice no longer exists' }
+    if (invoice.balance < amount) {
+      return {
+        ok: false,
+        error:
+          invoice.balance <= 0
+            ? 'That invoice was paid in full in the meantime. Nothing was recorded.'
+            : `Only ${money(invoice.balance)} is owed on it now, so I did not record ` +
+              `${money(amount)}. Nothing was recorded — ask me again with the right amount.`,
+      }
+    }
+
+    const id = uid('pay')
+    const written = await ctx.caller.db.from('payments').insert({
+      id,
+      invoice_id: invoiceId,
+      date: ctx.today,
+      amount,
+      method,
+      ref: reference,
+    })
+    if (written.error !== null) {
+      return { ok: false, error: `Could not record that payment: ${written.error.message}` }
+    }
+
+    const remaining = toCents(invoice.balance - amount)
+    return {
+      ok: true,
+      summary:
+        `Recorded ${money(amount)} by ${method} on ${invoiceId}. ` +
+        (remaining <= 0.001 ? 'Paid in full.' : `${money(remaining)} still owed.`),
+      targets: [invoiceId, id],
+    }
+  },
+}
+
+/**
+ * Adds one family and its children, mirroring `addFamily` + `addChild` in
+ * useStore.ts as the Families page's "Add family" dialog calls them.
+ *
+ * The email is checked again here, not trusted from the proposal: the same family
+ * may have been added from the console, or by an approved enrollment, while the
+ * card sat waiting.
+ *
+ * Family first, then the children, because each child row references it. If the
+ * children fail, the family row is removed again — the same roll-back
+ * `create-parent-login.ts` does — so a failure never leaves a family on file
+ * without the children she was shown. The delete cascades to any child rows that
+ * did land.
+ *
+ * No undo: §8's undo window covers sends, and deleting a family is a deletion,
+ * which nothing in Ro does (§3).
+ */
+const addFamilyExecutor: Executor = {
+  tool: 'family.add',
+  run: async (ctx, proposal) => {
+    const pending = readPendingFamily(proposal.arguments, ctx.today)
+    if (typeof pending === 'string') return { ok: false, error: `That family could not be read back: ${pending}` }
+
+    const clash = await ctx.caller.db
+      .from('families')
+      .select('name')
+      .ilike('email', exactPattern(pending.email))
+      .limit(1)
+    if (clash.error !== null) return { ok: false, error: `Could not check for that family: ${clash.error.message}` }
+    const existing = clash.data[0]
+    if (existing !== undefined) {
+      return { ok: false, error: `${existing.name} already uses ${pending.email}, so nothing was added.` }
+    }
+
+    const familyId = uid('fam')
+    const created = await ctx.caller.db.from('families').insert({
+      id: familyId,
+      name: pending.name,
+      primary_contact: pending.primaryContact,
+      relation: pending.relation,
+      email: pending.email,
+      phone: pending.phone,
+      address: pending.address,
+      secondary: { name: '', relation: '', phone: '' },
+      emergency: [],
+      joined_at: ctx.today,
+      notes: pending.notes,
+      custom_weekly_rate: null,
+    })
+    if (created.error !== null) {
+      return { ok: false, error: `Could not add that family: ${created.error.message}` }
+    }
+
+    const childIds: string[] = []
+    if (pending.children.length > 0) {
+      // The hue cycles on how many children exist, as the store's pickHue does.
+      const counted = await ctx.caller.db.from('children').select('id', { count: 'exact', head: true })
+      const offset = counted.error === null ? (counted.count ?? 0) : 0
+
+      const rows = pending.children.map((child, index) => {
+        const id = uid('chd')
+        childIds.push(id)
+        return {
+          id,
+          family_id: familyId,
+          name: child.name,
+          dob: child.dob,
+          age_group: child.ageGroup,
+          status: child.status,
+          plan: child.plan,
+          start_date: child.startDate,
+          teacher: DEFAULT_TEACHER,
+          allergies: child.allergies,
+          medications: child.medications,
+          notes: child.notes,
+          hue: pickHue(offset + index),
+        }
+      })
+      const added = await ctx.caller.db.from('children').insert(rows)
+      if (added.error !== null) {
+        const rolledBack = await ctx.caller.db.from('families').delete().eq('id', familyId)
+        return {
+          ok: false,
+          error:
+            `Could not add the children: ${added.error.message}. ` +
+            (rolledBack.error === null
+              ? 'The family was taken back off too, so nothing is half-added.'
+              : `The family itself did save and could not be removed (${rolledBack.error.message}) — ` +
+                'check Families and delete it there.'),
+        }
+      }
+    }
+
+    const names = pending.children.map((child) => child.name)
+    return {
+      ok: true,
+      summary:
+        names.length === 0
+          ? `${pending.name} added to Families.`
+          : `${pending.name} added to Families, with ${names.join(' and ')}.`,
+      targets: [familyId, ...childIds],
+    }
+  },
+}
+
+/**
+ * Creates one parent login, through the same `createParentAccount` the console's
+ * endpoint uses — so the auth user, the profile and the roll-back between them
+ * are one implementation, not two.
+ *
+ * `secret` is the password she typed on the card. approval.ts has already checked
+ * its length before claiming; it is handed to createParentAccount and to nothing
+ * else, and no outcome below contains it.
+ *
+ * The family and the email are re-checked first: the family could have been
+ * removed, or the email given to someone else from the console, while the card
+ * waited. No undo — removing a login is a deletion, which nothing in Ro does.
+ */
+const createParentLoginExecutor: Executor = {
+  tool: 'account.create',
+  secret: LOGIN_SECRET,
+  run: async (ctx, proposal, secret) => {
+    if (secret === null) return { ok: false, error: 'No password was given, so no login was made.' }
+    const pending = readPendingLogin(proposal.arguments)
+    if (typeof pending === 'string') return { ok: false, error: pending }
+
+    const family = await ctx.caller.db.from('families').select('id').eq('id', pending.familyId).maybeSingle()
+    if (family.error !== null) return { ok: false, error: `Could not read that family: ${family.error.message}` }
+    if (family.data === null) return { ok: false, error: 'That family is no longer on file, so no login was made.' }
+
+    const taken = await emailInUse(ctx, pending.email)
+    if (!taken.ok) return { ok: false, error: taken.error }
+    if (taken.value) return { ok: false, error: `A login already uses ${pending.email}, so no new one was made.` }
+
+    const created = await createParentAccount({
+      familyId: pending.familyId,
+      name: pending.name,
+      email: pending.email,
+      password: secret,
+      preferredLanguage: pending.preferredLanguage,
+    })
+    if (!created.ok) return { ok: false, error: created.error }
+
+    return {
+      ok: true,
+      summary:
+        `${pending.name} can sign in to the ${pending.familyName} portal with ${pending.email}. ` +
+        'No email went out — give them the login yourself.',
+      targets: [created.id],
+    }
+  },
+}
+
 const executors: Executor[] = [
   saveRuleExecutor,
   retireRuleExecutor,
@@ -598,6 +830,9 @@ const executors: Executor[] = [
   calendarExecutor,
   leadExecutor,
   documentExecutor,
+  recordPaymentExecutor,
+  addFamilyExecutor,
+  createParentLoginExecutor,
 ]
 
 const byTool = new Map<string, Executor>(executors.map((executor) => [executor.tool, executor]))

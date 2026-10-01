@@ -45,7 +45,7 @@ const nav: NavItem[] = [
   { to: '/admin/invoices', label: 'Invoices', icon: ReceiptText },
   { to: '/admin/documents', label: 'Documents', icon: FolderOpen, badge: 'documents' },
   { to: '/admin/messages', label: 'Messages / Announcements', icon: MessageSquare, badge: 'messages' },
-  { to: '/admin/enrollments', label: 'Future Arrivals', icon: ClipboardList },
+  { to: '/admin/enrollments', label: 'Future Arrivals', icon: ClipboardList, badge: 'enrollments' },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -124,7 +124,7 @@ export default function AdminLayout() {
                 {count > 0 ? (
                   <span
                     className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#F5B942] px-1.5 text-xs font-bold text-[#1F2537]"
-                    aria-label={`${count} new`}
+                    aria-label={n.badge === 'enrollments' ? `${count} waiting on you` : `${count} new`}
                   >
                     {count}
                   </span>

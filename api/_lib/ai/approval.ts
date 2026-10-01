@@ -27,6 +27,7 @@ import {
   claimProposal,
   claimUndo,
   declineProposal,
+  pendingProposalTool,
   sendsInLastHour,
   settle,
 } from './audit.js'
@@ -69,11 +70,22 @@ export interface ConfirmResult {
   body: ConfirmBody
 }
 
+/**
+ * `secret` is a value she typed on the card at her tap — a parent login's
+ * password — or null. It is checked against what the action declares before
+ * anything is claimed, handed to that one executor, and otherwise never stored,
+ * logged or returned. See `ActionPreview.secret` for why it travels this way.
+ */
 export async function settleProposal(
   ctx: ToolContext,
   proposalId: string,
   decision: Decision,
+  secret: string | null = null,
 ): Promise<ConfirmResult> {
+  if (secret !== null && decision !== 'approve') {
+    return { status: 400, body: { error: 'Only an approval can carry a password.' } }
+  }
+
   if (decision === 'undo') {
     const claimed = await claimUndo(ctx, proposalId)
     if (!claimed.ok) return { status: 409, body: { error: claimed.error } }
@@ -100,6 +112,30 @@ export async function settleProposal(
     if (!declined.ok) return { status: 500, body: { error: declined.error } }
     if (!declined.value) return { status: 409, body: { error: 'That one is no longer waiting on you.' } }
     return { status: 200, body: { outcome: 'declined', summary: 'Dismissed. Nothing was changed.' } }
+  }
+
+  // Before the claim, because a claim is final: a password that is too short must
+  // be refused while she can still fix it on the same card. And a password sent
+  // for an action that takes none is refused outright rather than ignored, so a
+  // value she typed can never be carried somewhere it was not meant to go.
+  const pendingTool = await pendingProposalTool(ctx, proposalId)
+  if (!pendingTool.ok) return { status: 500, body: { error: pendingTool.error } }
+  if (pendingTool.value !== null) {
+    const wants = findExecutor(pendingTool.value)?.secret
+    if (wants === undefined && secret !== null) {
+      return { status: 400, body: { error: 'That action does not take a password.' } }
+    }
+    if (wants !== undefined) {
+      if (secret === null || secret.length < wants.minLength) {
+        return {
+          status: 422,
+          body: { error: `The password needs at least ${String(wants.minLength)} characters.` },
+        }
+      }
+      if (secret.length > wants.maxLength) {
+        return { status: 422, body: { error: 'That password is too long.' } }
+      }
+    }
   }
 
   const claim = await claimProposal(ctx, proposalId)
@@ -162,7 +198,9 @@ export async function settleProposal(
     }
   }
 
-  const result = await executor.run(ctx, proposal)
+  // Only an executor that declared it gets the secret — checked above, and again
+  // here so the hand-off does not depend on that check staying where it is.
+  const result = await executor.run(ctx, proposal, executor.secret === undefined ? null : secret)
   if (!result.ok) {
     await settle(ctx, proposal.id, 'failed', { error: result.error })
     return { status: 200, body: { outcome: 'failed', error: result.error } }

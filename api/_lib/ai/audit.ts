@@ -123,6 +123,29 @@ export async function record(
   return write(ctx, input, outcome, detail)
 }
 
+/**
+ * Which tool a still-pending proposal belongs to, without claiming it.
+ *
+ * Exists for one check that must happen BEFORE the claim: an action that takes a
+ * value only she can supply at her tap (a parent login's password) has that value
+ * validated first. A claim is final — a claimed proposal can never be approved
+ * again — so a password one character short must be refused while the card is
+ * still live, not after it has been spent. Null means it is not pending.
+ */
+export async function pendingProposalTool(
+  ctx: ToolContext,
+  id: string,
+): Promise<AuditResult<string | null>> {
+  const { data, error } = await ctx.caller.db
+    .from('ai_audit_log')
+    .select('tool')
+    .eq('id', id)
+    .eq('outcome', 'proposed')
+    .maybeSingle()
+  if (error !== null) return { ok: false, error: `Could not read that action: ${error.message}` }
+  return { ok: true, value: data?.tool ?? null }
+}
+
 const PROPOSAL_COLUMNS =
   'id, tool, risk_tier, arguments, instruction, outcome, family_id, family_label, child_id, child_label'
 

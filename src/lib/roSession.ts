@@ -98,7 +98,11 @@ interface RoSessionState {
   ensureStatus: () => void
   send: (text: string) => Promise<void>
   /** Approves or dismisses one prepared action. */
-  decide: (actionId: string, decision: 'approve' | 'decline' | 'undo') => Promise<void>
+  /**
+   * `secret` is the password typed on a card that asks for one. It is passed
+   * straight through to the request and never written to this store.
+   */
+  decide: (actionId: string, decision: 'approve' | 'decline' | 'undo', secret?: string) => Promise<void>
   clear: () => void
 }
 
@@ -190,7 +194,7 @@ export const useRoSession = create<RoSessionState>()((set, get) => ({
     }
   },
 
-  decide: async (actionId, decision) => {
+  decide: async (actionId, decision, secret) => {
     const existing = get().decisions[actionId]
     // A second tap while the first is in flight is always ignored. After it has
     // settled, only two things may still be tapped: a failed action can be
@@ -221,7 +225,7 @@ export const useRoSession = create<RoSessionState>()((set, get) => ({
     mark('working', '')
 
     try {
-      const result = await confirmRoAction(actionId, decision)
+      const result = await confirmRoAction(actionId, decision, secret)
       if (result.outcome === 'executed') {
         // Reached either by approving, or by an undo that could not be completed
         // — in which case the send stands and `error` says why it could not be

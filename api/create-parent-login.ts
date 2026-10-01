@@ -1,6 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../src/lib/database.types.js'
+import {
+  createParentAccount,
+  EMAIL_PATTERN,
+  MAX_PASSWORD,
+  MIN_PASSWORD,
+  PORTAL_LANGUAGES,
+  type PortalLanguage,
+} from './_lib/parentLogin.js'
 
 /**
  * Creates a parent portal account.
@@ -11,20 +19,20 @@ import type { Database } from '../src/lib/database.types.js'
  *
  * The caller's own access token is verified here and their profile checked for
  * role = 'admin'. Without that, anyone who found this URL could create logins.
+ *
+ * The account itself is made by `createParentAccount` in `_lib/parentLogin.ts`,
+ * which Ro's approval path also uses, so the two cannot create logins differently.
  */
 
 const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-const LANGUAGES = ['en', 'vi', 'es'] as const
-type Language = (typeof LANGUAGES)[number]
 
 interface Payload {
   familyId: string
   name: string
   email: string
   password: string
-  preferredLanguage: Language
+  preferredLanguage: PortalLanguage
 }
 
 function readPayload(raw: unknown): Payload | string {
@@ -38,11 +46,12 @@ function readPayload(raw: unknown): Payload | string {
 
   if (!familyId) return 'A family is required'
   if (name.length < 2) return "The guardian's name is required"
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'A valid email address is required'
-  if (password.length < 8) return 'The password must be at least 8 characters'
-  if (!LANGUAGES.includes(lang as Language)) return 'Unsupported language'
+  if (!EMAIL_PATTERN.test(email)) return 'A valid email address is required'
+  if (password.length < MIN_PASSWORD) return `The password must be at least ${String(MIN_PASSWORD)} characters`
+  if (password.length > MAX_PASSWORD) return 'That password is too long'
+  if (!PORTAL_LANGUAGES.includes(lang as PortalLanguage)) return 'Unsupported language'
 
-  return { familyId, name, email, password, preferredLanguage: lang as Language }
+  return { familyId, name, email, password, preferredLanguage: lang as PortalLanguage }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -91,39 +100,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
-  // 3. Create the auth user. email_confirm skips the verification email: the
-  //    owner hands these credentials over in person or by phone.
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email: payload.email,
-    password: payload.password,
-    email_confirm: true,
-  })
-  if (createError || !created.user) {
-    const taken = /already|exists|registered/i.test(createError?.message ?? '')
-    res.status(taken ? 409 : 500).json({
-      error: taken
-        ? 'An account already uses that email address'
-        : (createError?.message ?? 'Could not create the account'),
-    })
+  // 3. Create the auth user and attach its profile, rolling back on failure.
+  const result = await createParentAccount(payload)
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.error })
     return
   }
 
-  // 4. Attach the app-level profile.
-  const { error: profileError } = await admin.from('profiles').insert({
-    id: created.user.id,
-    name: payload.name,
-    email: payload.email,
-    role: 'parent',
-    family_id: payload.familyId,
-    preferred_language: payload.preferredLanguage,
-  })
-  if (profileError) {
-    // Roll the auth user back. Left behind, it would block every retry with
-    // "already exists" while having no profile to sign in against.
-    await admin.auth.admin.deleteUser(created.user.id)
-    res.status(500).json({ error: profileError.message })
-    return
-  }
-
-  res.status(200).json({ id: created.user.id, email: payload.email })
+  res.status(200).json({ id: result.id, email: result.email })
 }

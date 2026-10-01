@@ -1,7 +1,7 @@
 /**
  * What Ro notices without being asked — plan §5.
  *
- * Six watchers, each a plain read evaluated by ordinary code. No model call
+ * Seven watchers, each a plain read evaluated by ordinary code. No model call
  * happens anywhere in this file, and that is the point: whether an invoice is
  * actually overdue is a fact to look up, not a judgment to risk a model on.
  * §8's "no invented facts" guardrail depends on this boundary holding, so every
@@ -27,6 +27,7 @@ import type { ToolContext } from './tools/kit.js'
 export type TriggerKind =
   | 'daily_log_missing'
   | 'payment_overdue'
+  | 'enrollment_new'
   | 'enrollment_stale'
   | 'ack_pending'
   | 'unanswered_message'
@@ -226,6 +227,53 @@ async function paymentOverdue(ctx: ToolContext): Promise<Trigger[] | string> {
         balance,
       },
       ageDays: age,
+    })
+  }
+  return triggers
+}
+
+/**
+ * A submission that has just come in — the counterpart to `enrollmentStale`,
+ * covering the days before a submission counts as sitting too long.
+ *
+ * Without it Ro said nothing about a new family for its first three days, which
+ * is backwards: the first reply is the one a family waiting to hear back
+ * notices. High priority so it sorts to the top of what she is told.
+ *
+ * The age is read off the first ten characters of `submitted_at`, the same way
+ * `enrollmentStale` does it, and that is deliberate rather than a timezone
+ * shortcut: the public form stamps `submittedAt` with `todayISO()` — the
+ * family's own date, no time — so the stored value is that date at midnight UTC.
+ * Converting it to the daycare's timezone would move every submission back to
+ * 8pm the evening before and call a form sent this morning "yesterday".
+ */
+async function enrollmentNew(ctx: ToolContext): Promise<Trigger[] | string> {
+  const rows = await ctx.caller.db
+    .from('enrollments')
+    .select('id, family_name, submitted_at, children')
+    .eq('status', 'pending')
+  if (rows.error !== null) return rows.error.message
+
+  const triggers: Trigger[] = []
+  for (const row of rows.data) {
+    const age = daysSince(row.submitted_at.slice(0, 10))
+    if (age === null || age >= ENROLLMENT_STALE_DAYS) continue
+    const when = age <= 0 ? 'today' : age === 1 ? 'yesterday' : `${age} days ago`
+    triggers.push({
+      kind: 'enrollment_new',
+      priority: 'high',
+      key: `enrollment_new:${row.id}`,
+      summary:
+        `New enrollment form from ${row.family_name}, sent ${when} ` +
+        `(${row.children.length} ${plural(row.children.length, 'child', 'children')}). ` +
+        'It is waiting on her in Future Arrivals.',
+      facts: {
+        enrollmentId: row.id,
+        familyName: row.family_name,
+        submittedAt: row.submitted_at,
+        childCount: row.children.length,
+      },
+      ageDays: Math.max(0, age),
     })
   }
   return triggers
@@ -443,7 +491,7 @@ async function coldLead(ctx: ToolContext): Promise<Trigger[] | string> {
 /* ---------------------------------- sweep --------------------------------- */
 
 /**
- * Runs all six watchers.
+ * Runs all seven watchers.
  *
  * A watcher that cannot read does not fail the sweep — the other five still
  * have something worth saying, and Ro reporting five real things beats
@@ -458,6 +506,7 @@ export async function runTriggers(
   const results = await Promise.all([
     dailyLogMissing(ctx),
     paymentOverdue(ctx),
+    enrollmentNew(ctx),
     enrollmentStale(ctx),
     ackPending(ctx),
     unansweredMessage(ctx, now),
@@ -466,6 +515,7 @@ export async function runTriggers(
   const kinds = [
     'daily_log_missing',
     'payment_overdue',
+    'enrollment_new',
     'enrollment_stale',
     'ack_pending',
     'unanswered_message',

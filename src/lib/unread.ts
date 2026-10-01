@@ -95,6 +95,14 @@ export function newAnnouncements(
 export interface UnreadCounts {
   documents: number
   messages: number
+  /**
+   * Enrollment submissions still waiting on the owner's decision. Unlike the
+   * other two this is not "new since you looked" — opening Future Arrivals
+   * does not clear it, approving or declining does. A submission is a family
+   * waiting to hear back, so it stays visible until it has been answered.
+   * Always 0 for a parent, who cannot see submissions at all.
+   */
+  enrollments: number
 }
 
 /**
@@ -110,8 +118,9 @@ export function useUnreadCounts(): UnreadCounts {
   const threads = useStore((s) => s.threads)
   const announcements = useStore((s) => s.announcements)
   const sectionViews = useStore((s) => s.sectionViews)
+  const enrollments = useStore((s) => s.enrollments)
 
-  if (!user) return { documents: 0, messages: 0 }
+  if (!user) return { documents: 0, messages: 0, enrollments: 0 }
 
   const docsSeen = sectionViews.documents
   const msgsSeen = sectionViews.messages
@@ -120,6 +129,7 @@ export function useUnreadCounts(): UnreadCounts {
     return {
       documents: newDocuments(documents, docsSeen, user.name).length,
       messages: newThreads(threads, msgsSeen, 'parent').length,
+      enrollments: enrollments.filter((e) => e.status === 'pending').length,
     }
   }
 
@@ -131,5 +141,6 @@ export function useUnreadCounts(): UnreadCounts {
   return {
     documents: newDocuments(mine, docsSeen, user.name).length,
     messages: newThreads(ours, msgsSeen, 'admin').length + newAnnouncements(forUs, msgsSeen).length,
+    enrollments: 0,
   }
 }

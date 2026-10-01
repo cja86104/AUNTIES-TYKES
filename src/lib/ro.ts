@@ -46,6 +46,43 @@ export interface RoAction {
   summary: string
   detail: { label: string; value: string }[]
   confirmLabel: string
+  /**
+   * Present when approving needs something she types on the card — a parent
+   * login's password. Describes the field only; the value lives in the card's own
+   * state and goes out with the approval, never into this session's store.
+   */
+  secret?: RoActionSecret
+}
+
+export interface RoActionSecret {
+  label: string
+  minLength: number
+  maxLength: number
+  /** For "Copy login details" once it has worked. */
+  share: { familyName: string; email: string }
+}
+
+/** The secret-field description, narrowed — a malformed one is dropped. */
+function readSecret(raw: unknown): RoActionSecret | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined
+  const secret = raw as Record<string, unknown>
+  const share = typeof secret.share === 'object' && secret.share !== null ? (secret.share as Record<string, unknown>) : null
+  if (
+    share === null ||
+    typeof secret.label !== 'string' ||
+    typeof secret.minLength !== 'number' ||
+    typeof secret.maxLength !== 'number' ||
+    typeof share.familyName !== 'string' ||
+    typeof share.email !== 'string'
+  ) {
+    return undefined
+  }
+  return {
+    label: secret.label,
+    minLength: secret.minLength,
+    maxLength: secret.maxLength,
+    share: { familyName: share.familyName, email: share.email },
+  }
 }
 
 export interface RoActionResult {
@@ -222,7 +259,13 @@ function readReply(body: unknown): RoReply {
     tier: typeof record.tier === 'string' ? record.tier : '',
     escalated: record.escalated === true,
     drafts: list<RoDraft>(record.drafts),
-    actions: list<RoAction>(record.actions).filter(isAction),
+    actions: list<RoAction>(record.actions)
+      .filter(isAction)
+      .map((action) => {
+        const secret = readSecret(action.secret)
+        const { secret: _unchecked, ...rest } = action
+        return secret === undefined ? rest : { ...rest, secret }
+      }),
     toolRuns: list<RoToolRun>(record.toolRuns),
     notices: list<RoNotice>(record.notices),
     quietHours: record.quietHours === true,
@@ -252,7 +295,9 @@ export async function askRo(message: string, history: RoTurn[]): Promise<RoReply
 /**
  * Approves or dismisses one prepared action.
  *
- * Sends the id and the decision, and nothing else. The arguments live server-side
+ * Sends the id and the decision — plus, for an action that asks for one, the
+ * password she typed on the card, which goes to the server and is kept nowhere
+ * on this side. The arguments live server-side
  * against that id, written before the preview was ever rendered, so there is no
  * way for a tampered-with or stale page to approve something other than what it
  * showed — §7's gate is only worth having if the thing approved and the thing run
@@ -264,13 +309,14 @@ export async function askRo(message: string, history: RoTurn[]): Promise<RoReply
 export async function confirmRoAction(
   proposalId: string,
   decision: 'approve' | 'decline' | 'undo',
+  secret?: string,
 ): Promise<RoActionResult> {
   let response: Response
   try {
     response = await fetch('/api/ai/confirm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
-      body: JSON.stringify({ proposalId, decision }),
+      body: JSON.stringify(secret === undefined ? { proposalId, decision } : { proposalId, decision, secret }),
     })
   } catch {
     throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true })

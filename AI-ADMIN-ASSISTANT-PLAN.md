@@ -76,7 +76,7 @@ defect as a stale `ARCHITECTURE.md` — and this repo already has one of those.
 **Done since:** Ro is live in production. `api/` now holds six server
 functions: `create-parent-login.ts` from the Auth work, plus `ai/chat`,
 `ai/status`, `ai/transcribe`, `ai/speak` and `ai/confirm`. All of §3's read
-and draft tools work against real data, §5's six watchers run on every turn,
+and draft tools work against real data, §5's watchers (seven since 2026-10-01) run on every turn,
 §9's voice pipeline works in both directions on Chrome, and §11's slide-over
 persists across navigation. Migration `0013_ai_assistant.sql` is applied, so
 §8's audit log and §6/§7's standing rules are real tables.
@@ -213,13 +213,13 @@ have not been written; the path they plug into has been.
 | `addCalendarEvent` / `updateCalendarEvent` / ~~`deleteCalendarEvent`~~ | `calendar.mutate` | Low | **Built 2026-09-28** — add/update only |
 | `addLead` / `updateLead` | `lead.mutate` | Low | **Built 2026-09-28** |
 | ~~`setWaitlist`~~ | ~~`waitlist.mutate`~~ | — | **Cancelled 2026-09-28 — see below** |
-| `addFamily` / `updateFamily` / `addChild` / `updateChild` | `family.mutate` | Medium | Waiting |
+| `addFamily` / ~~`updateFamily`~~ / `addChild` / ~~`updateChild`~~ | `family.add` | Medium | **Built 2026-10-01** — a new family with its children in one step, gated, no undo; changing an existing family or child still Waiting |
 | `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium | Waiting |
 | `updateSettings` / `updateRates` / `updatePolicies` | `settings.mutate` | **Money** — *added 2026-09-27* | Waiting |
 | `startThread` / `sendThreadMessage` | `message.send` | **Send** | **Built 2026-09-28** |
 | `addAnnouncement` | `announcement.send` | **Send** | **Built 2026-09-28** |
-| `createInvoice` / `recordPayment` / `deleteInvoice` | `billing.mutate` | **Money** | Waiting |
-| `createParentLogin` (via `api/create-parent-login.ts`) | `account.create` | **Money/PII** | Waiting |
+| ~~`createInvoice`~~ / `recordPayment` / ~~`deleteInvoice`~~ | `payment.record` | **Money** | **Built 2026-10-01** — record a payment only, gated, no undo; creating and deleting invoices still Waiting |
+| `createParentLogin` (via `api/create-parent-login.ts`) | `account.create` | **Money/PII** | **Built 2026-10-01** — gated; she types the password on the card at her tap, so it never reaches a model, a tool argument or `ai_audit_log`; shares `api/_lib/parentLogin.ts` with the console endpoint; no undo |
 | *(none — Ro's own tables)* | `rule.save` / `rule.retire` | Medium | **Built 2026-09-28** |
 | *(none — Ro's own tables)* | `commitment.note` / `commitment.close` | Low, ungated | **Built 2026-09-28** |
 
@@ -377,6 +377,7 @@ pinged about the same thing five times or at 9pm on a Sunday.
 |---|---|---|
 | `daily_log_missing` | A child's `attendance` shows `checked-out` today, no matching `dailyLogs` entry exists | Medium |
 | `payment_overdue` | An invoice is past `dueDate` with a balance owed, no reminder sent within the cooldown window | Medium → High with age |
+| `enrollment_new` | An `enrollments` row is `pending` and arrived within the stale threshold (3 days) — *added 2026-10-01* | High |
 | `enrollment_stale` | An `enrollments` row has sat `pending` past a threshold | Medium |
 | `ack_pending` | A `documents` row has `requiresAck: true` and a family hasn't acknowledged it | Low |
 | `unanswered_message` | A `threads` entry's last message is from a parent, no reply within the cooldown window | Medium → High with age |

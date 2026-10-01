@@ -5,6 +5,9 @@ import {
   Check,
   ChevronDown,
   Copy,
+  Eye,
+  EyeOff,
+  KeyRound,
   Loader2,
   ShieldCheck,
   Mic,
@@ -184,6 +187,40 @@ function ActionCard({ action }: { action: RoAction }) {
   const undoLeft = useUndoCountdown(decision?.undoUntil ?? null)
   const problem = decision?.problem ?? ''
 
+  // A parent login's password, typed here at the tap. Card-local on purpose: it
+  // goes out with the approval and is kept nowhere else — not in useRoSession,
+  // not in the message, not sent to Ro. It stays only so "Copy login details"
+  // can work afterwards, and is gone when this card unmounts.
+  const secretSpec = action.secret
+  const [secret, setSecret] = useState('')
+  const [reveal, setReveal] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const secretShort = secretSpec !== undefined && secret.trim().length < secretSpec.minLength
+  const approve = () => void decide(action.id, 'approve', secretSpec === undefined ? undefined : secret)
+  const decline = () => {
+    setSecret('')
+    void decide(action.id, 'decline')
+  }
+
+  /** The same text the console's account dialog copies. */
+  const copyLogin = () => {
+    if (secretSpec === undefined) return
+    const text = [
+      `Parent login for the ${secretSpec.share.familyName}`,
+      `Email: ${secretSpec.share.email}`,
+      `Password: ${secret.trim()}`,
+      '',
+      'Please keep these somewhere safe and change the password after signing in.',
+    ].join('\n')
+    void navigator.clipboard.writeText(text).then(
+      () => {
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1800)
+      },
+      () => setCopied(false),
+    )
+  }
+
   const settled = state === 'done' || state === 'declined' || state === 'undone'
   const tone =
     state === 'done' ? 'green' : state === 'failed' ? 'rose' : state === 'undone' ? 'neutral' : 'amber'
@@ -229,17 +266,49 @@ function ActionCard({ action }: { action: RoAction }) {
         </dl>
       )}
 
+      {secretSpec !== undefined && (state === 'pending' || state === 'failed') && (
+        <label className="mt-3 block">
+          <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+            <KeyRound size={13} strokeWidth={2} /> {secretSpec.label}
+          </span>
+          <span className="relative block">
+            {/* text-base below sm: iOS Safari zooms the page on any focused field
+                under 16px and does not zoom back out — same as the message box. */}
+            <input
+              type={reveal ? 'text' : 'password'}
+              value={secret}
+              onChange={(event) => setSecret(event.target.value)}
+              maxLength={secretSpec.maxLength}
+              placeholder={`At least ${String(secretSpec.minLength)} characters`}
+              className="min-h-[2.75rem] w-full rounded-control border border-slate-300 py-2 pl-3 pr-11 text-base text-slate-900 outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/15 sm:text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => setReveal((value) => !value)}
+              aria-label={reveal ? 'Hide password' : 'Show password'}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            >
+              {reveal ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </span>
+          <span className="mt-1 block text-xs leading-relaxed text-slate-500">
+            Pick something you can tell them again — Ro never sees it, and it can't be looked up later.
+          </span>
+        </label>
+      )}
+
       {state === 'pending' && (
         <div className="mt-3 flex items-center gap-2">
           <button
-            onClick={() => void decide(action.id, 'approve')}
-            className="inline-flex min-h-[2.25rem] flex-1 items-center justify-center gap-1.5 rounded-control bg-brand px-3 text-sm font-semibold text-white shadow-control transition hover:bg-brand-deep"
+            onClick={approve}
+            disabled={secretShort}
+            className="inline-flex min-h-[2.25rem] flex-1 items-center justify-center gap-1.5 rounded-control bg-brand px-3 text-sm font-semibold text-white shadow-control transition hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ShieldCheck size={16} strokeWidth={2} />
             {action.confirmLabel}
           </button>
           <button
-            onClick={() => void decide(action.id, 'decline')}
+            onClick={decline}
             className="inline-flex min-h-[2.25rem] items-center justify-center rounded-control border border-slate-300 px-3 text-sm font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
           >
             No thanks
@@ -259,6 +328,15 @@ function ActionCard({ action }: { action: RoAction }) {
             <Check size={14} strokeWidth={2.5} className="mt-0.5 shrink-0" />
             {detail.length > 0 ? detail : 'Saved.'}
           </p>
+          {secretSpec !== undefined && secret.trim().length > 0 && (
+            <button
+              onClick={copyLogin}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-chip border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-400 hover:text-slate-900"
+            >
+              {copied ? <Check size={14} strokeWidth={2} /> : <Copy size={14} strokeWidth={1.75} />}
+              {copied ? 'Copied' : 'Copy login details'}
+            </button>
+          )}
           {undoLeft > 0 && (
             <button
               onClick={() => void decide(action.id, 'undo')}
@@ -296,8 +374,9 @@ function ActionCard({ action }: { action: RoAction }) {
             {detail}
           </p>
           <button
-            onClick={() => void decide(action.id, 'approve')}
-            className="mt-2 rounded-chip px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+            onClick={approve}
+            disabled={secretShort}
+            className="mt-2 rounded-chip px-2 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Try again
           </button>

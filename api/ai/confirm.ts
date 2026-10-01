@@ -20,6 +20,11 @@ import type { ToolContext } from '../_lib/ai/tools/kit.js'
 interface Incoming {
   proposalId: string
   decision: Decision
+  /**
+   * A value she typed on the card — a parent login's password — or null. Passed
+   * to settleProposal and nowhere else: not logged, not echoed, not stored.
+   */
+  secret: string | null
 }
 
 function readBody(raw: unknown): Incoming | string {
@@ -31,7 +36,13 @@ function readBody(raw: unknown): Incoming | string {
   if (decision !== 'approve' && decision !== 'decline' && decision !== 'undo') {
     return "decision must be 'approve', 'decline' or 'undo'"
   }
-  return { proposalId, decision }
+  const rawSecret = body.secret
+  if (rawSecret !== undefined && rawSecret !== null && typeof rawSecret !== 'string') {
+    return 'secret must be a string'
+  }
+  // Trimmed, as the console's account dialog trims the password it sends.
+  const secret = typeof rawSecret === 'string' ? rawSecret.trim() : null
+  return { proposalId, decision, secret: secret === null || secret.length === 0 ? null : secret }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -76,6 +87,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     seenThisTurn: new Map(),
   }
 
-  const result = await settleProposal(ctx, body.proposalId, body.decision)
+  const result = await settleProposal(ctx, body.proposalId, body.decision, body.secret)
   res.status(result.status).json(result.body)
 }
