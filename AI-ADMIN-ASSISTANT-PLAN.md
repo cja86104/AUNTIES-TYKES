@@ -705,6 +705,31 @@ keeps OpenRouter's own routing, so this is additive and doesn't touch Tier
 2. `inclusionai/ling-3.0-flash-vl` and `qwen/qwen3.8-flash` above are the
 prior picks, kept here for the record rather than deleted.
 
+**Incident, 2026-10-01 — the Cerebras pin broke both tiers, rolled back.**
+Within the hour of going live, every Tier 0 call started failing and
+escalating straight to Tier 2, and Tier 2 (`anthropic/claude-haiku-4.5`,
+never pinned, untouched by this swap) failed as well — not yet explained,
+since nothing about the escalation tier's own request changed.
+`cerebras/fp16` was checked against OpenRouter's own
+`/api/v1/models/openai/gpt-oss-120b/endpoints` and is a real, current
+endpoint tag, so the slug itself isn't the bug. `AI_MODEL_TIER0_INTENT_PROVIDER`
+and `AI_MODEL_TIER1_DRAFTING_PROVIDER` were removed from Vercel as an
+immediate rollback — `openai/gpt-oss-120b` stays on both tiers, unpinned.
+Open until a Vercel runtime log (the `[ro] tier failed` line and its
+`attempts` detail) or the OpenRouter Activity log shows the actual
+rejection reason for both the Cerebras attempt and the Anthropic one.
+
+**Confirmed, same day — why the unpinned fallback lands on DekaLLM, not
+Cerebras.** Not a bug: OpenRouter's documented default (no `provider`
+field at all) is price-weighted load balancing across stable providers,
+not throughput-weighted — "look at the lowest-cost candidates and select
+one weighted by inverse square of the price." For `openai/gpt-oss-120b`,
+DekaLLM prices at $0.03/$0.18 per 1M against Cerebras's $0.35/$0.75 —
+over 10x apart — so default routing reliably picks DekaLLM once the pin
+is off. Getting back to Cerebras still requires the explicit pin; the
+open question is only whether the pin itself is safe to re-add (the
+original 400-with-no-fallback cause is still unconfirmed).
+
 **Tier 2 — rare escalation.** `anthropic/claude-haiku-4.5` — $1 / $5 per
 1M tokens, 200K context, extended thinking with controllable reasoning
 depth. OpenRouter's own listing puts it at matching Claude Sonnet 4 on
