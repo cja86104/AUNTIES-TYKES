@@ -577,6 +577,26 @@ is simply not set for Gemini, which keeps OpenRouter's own routing. Worth
 knowing if Kokoro (or another DeepInfra-hosted model) comes up again: the
 pin machinery is already there, just set the env var.
 
+**Fixed, 2026-10-01 — STT (Whisper) drifted onto a slow provider, pinned to
+Groq.** The owner reported speech-to-text going from fine to 15+ seconds to
+land in the text box (not a failure — `transcribe()` was succeeding, just
+slow). `openai/whisper-large-v3-turbo` has exactly two providers on
+OpenRouter: DeepInfra ($0.00000333/s) and Groq ($0.0000111/s, ~3.3x pricier).
+`AI_MODEL_STT` had never been pinned — the header comment above it already
+said "Groq-hosted," which was only ever an assumption riding on default
+routing, not something the code enforced. OpenRouter's default routing is
+price-weighted by the *inverse square* of price, so it had drifted onto
+DeepInfra, and DeepInfra does not have Groq's speed for this model. Same
+class of bug as the tier-0/1 Cerebras incident above: an unpinned model
+silently moving to whichever provider is cheapest, not fastest. Fixed by
+adding the same provider-pin mechanism STT never had: `AiConfig.sttProviders`
+(config.ts) and a `provider: { only, allow_fallbacks: false }` block in
+`transcribe()` (openrouter.ts), both mirroring `chatProviders`/`chat()`
+exactly. `AI_MODEL_STT_PROVIDER=groq`, no fallback — same reasoning as the
+Cerebras pin, the point is Groq's own speed, so falling back on a hiccup
+defeats it. Purely additive: `npm run typecheck` and `npm run lint` both
+pass clean, and the diff touches nothing in the Tier 2 tool-naming fix above.
+
 **Correction, 2026-09-27 — the audio format.** §9's Safari argument rested on
 mp3 playing through a plain `<audio>` element. Gemini TTS does not offer mp3:
 it answers `Gemini TTS only supports response_format="pcm"`. Headerless PCM is
@@ -755,6 +775,12 @@ schema never sees: the `Executor.tool` registry in `execute.ts`, the
 `key` template strings. `npm run typecheck` and `npm run lint` both pass
 clean after the rename. The Cerebras-pin question directly above is still
 open and unrelated to this fix.
+
+**Confirmed working, 2026-10-01.** Deployed through the owner's normal
+commit/push → Vercel pipeline. Ro now goes through Tier 2 escalation (and
+the rest of the tool catalog) through the proper channels without the
+`tools.0.custom.name` rejection. Do not re-introduce dots into any
+`ToolSpec.name` in a future tool.
 
 **Tier 2 — rare escalation.** `anthropic/claude-haiku-4.5` — $1 / $5 per
 1M tokens, 200K context, extended thinking with controllable reasoning

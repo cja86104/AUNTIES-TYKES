@@ -586,6 +586,16 @@ export async function transcribe(
     }
     if (input.language !== undefined) payload.language = input.language
 
+    // Same reasoning as the chat-tier pin above: Whisper-family models have
+    // very few providers behind them on OpenRouter, default routing is
+    // price-weighted rather than latency-weighted, and the cheaper one can be
+    // far slower for this workload. A model with no entry keeps OpenRouter's
+    // own routing.
+    const providerSlugs = config.sttProviders[model]
+    if (providerSlugs !== undefined && providerSlugs.length > 0) {
+      payload.provider = { only: providerSlugs, allow_fallbacks: false }
+    }
+
     const result = await postJson(`${BASE_URL}/audio/transcriptions`, config, payload, timeoutMs)
     if (result.status === null) {
       attempts.push({ model, status: null, detail: result.detail })

@@ -67,6 +67,15 @@ export interface AiConfig {
   chatProviders: Record<string, string[]>
   /** Speech-to-text model ids, in order. */
   stt: string[]
+  /**
+   * Provider pin per STT model id, optional. Same mechanism and reasoning as
+   * `chatProviders` — set via AI_MODEL_STT_PROVIDER. Whisper-family models on
+   * OpenRouter have very few providers behind them, and default (unpinned)
+   * routing is price-weighted, not latency-weighted, so the cheaper provider
+   * wins even when it is far slower for this workload. A model with no entry
+   * here gets no `provider` field and keeps OpenRouter's own routing.
+   */
+  sttProviders: Record<string, string[]>
   tts: SpeechConfig
   /**
    * Every environment variable that names each model id, comma-joined.
@@ -186,6 +195,12 @@ export function loadAiConfig(): ConfigResult {
   }
 
   const stt = modelList('AI_MODEL_STT', missing)
+  const sttProviders: Record<string, string[]> = {}
+  {
+    const slugs = providerList('AI_MODEL_STT_PROVIDER')
+    const firstStt = stt[0]
+    if (slugs.length > 0 && firstStt !== undefined) sttProviders[firstStt] = slugs
+  }
 
   // The TTS pick and its fallback are two variables, read as one ordered list.
   const ttsModels: string[] = []
@@ -257,6 +272,7 @@ export function loadAiConfig(): ConfigResult {
       models,
       chatProviders,
       stt,
+      sttProviders,
       tts: { models: ttsModels, voices, providers },
       modelSources,
       enabled,
