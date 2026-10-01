@@ -37,6 +37,16 @@ export interface SpeechConfig {
    * AI_MODEL_TTS_FALLBACK_VOICE once it has been listened to.
    */
   voices: Record<string, string>
+  /**
+   * OpenRouter provider slug to pin per model id, optional. Most models route
+   * fine on whichever provider OpenRouter picks, but Kokoro specifically must
+   * not float: DeepInfra prices it at $0.62/M characters against Together's
+   * $4.00/M — over $3/M apart for the identical model — so the pick is sent as
+   * `provider: { order: [slug], allow_fallbacks: false }` rather than left to
+   * OpenRouter's own routing. A model with no entry here gets no `provider`
+   * field at all and keeps OpenRouter's default routing.
+   */
+  providers: Record<string, string>
 }
 
 export interface AiConfig {
@@ -45,6 +55,16 @@ export interface AiConfig {
   siteUrl: string | null
   siteName: string | null
   models: Record<ModelTier, string[]>
+  /**
+   * Provider pin per chat model id, optional. Mirrors `tts.providers`'
+   * reasoning: a tier can be pinned to one inference provider (or a short
+   * whitelist of them) when that provider's own numbers justify refusing to
+   * float elsewhere, sent as `provider: { only: [...], allow_fallbacks:
+   * false }`. Set via `<tier env var>_PROVIDER`, e.g.
+   * AI_MODEL_TIER0_INTENT_PROVIDER. A model with no entry here gets no
+   * `provider` field and keeps OpenRouter's own routing.
+   */
+  chatProviders: Record<string, string[]>
   /** Speech-to-text model ids, in order. */
   stt: string[]
   tts: SpeechConfig
@@ -76,6 +96,20 @@ function text(name: string): string | null {
   if (typeof raw !== 'string') return null
   const trimmed = raw.trim()
   return trimmed.length > 0 ? trimmed : null
+}
+
+/**
+ * A comma-separated, ordered list of provider slugs, optional. Unset means
+ * "let OpenRouter route it", so — unlike `modelList` — this never adds to
+ * `missing`.
+ */
+function providerList(name: string): string[] {
+  const raw = text(name)
+  if (raw === null) return []
+  return raw
+    .split(',')
+    .map((slug) => slug.trim())
+    .filter((slug) => slug.length > 0)
 }
 
 /** A comma-separated, ordered list of model ids. Blank entries are dropped. */
@@ -140,6 +174,17 @@ export function loadAiConfig(): ConfigResult {
     escalation: modelList(TIER_ENV.escalation, missing),
   }
 
+  // Provider pin per tier, optional, attributed to that tier's first model id
+  // — the same model named more than once (as tier 0 and tier 1 both are for
+  // the Cerebras-pinned gpt-oss-120b swap) picks up the pin under both keys,
+  // since it's keyed by id rather than by tier.
+  const chatProviders: Record<string, string[]> = {}
+  for (const tier of Object.keys(models) as ModelTier[]) {
+    const slugs = providerList(`${TIER_ENV[tier]}_PROVIDER`)
+    const firstModel = models[tier][0]
+    if (slugs.length > 0 && firstModel !== undefined) chatProviders[firstModel] = slugs
+  }
+
   const stt = modelList('AI_MODEL_STT', missing)
 
   // The TTS pick and its fallback are two variables, read as one ordered list.
@@ -156,6 +201,14 @@ export function loadAiConfig(): ConfigResult {
   else if (primaryTts !== null) voices[primaryTts] = primaryVoice
   const fallbackVoice = text('AI_MODEL_TTS_FALLBACK_VOICE')
   if (fallbackVoice !== null && fallbackTts !== null) voices[fallbackTts] = fallbackVoice
+
+  // Provider pin, optional — unset means "let OpenRouter route it", so these
+  // are read straight through rather than via modelList/missing-tracking.
+  const providers: Record<string, string> = {}
+  const primaryProvider = text('AI_MODEL_TTS_PROVIDER')
+  if (primaryProvider !== null && primaryTts !== null) providers[primaryTts] = primaryProvider
+  const fallbackProvider = text('AI_MODEL_TTS_FALLBACK_PROVIDER')
+  if (fallbackProvider !== null && fallbackTts !== null) providers[fallbackTts] = fallbackProvider
 
   const enabled = flag('AI_ASSISTANT_ENABLED', missing, malformed)
   const requireConfirmationForSends = flag(
@@ -202,8 +255,9 @@ export function loadAiConfig(): ConfigResult {
       siteUrl: text('OPENROUTER_SITE_URL'),
       siteName: text('OPENROUTER_SITE_NAME'),
       models,
+      chatProviders,
       stt,
-      tts: { models: ttsModels, voices },
+      tts: { models: ttsModels, voices, providers },
       modelSources,
       enabled,
       requireConfirmationForSends,

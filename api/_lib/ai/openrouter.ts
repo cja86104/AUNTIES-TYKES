@@ -363,6 +363,17 @@ export async function chat(
     }
     if (request.temperature !== undefined) payload.temperature = request.temperature
 
+    // A pinned provider (config.ts: `<tier>_PROVIDER`) is sent with no
+    // fallback, same reasoning as the TTS pin below: the point of pinning is
+    // a specific provider's own numbers (Cerebras's throughput on
+    // gpt-oss-120b, in the tier-0/1 case), so silently falling back to a
+    // slower or costlier provider on a hiccup would defeat the pin. A model
+    // with no entry keeps OpenRouter's own routing.
+    const providerSlugs = config.chatProviders[model]
+    if (providerSlugs !== undefined && providerSlugs.length > 0) {
+      payload.provider = { only: providerSlugs, allow_fallbacks: false }
+    }
+
     const result = await postJson(`${BASE_URL}/chat/completions`, config, payload, timeoutMs)
 
     if (result.status === null) {
@@ -645,6 +656,16 @@ export async function speak(
     const voice = config.tts.voices[model]
     if (voice === undefined) continue
 
+    // A pinned provider (config.ts: AI_MODEL_TTS_PROVIDER /
+    // AI_MODEL_TTS_FALLBACK_PROVIDER) is sent with no fallback — the point of
+    // pinning Kokoro to DeepInfra is the $3.38/M-character gap to Together, so
+    // silently falling back to the pricier provider on a DeepInfra hiccup
+    // would defeat the reason this field exists. A model with no pin omitted
+    // gets no `provider` field and keeps OpenRouter's own routing.
+    const provider = config.tts.providers[model]
+    const providerRouting =
+      provider === undefined ? {} : { provider: { order: [provider], allow_fallbacks: false } }
+
     // PCM first: it is the format the endpoint documents as its default and the
     // only one Gemini accepts. mp3 is tried after, for a provider that refuses
     // PCM. Negotiating per model rather than hardcoding one format is the lesson
@@ -653,7 +674,7 @@ export async function speak(
       const result = await postForBinary(
         `${BASE_URL}/audio/speech`,
         config,
-        { model, input: input.text, voice, response_format: format },
+        { model, input: input.text, voice, response_format: format, ...providerRouting },
         timeoutMs,
       )
 

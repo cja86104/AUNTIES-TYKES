@@ -91,12 +91,14 @@ sends without her tap. Concretely:
 ## Environment — already set in `.env.local`, don't rediscover these
 
 ```
-AI_MODEL_TIER0_INTENT=inclusionai/ling-3.0-flash-vl
-AI_MODEL_TIER1_DRAFTING=qwen/qwen3.8-flash
+AI_MODEL_TIER0_INTENT=openai/gpt-oss-120b
+AI_MODEL_TIER0_INTENT_PROVIDER=cerebras/fp16   # pinned — Cerebras's throughput on this model is way ahead of other providers
+AI_MODEL_TIER1_DRAFTING=openai/gpt-oss-120b
+AI_MODEL_TIER1_DRAFTING_PROVIDER=cerebras/fp16
 AI_MODEL_TIER2_ESCALATION=anthropic/claude-haiku-4.5
 AI_MODEL_STT=openai/whisper-large-v3-turbo
-AI_MODEL_TTS=google/gemini-3.8-flash-lite-tts
-AI_MODEL_TTS_FALLBACK=openai/gpt-4o-mini-tts
+AI_MODEL_TTS=google/gemini-3.8-flash-lite-tts   # tried hexgrad/kokoro-82m (DeepInfra) 2026-09-30, reverted — Gemini was the sweet spot on quality
+AI_MODEL_TTS_FALLBACK=openai/gpt-4o-mini-tts-2025-12-15
 AI_MODEL_TTS_VOICE=Erinome
 AI_ASSISTANT_ENABLED=false          # flip deliberately once Phase 1 has a track record
 AI_REQUIRE_CONFIRMATION_FOR_SENDS=true

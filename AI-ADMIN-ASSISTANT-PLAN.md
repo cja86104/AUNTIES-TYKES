@@ -560,6 +560,21 @@ correcting quietly.
 | `google/gemini-3.8-flash-lite-tts` — **pick** | $0.50 / $6 | roughly half a cent |
 | `openai/gpt-4o-mini-tts-2025-12-15` — fallback | $0.60 / $12 | roughly a penny |
 
+**Swap and revert, 2026-09-30 → 2026-10-01 — Kokoro 82M tried, Gemini kept.**
+On 2026-09-30 the pick was changed to `hexgrad/kokoro-82m`, voice `af_heart`,
+pinned to the DeepInfra provider (`provider: { order: ["deepinfra"],
+allow_fallbacks: false }` — DeepInfra prices Kokoro at $0.62/M characters
+against Together's $4.00/M for the identical model, over $3/M apart). On
+2026-10-01, after listening to Kokoro and a couple of other candidates
+against it, Gemini was judged the better-sounding voice by a clear enough
+margin to outweigh the cost case the swap was made on, and the pick reverted
+to `google/gemini-3.8-flash-lite-tts` / `Erinome`. The provider-pin mechanism
+itself stayed in the code (config.ts `SpeechConfig.providers`, openrouter.ts
+`speak()`) since it's config-driven and harmless unset — `AI_MODEL_TTS_PROVIDER`
+is simply not set for Gemini, which keeps OpenRouter's own routing. Worth
+knowing if Kokoro (or another DeepInfra-hosted model) comes up again: the
+pin machinery is already there, just set the env var.
+
 **Correction, 2026-09-27 — the audio format.** §9's Safari argument rested on
 mp3 playing through a plain `<audio>` element. Gemini TTS does not offer mp3:
 it answers `Gemini TTS only supports response_format="pcm"`. Headerless PCM is
@@ -673,6 +688,22 @@ would've cost fractions of a cent anyway.
 tokens, 1M context, confirmed tool calling. The sentence a parent actually
 reads doesn't need a frontier model, just consistent tone — this is well
 past what a two-sentence daily-report blurb requires.
+
+**Swap, 2026-10-01 — both Tier 0 and Tier 1 moved to `openai/gpt-oss-120b`,
+pinned to Cerebras.** Both tiers now point at the same model id rather than
+staying on separate labs — tried on Tier 0 first on confidence in the
+model itself, then also put on Tier 1 to see how it does there too. Pinned
+specifically to the Cerebras `fp16` endpoint (`provider: { only:
+["cerebras/fp16"], allow_fallbacks: false }`): Cerebras's throughput on
+this model is far ahead of every other provider serving it — roughly
+600 tps against the next tier of general-purpose providers' low hundreds —
+which is the reason for the pin, so no fallback to a slower provider on a
+Cerebras hiccup. `AI_MODEL_TIER0_INTENT_PROVIDER` /
+`AI_MODEL_TIER1_DRAFTING_PROVIDER` carry the pin (config.ts
+`chatProviders`, openrouter.ts `chat()`); a tier with no `_PROVIDER` entry
+keeps OpenRouter's own routing, so this is additive and doesn't touch Tier
+2. `inclusionai/ling-3.0-flash-vl` and `qwen/qwen3.8-flash` above are the
+prior picks, kept here for the record rather than deleted.
 
 **Tier 2 — rare escalation.** `anthropic/claude-haiku-4.5` — $1 / $5 per
 1M tokens, 200K context, extended thinking with controllable reasoning
@@ -802,8 +833,9 @@ running list:
   spend cap. Doesn't change how §10's tiers are chosen — see the header
   changelog.
 - **Ro's actual name and voice selection?** Name's locked (*Ro*). Voice is
-  picked in §9 (`Erinome` on Gemini, with `Sulafat` as the warmer
-  alternate) pending the one listen-check that section calls for.
+  `Erinome` on Gemini — briefly swapped to `af_heart` on `hexgrad/kokoro-82m`
+  (DeepInfra-pinned) on 2026-09-30, reverted 2026-10-01 after a listen test;
+  see §9's swap-and-revert note.
 
 Resolved earlier and still holding: voice ships in v1, not deferred.
 Provider stays OpenRouter-only across chat, transcription, and speech,
@@ -831,7 +863,10 @@ already in view:
   `google/gemini-3.8-flash-lite-tts`, with `AI_MODEL_TTS_FALLBACK` and
   `AI_MODEL_TTS_VOICE=Erinome` added alongside it so the actual voice
   pick from §9 lives in config next to the model, not just in this
-  document.
+  document. (Briefly superseded 2026-09-30 by `hexgrad/kokoro-82m` /
+  `af_heart` / DeepInfra-pinned; reverted 2026-10-01 back to this same
+  Gemini config after a listen test found it the better voice. See §9's
+  swap-and-revert note — `AI_MODEL_TTS_PROVIDER` is simply unset again.)
 
 ---
 
