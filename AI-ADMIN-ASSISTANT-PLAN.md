@@ -145,6 +145,8 @@ below, and the audit is the reason it is worth trusting: it was derived from
 
 ### Built and live — 27 tools
 
+**Naming note, 2026-10-01.** Every tool name below is written with dots (`family.find`) because that's how this table has always shown them. The actual `ToolSpec.name` in code is now underscore-separated (`family_find`) for all 27 built tools — see the Tier 2 incident note in §10 for why: Anthropic's tool-name schema rejects dots. Treat every dotted name on this page, built or still-"Waiting", as shorthand for its underscore form in code; a not-yet-built tool should be named with underscores from the start when it's built.
+
 **Reads (15).** `family.find` · `family.get` · `roster.list` ·
 `attendance.today` · `attendance.history` · `dailyLog.list` · `invoice.list` ·
 `invoice.get` · `thread.list` · `thread.get` · `document.list` ·
@@ -729,6 +731,30 @@ over 10x apart — so default routing reliably picks DekaLLM once the pin
 is off. Getting back to Cerebras still requires the explicit pin; the
 open question is only whether the pin itself is safe to re-add (the
 original 400-with-no-fallback cause is still unconfirmed).
+
+**Resolved, 2026-10-01 — the Tier 2 failure was a separate, pre-existing
+bug: dotted tool names.** The "both tiers failed" half of the incident
+above had nothing to do with the Cerebras pin. Every one of the 27 tool
+names in `api/_lib/ai/tools/*.ts` used dot-namespacing (`family.find`,
+`rule.save`, `message.send`, ...) going all the way back to §3's original
+table. That is tolerated by whichever provider Tier 0/1 happened to land
+on, but the Azure-hosted endpoint OpenRouter routes Tier 2
+(`anthropic/claude-haiku-4.5`) through enforces Anthropic's tool-name
+pattern, `^[a-zA-Z0-9_-]{1,128}$` — no dots allowed — and rejected the
+whole tools array with `tools.0.custom.name: String should match
+pattern...`. This had presumably always been broken for Tier 2; it only
+surfaced now because the Cerebras-pin incident above kept forcing
+escalation attempts that exercised the dormant path for the first time.
+Fixed by renaming every `ToolSpec.name` to underscores (`family_find`,
+`rule_save`, `message_send`, ...) across all six tool files, plus the
+handful of model-facing description/prompt strings that referenced the
+old dotted names by name (`prompt.ts`, `api/ai/chat.ts`). Left unchanged,
+because they are separate, internal-only identifiers that the Anthropic
+schema never sees: the `Executor.tool` registry in `execute.ts`, the
+`tool:`/`kind:` fields passed to `propose()`, and the per-request dedup
+`key` template strings. `npm run typecheck` and `npm run lint` both pass
+clean after the rename. The Cerebras-pin question directly above is still
+open and unrelated to this fix.
 
 **Tier 2 — rare escalation.** `anthropic/claude-haiku-4.5` — $1 / $5 per
 1M tokens, 200K context, extended thinking with controllable reasoning

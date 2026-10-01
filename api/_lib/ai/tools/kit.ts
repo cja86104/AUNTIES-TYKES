@@ -74,7 +74,7 @@ export interface ToolContext {
 export type ToolOutcome = { ok: true; data: unknown } | { ok: false; error: string }
 
 export interface ToolSpec {
-  /** Dotted name, matching the convention in plan §3's table. */
+  /** Underscore-separated name (Anthropic's tool-name pattern forbids dots), matching the convention in plan §3's table. */
   name: string
   tier: ToolTier
   /** Written for the model: what it answers, and when not to reach for it. */

@@ -169,7 +169,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       : `${buildSystemPrompt(state)}\n\n---\n\nNOTE ON WHAT SHE JUST SAID\n\n` +
         `That reads like a standing instruction (${instruction.shape}) — a plain regex ` +
         `spotted the shape, not you, so treat it as a hint and not a verdict. If it is ` +
-        `one, save it with rule.save: resolve the family first if it names one, put her ` +
+        `one, save it with rule_save: resolve the family first if it names one, put her ` +
         `own words in said and your reading of it in summary. She approves it with a ` +
         `tap, so tell her it is waiting rather than that it is saved. If the shape ` +
         `matched something that was not actually an instruction, ignore this note. ` +

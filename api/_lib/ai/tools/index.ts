@@ -11,7 +11,7 @@
  * whatever a prompt says. That is still true of every tool in §3's table that is
  * not listed below.
  *
- * Note what registering does NOT do. `rule.save` and `rule.retire` are in this
+ * Note what registering does NOT do. `rule_save` and `rule_retire` are in this
  * array and change nothing when called: they record a proposal and stop, and
  * their writes live in `../execute.ts` behind `api/ai/confirm.ts`. So the catalog
  * being reachable by the model and the write being reachable by the model are two

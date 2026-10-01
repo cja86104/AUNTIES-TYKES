@@ -79,17 +79,17 @@ async function findChild(
 /* ------------------------------ attendance.set ----------------------------- */
 
 const attendanceSet: ToolSpec = {
-  name: 'attendance.set',
+  name: 'attendance_set',
   tier: 'low',
   description:
     'Check a child in, check them out, or mark them absent. Resolve the child ' +
-    'with roster.list or family.get first. This does not take effect on its own: ' +
+    'with roster_list or family_get first. This does not take effect on its own: ' +
     'it shows the owner what would change and waits for her tap. Checking out a ' +
     'child who was never checked in is not possible — say so rather than ' +
     'checking them in first.',
   parameters: schema(
     {
-      childId: { type: 'string', description: 'From roster.list or attendance.today' },
+      childId: { type: 'string', description: 'From roster_list or attendance_today' },
       action: {
         type: 'string',
         enum: ATTENDANCE_ACTIONS,
@@ -195,10 +195,10 @@ const attendanceSet: ToolSpec = {
 const LOG_FIELDS = ['meals', 'naps', 'potty', 'mood', 'notes'] as const
 
 const dailyLogWrite: ToolSpec = {
-  name: 'dailyLog.write',
+  name: 'dailyLog_write',
   tier: 'low',
   description:
-    "Write or update a child's daily log. Read dailyLog.list for that child and " +
+    "Write or update a child's daily log. Read dailyLog_list for that child and " +
     'day first — if a log already exists, this updates it, and anything you leave ' +
     'out keeps its current value. Fill in only what the owner actually told you or ' +
     'what the records show: never invent a meal, a nap, a mood or an activity. ' +

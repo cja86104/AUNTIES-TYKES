@@ -224,7 +224,7 @@ async function childLabels(ctx: ToolContext): Promise<Map<string, string>> {
 }
 
 const familyFind: ToolSpec = {
-  name: 'family.find',
+  name: 'family_find',
   tier: 'read',
   description:
     'Find enrolled families by name. Searches the family name and the primary ' +
@@ -266,11 +266,11 @@ const familyFind: ToolSpec = {
 }
 
 const familyGet: ToolSpec = {
-  name: 'family.get',
+  name: 'family_get',
   tier: 'read',
   description:
     'Everything on one family: their children, their invoices and their message ' +
-    'threads. Takes a family id from family.find or roster.list. Returns ' +
+    'threads. Takes a family id from family_find or roster_list. Returns ' +
     '{ found: false } when no family has that id.',
   parameters: schema({ familyId: { type: 'string' } }, ['familyId']),
   execute: async (args, ctx): Promise<ToolOutcome> => {
@@ -339,7 +339,7 @@ const familyGet: ToolSpec = {
 }
 
 const rosterList: ToolSpec = {
-  name: 'roster.list',
+  name: 'roster_list',
   tier: 'read',
   description:
     'The children on the roster, with the family each belongs to. Use this for ' +
@@ -377,7 +377,7 @@ const rosterList: ToolSpec = {
 }
 
 const attendanceToday: ToolSpec = {
-  name: 'attendance.today',
+  name: 'attendance_today',
   tier: 'read',
   description:
     "Today's attendance sheet: who is checked in, checked out, absent or still " +
@@ -441,7 +441,7 @@ const attendanceToday: ToolSpec = {
 }
 
 const attendanceHistory: ToolSpec = {
-  name: 'attendance.history',
+  name: 'attendance_history',
   tier: 'read',
   description:
     "One child's recent attendance, most recent first. Use for questions about a " +
@@ -481,7 +481,7 @@ const attendanceHistory: ToolSpec = {
 }
 
 const dailyLogList: ToolSpec = {
-  name: 'dailyLog.list',
+  name: 'dailyLog_list',
   tier: 'read',
   description:
     'Daily logs, by date or by child. Use to check whether a log was written, or ' +
@@ -527,7 +527,7 @@ const dailyLogList: ToolSpec = {
 }
 
 const invoiceList: ToolSpec = {
-  name: 'invoice.list',
+  name: 'invoice_list',
   tier: 'read',
   description:
     'Invoices with their real balances and status. Status is computed from ' +
@@ -582,7 +582,7 @@ const invoiceList: ToolSpec = {
 }
 
 const invoiceGet: ToolSpec = {
-  name: 'invoice.get',
+  name: 'invoice_get',
   tier: 'read',
   description:
     'One invoice in full: its line items and the payments recorded against it. ' +
@@ -620,7 +620,7 @@ const invoiceGet: ToolSpec = {
 }
 
 const threadList: ToolSpec = {
-  name: 'thread.list',
+  name: 'thread_list',
   tier: 'read',
   description:
     'Message threads, most recently active first. Read waitingOn literally: ' +
@@ -677,7 +677,7 @@ const threadList: ToolSpec = {
 }
 
 const threadGet: ToolSpec = {
-  name: 'thread.get',
+  name: 'thread_get',
   tier: 'read',
   description:
     'The messages in one thread, oldest first — so the LAST entry is the most ' +
@@ -735,7 +735,7 @@ const threadGet: ToolSpec = {
 }
 
 const documentList: ToolSpec = {
-  name: 'document.list',
+  name: 'document_list',
   tier: 'read',
   description:
     'Documents shared with families, and how many families have acknowledged ' +
@@ -781,7 +781,7 @@ const documentList: ToolSpec = {
 }
 
 const enrollmentList: ToolSpec = {
-  name: 'enrollment.list',
+  name: 'enrollment_list',
   tier: 'read',
   description:
     'Enrollment submissions from the public form. Defaults to the pending ones, ' +
@@ -825,12 +825,12 @@ const enrollmentList: ToolSpec = {
 }
 
 const calendarUpcoming: ToolSpec = {
-  name: 'calendar.upcoming',
+  name: 'calendar_upcoming',
   tier: 'read',
   description:
     'Closures, early closes, activities and reminders the owner has put on the ' +
     'calendar, including anything still running. Birthdays are not on the ' +
-    "calendar — work those out from each child's dob on roster.list.",
+    "calendar — work those out from each child's dob on roster_list.",
   parameters: schema({
     days: { type: 'integer', description: 'How far ahead, 1-120. Default 14' },
   }),
@@ -869,7 +869,7 @@ const calendarUpcoming: ToolSpec = {
 }
 
 const settingsGet: ToolSpec = {
-  name: 'settings.get',
+  name: 'settings_get',
   tier: 'read',
   description:
     'The business settings: contact details, hours, capacity, ratios, the rate ' +

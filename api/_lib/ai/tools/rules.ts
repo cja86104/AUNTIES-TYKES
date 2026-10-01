@@ -77,7 +77,7 @@ async function resolveFamily(
 /* --------------------------------- rule.list -------------------------------- */
 
 const ruleList: ToolSpec = {
-  name: 'rule.list',
+  name: 'rule_list',
   tier: 'read',
   description:
     'List the standing instructions the owner has given you — who not to contact, ' +
@@ -195,7 +195,7 @@ function rulePreview(id: string, rule: PendingRule): ActionPreview {
 }
 
 const ruleSave: ToolSpec = {
-  name: 'rule.save',
+  name: 'rule_save',
   tier: 'medium',
   description:
     'Save a standing instruction she has just given you, so it survives this ' +
@@ -205,7 +205,7 @@ const ruleSave: ToolSpec = {
     'drill". This does not save immediately: it shows her the rule and waits for ' +
     'her tap. Pass her own words in `said` and your plain-English reading in ' +
     '`summary`. Set blocksSends true only when the rule must actually stop messages ' +
-    'going out, and resolve a family with family.find first if the rule is about one.',
+    'going out, and resolve a family with family_find first if the rule is about one.',
   parameters: schema(
     {
       said: { type: 'string', description: 'Her sentence, as close to verbatim as you have it' },
@@ -221,7 +221,7 @@ const ruleSave: ToolSpec = {
           'payment_expectation = when or how a family pays; reminder = something to ' +
           'raise later; manual = anything else',
       },
-      familyId: { type: 'string', description: 'From family.find. Omit if the rule is about everyone' },
+      familyId: { type: 'string', description: 'From family_find. Omit if the rule is about everyone' },
       channel: {
         type: 'string',
         enum: RULE_CHANNELS,
@@ -282,16 +282,16 @@ const ruleSave: ToolSpec = {
 /* -------------------------------- rule.retire ------------------------------- */
 
 const ruleRetire: ToolSpec = {
-  name: 'rule.retire',
+  name: 'rule_retire',
   tier: 'medium',
   description:
     'Turn off a standing instruction she no longer wants — "you can message the ' +
     'Brooks family again", "forget the thing about the Chens paying late". Every ' +
     'rule you were given at the start of this conversation carries its own id; use ' +
-    'that, or call rule.list if you need the full set. This does not take effect ' +
+    'that, or call rule_list if you need the full set. This does not take effect ' +
     'immediately: it shows her which rule would be turned off and waits for her ' +
     'tap. The rule is kept on record afterwards, not deleted.',
-  parameters: schema({ ruleId: { type: 'string', description: 'From rule.list' } }, ['ruleId']),
+  parameters: schema({ ruleId: { type: 'string', description: 'From rule_list' } }, ['ruleId']),
   execute: async (args, ctx): Promise<ToolOutcome> => {
     const ruleId = readString(args, 'ruleId')
     if (ruleId === null) return { ok: false, error: 'A ruleId is required' }
@@ -343,7 +343,7 @@ const ruleRetire: ToolSpec = {
 /* ------------------------------- commitments -------------------------------- */
 
 const commitmentNote: ToolSpec = {
-  name: 'commitment.note',
+  name: 'commitment_note',
   tier: 'low',
   description:
     "Write down something YOU said you would do, so you can raise it in a later " +
@@ -351,12 +351,12 @@ const commitmentNote: ToolSpec = {
     'on something — "I\'ll flag it if the Chens haven\'t paid by Friday". This is your ' +
     'own note, not a task for her, and it saves straight away without needing her ' +
     'approval. Do not use it for things SHE has to do, and do not use it for standing ' +
-    'instructions she gave you — those are rule.save.',
+    'instructions she gave you — those are rule_save.',
   parameters: schema(
     {
       said: { type: 'string', description: 'What you told her you would do, in your own words' },
       dueOn: { type: 'string', description: 'yyyy-MM-dd you said you would come back to it. Omit if none' },
-      familyId: { type: 'string', description: 'From family.find, when it is about one family' },
+      familyId: { type: 'string', description: 'From family_find, when it is about one family' },
     },
     ['said'],
   ),
@@ -406,7 +406,7 @@ const commitmentNote: ToolSpec = {
 }
 
 const commitmentClose: ToolSpec = {
-  name: 'commitment.close',
+  name: 'commitment_close',
   tier: 'low',
   description:
     'Close out one of your own follow-ups, once it is handled or no longer ' +

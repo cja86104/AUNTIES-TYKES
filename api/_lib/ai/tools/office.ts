@@ -79,16 +79,16 @@ async function offer(
 /* ----------------------------- calendar.mutate ----------------------------- */
 
 const calendarMutate: ToolSpec = {
-  name: 'calendar.mutate',
+  name: 'calendar_mutate',
   tier: 'low',
   description:
     'Put a closure, early close, activity or reminder on the family calendar, or ' +
-    'change one that is already there. Call calendar.upcoming first to see what ' +
+    'change one that is already there. Call calendar_upcoming first to see what ' +
     'exists and to get an id for a change. This cannot remove an event — say so if ' +
     'she asks, and point her at the calendar page. Nothing happens until she taps.',
   parameters: schema(
     {
-      eventId: { type: 'string', description: 'From calendar.upcoming. Omit to add a new event' },
+      eventId: { type: 'string', description: 'From calendar_upcoming. Omit to add a new event' },
       kind: { type: 'string', enum: CALENDAR_KINDS },
       title: { type: 'string' },
       note: { type: 'string' },
@@ -171,7 +171,7 @@ const calendarMutate: ToolSpec = {
 /* ------------------------------- lead.mutate ------------------------------- */
 
 const leadMutate: ToolSpec = {
-  name: 'lead.mutate',
+  name: 'lead_mutate',
   tier: 'low',
   description:
     'Record a new enquiry from a prospective family, or update one — a tour date, ' +
@@ -244,15 +244,15 @@ const leadMutate: ToolSpec = {
 /* ----------------------------- document.manage ---------------------------- */
 
 const documentManage: ToolSpec = {
-  name: 'document.manage',
+  name: 'document_manage',
   tier: 'low',
   description:
-    'Show a document to parents, or hide it from them. Call document.list first ' +
+    'Show a document to parents, or hide it from them. Call document_list first ' +
     'for the id. You cannot upload a document — that needs a file, which you do ' +
     'not have — and you cannot delete one. Nothing happens until the owner taps.',
   parameters: schema(
     {
-      documentId: { type: 'string', description: 'From document.list' },
+      documentId: { type: 'string', description: 'From document_list' },
       visibleToParents: { type: 'boolean', description: 'true shows it to parents, false hides it' },
     },
     ['documentId', 'visibleToParents'],

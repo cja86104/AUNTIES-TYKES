@@ -30,7 +30,7 @@ function readBody(args: Record<string, unknown>, key: string, limit: number): st
 }
 
 const dailyLogDraft: ToolSpec = {
-  name: 'dailyLog.draft',
+  name: 'dailyLog_draft',
   tier: 'draft',
   description:
     "Prepare the wording of a daily-log note for one child from that child's own " +

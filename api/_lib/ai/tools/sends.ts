@@ -63,22 +63,22 @@ const DELIVERY_NOTE = 'Posts to their parent portal. No email goes out — this 
 /* ------------------------------- message.send ------------------------------ */
 
 const messageSend: ToolSpec = {
-  name: 'message.send',
+  name: 'message_send',
   tier: 'send',
   description:
     'Write a message to one family and put it in front of the owner to send. ' +
     'This is what you use whenever she wants a family contacted — it does NOT ' +
     'send on its own: she sees the wording and taps once, and then it is in their ' +
-    'portal. Resolve the family with family.find first. Pass threadId to reply ' +
+    'portal. Resolve the family with family_find first. Pass threadId to reply ' +
     'inside an existing conversation, or omit it and give a subject to start a ' +
     'new one. Write only what the records actually say: never state something ' +
     "about a child that isn't in a daily log, an attendance record or an invoice.",
   parameters: schema(
     {
-      familyId: { type: 'string', description: 'From family.find or roster.list' },
+      familyId: { type: 'string', description: 'From family_find or roster_list' },
       body: { type: 'string', description: "The message, in the owner's voice" },
       subject: { type: 'string', description: 'Required when starting a new conversation' },
-      threadId: { type: 'string', description: 'From thread.list, to reply in an existing one' },
+      threadId: { type: 'string', description: 'From thread_list, to reply in an existing one' },
     },
     ['familyId', 'body'],
   ),
@@ -181,7 +181,7 @@ const messageSend: ToolSpec = {
 /* ---------------------------- announcement.send ---------------------------- */
 
 const announcementSend: ToolSpec = {
-  name: 'announcement.send',
+  name: 'announcement_send',
   tier: 'send',
   description:
     'Write an announcement and put it in front of the owner to post — to every ' +
