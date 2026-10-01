@@ -304,6 +304,8 @@ export async function confirmRoAction(
  *    preference.
  *  - Playback starts from a tap. §11 wants a tap-to-listen control per reply and
  *    no autoplay, which is also the user-gesture rule every browser enforces.
+ *    Generating the audio is not playback, so that starts as soon as a reply
+ *    arrives — see `speechFor`.
  */
 
 /** What `MediaRecorder` produced, mapped to the formats the server accepts. */
@@ -393,17 +395,24 @@ export async function transcribeRecording(blob: Blob): Promise<string> {
   return text.trim()
 }
 
+/** A reply rendered as audio, ready to hand to an `<audio>` element. */
+export interface RoSpeech {
+  /** Object URL for the audio blob. Owned by the cache below — never revoke it. */
+  url: string
+  /**
+   * Set when the reply was too long to speak in full and only the first part was
+   * read. The panel tells her, because audio that stops early with no
+   * explanation reads as a bug.
+   */
+  trimmed: boolean
+}
+
 /**
  * Fetches Ro's reply as audio and returns an object URL to play.
  *
- * The caller owns the URL and must `URL.revokeObjectURL` it when the element is
- * done, or a long session leaks a blob per reply played.
- *
- * `trimmed` is set when the reply was too long to speak in full and only the
- * first part was read. The panel tells her, because audio that stops early with
- * no explanation reads as a bug.
+ * Internal: go through `speechFor`, which owns the URL's lifetime.
  */
-export async function fetchSpeech(text: string): Promise<{ url: string; trimmed: boolean }> {
+async function fetchSpeech(text: string): Promise<RoSpeech> {
   let response: Response
   try {
     response = await fetch('/api/ai/speak', {
@@ -424,4 +433,67 @@ export async function fetchSpeech(text: string): Promise<{ url: string; trimmed:
   const blob = await response.blob()
   if (blob.size === 0) throw new RoError('The audio came back empty.')
   return { url: URL.createObjectURL(blob), trimmed: response.headers.get('X-Ro-Trimmed') === '1' }
+}
+
+/**
+ * Replies whose audio has been generated or is being generated, keyed by message
+ * id, least recently used first.
+ *
+ * Why this exists: generating speech is the slow part of Listen — the server
+ * waits for the whole clip before it answers, and a phone then downloads all of
+ * it before playing. Started only on the tap, all of that was dead air. The panel
+ * now calls `speechFor` the moment a reply arrives, so by the time she taps
+ * Listen the audio is usually already here. Playback itself still starts only
+ * from her tap (§11); only the generation moved earlier.
+ *
+ * Module scope rather than component state on purpose: `App.tsx` remounts the
+ * panel on every navigation (see roSession.ts), and a cache inside the component
+ * would be thrown away — and the same reply paid for again — every time she
+ * changed page. A reload ends the conversation, and this with it.
+ */
+const speechCache = new Map<string, Promise<RoSpeech>>()
+
+/**
+ * How many clips are kept. Each is uncompressed WAV — about 48 KB per second of
+ * speech, so up to ~4 MB for the longest reply the server will read — which on a
+ * phone is worth bounding. Enough for the newest reply plus a few to replay.
+ */
+const SPEECH_CACHE_LIMIT = 4
+
+/**
+ * The audio for one reply, generating it if this is the first ask.
+ *
+ * Safe to call for a reply that is already in flight or done: both callers (the
+ * prefetch when a reply lands, and the Listen tap) share one request. A failure
+ * is dropped from the cache rather than kept, so the next tap tries again
+ * instead of replaying the error.
+ */
+export function speechFor(messageId: string, text: string): Promise<RoSpeech> {
+  const cached = speechCache.get(messageId)
+  if (cached !== undefined) {
+    // Re-inserted to mark it most recently used, so the clip she just tapped is
+    // the last one to be evicted.
+    speechCache.delete(messageId)
+    speechCache.set(messageId, cached)
+    return cached
+  }
+
+  const pending = fetchSpeech(text)
+  speechCache.set(messageId, pending)
+  void pending.catch(() => {
+    if (speechCache.get(messageId) === pending) speechCache.delete(messageId)
+  })
+
+  while (speechCache.size > SPEECH_CACHE_LIMIT) {
+    const oldest = speechCache.keys().next()
+    if (oldest.done === true) break
+    const evicted = speechCache.get(oldest.value)
+    speechCache.delete(oldest.value)
+    // Revoked once it settles — an in-flight clip has no URL yet to release.
+    void evicted?.then(
+      (speech) => URL.revokeObjectURL(speech.url),
+      () => undefined,
+    )
+  }
+  return pending
 }
