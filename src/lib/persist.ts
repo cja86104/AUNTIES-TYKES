@@ -308,7 +308,25 @@ export const persist = {
 
   deleteDailyLog: (id: string) => run(supabase.from('daily_logs').delete().eq('id', id).select()),
 
-  invoice: (invoice: Invoice) => run(supabase.from('invoices').upsert(fromInvoice(invoice)).select()),
+  /**
+   * The next invoice number, from the database's own counter (migration 0015).
+   *
+   * The browser must not work this out for itself. It used to — first by
+   * counting invoices, which handed out a number already in use as soon as one
+   * was deleted — and anything derived from the invoices that currently exist
+   * reuses a number once the newest is deleted. The sequence behind this never
+   * returns the same number twice. Owner only; the database refuses anyone else.
+   */
+  nextInvoiceId: () => run(supabase.rpc('next_invoice_id')),
+
+  /**
+   * A NEW invoice, and an insert on purpose — never an upsert. The id is a
+   * human-facing number, so if one already in use ever arrives here the database
+   * must refuse it. An upsert accepted it and replaced the existing invoice,
+   * silently, which is how invoices were lost. Nothing edits an invoice after it
+   * is issued, so there is no update path.
+   */
+  invoice: (invoice: Invoice) => run(supabase.from('invoices').insert(fromInvoice(invoice)).select()),
 
   deleteInvoice: (id: string) => run(supabase.from('invoices').delete().eq('id', id).select()),
 

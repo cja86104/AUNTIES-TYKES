@@ -375,6 +375,8 @@ export type Database = {
     Functions: {
       is_admin: { Args: Record<string, never>; Returns: boolean }
       current_family_id: { Args: Record<string, never>; Returns: string }
+      /** Migration 0015. Owner only; issues the next `INV-n`, never reused. */
+      next_invoice_id: { Args: Record<string, never>; Returns: string }
     }
     Enums: {
       user_role: UserRoleDb

@@ -53,6 +53,8 @@ export default function AdminInvoices() {
   const [memo, setMemo] = useState('')
   const [lines, setLines] = useState<DraftLine[]>([blankLine()])
   const [errors, setErrors] = useState<InvoiceErrors>({})
+  /** True while the invoice number is being fetched, so a second tap cannot issue two. */
+  const [saving, setSaving] = useState(false)
 
   const familyName = (id: string) => families.find((f) => f.id === id)?.name ?? 'Unknown family'
 
@@ -152,7 +154,8 @@ export default function AdminInvoices() {
     pushToast({ title: 'Lines prefilled', description: `${kids.length} enrolled ${kids.length === 1 ? 'child' : 'children'} added from the rate card.` })
   }
 
-  const submit = () => {
+  const submit = async () => {
+    if (saving) return
     const next: InvoiceErrors = {}
     if (!familyId) next.familyId = 'Choose a family'
     if (!dueDate) next.dueDate = 'Set a due date'
@@ -170,7 +173,8 @@ export default function AdminInvoices() {
     const amount = lineItems.reduce((s, l) => s + l.amount, 0)
     const shortName = familyName(familyId).replace(/\s*Family$/, '')
 
-    createInvoice({
+    setSaving(true)
+    const id = await createInvoice({
       familyId,
       period: `${fmtDate(todayISO(), 'MMMM yyyy')} · ${shortName}`,
       dueDate,
@@ -178,8 +182,13 @@ export default function AdminInvoices() {
       lineItems,
       memo: memo.trim(),
     })
+    setSaving(false)
+    // Null means no number could be issued; the store has already said why. The
+    // form stays open with everything she typed so she can try again.
+    if (id === null) return
+
     setOpen(false)
-    pushToast({ title: 'Invoice created', description: `${money(amount)} billed to ${familyName(familyId)}.` })
+    pushToast({ title: 'Invoice created', description: `${id} — ${money(amount)} billed to ${familyName(familyId)}.` })
   }
 
   return (
@@ -307,7 +316,9 @@ export default function AdminInvoices() {
             <Button variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={submit}>Create invoice · {money(draftTotal)}</Button>
+            <Button onClick={() => void submit()} disabled={saving}>
+              {saving ? 'Creating…' : `Create invoice · ${money(draftTotal)}`}
+            </Button>
           </>
         }
       >

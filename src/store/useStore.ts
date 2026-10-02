@@ -132,7 +132,12 @@ export interface StoreState extends DataSlice {
   updateDailyLog: (id: string, patch: Partial<DailyLog>) => void
   deleteDailyLog: (id: string) => void
 
-  createInvoice: (invoice: NewInvoice) => void
+  /**
+   * Issues an invoice. Resolves to its number, or null if it could not be
+   * created — in which case an error toast has already been raised and nothing
+   * was added. Asynchronous because the number comes from the database first.
+   */
+  createInvoice: (invoice: NewInvoice) => Promise<string | null>
   recordPayment: (invoiceId: string, payment: NewPayment) => void
   deleteInvoice: (id: string) => void
 
@@ -453,21 +458,37 @@ export const useStore = create<StoreState>()((set, get) => {
       ),
 
     /* ------------------------------- invoices ----------------------------- */
-    createInvoice: (invoice) =>
-      commit((s) => {
-        const nextNum = 1045 + s.invoices.filter((i) => i.id.startsWith('INV-')).length
-        return {
-          invoices: [
-            { issuedAt: todayISO(), ...invoice, id: `INV-${nextNum}`, payments: [] },
-            ...s.invoices,
-          ],
-        }
-      },
-      (s) => {
-        const created = s.invoices[0]
-        return created ? persist.invoice(created) : Promise.resolve()
-      },
-      ),
+    createInvoice: async (invoice) => {
+      // The number first, from the database counter, and only then the invoice.
+      // No fallback to a locally worked-out number: a guess that collides or
+      // gets reused is the bug this replaces, so a failure here stops the
+      // invoice rather than inventing an id for it.
+      let id: string
+      try {
+        id = await persist.nextInvoiceId()
+      } catch (error) {
+        get().pushToast({
+          tone: 'error',
+          title: 'That invoice was not created',
+          description:
+            error instanceof Error
+              ? `Could not get an invoice number: ${error.message}`
+              : 'Could not get an invoice number. Check your connection and try again.',
+        })
+        return null
+      }
+
+      commit(
+        (s) => ({
+          invoices: [{ issuedAt: todayISO(), ...invoice, id, payments: [] }, ...s.invoices],
+        }),
+        (s) => {
+          const created = s.invoices.find((i) => i.id === id)
+          return created ? persist.invoice(created) : Promise.resolve()
+        },
+      )
+      return id
+    },
     recordPayment: (invoiceId, payment) =>
       commit(
         (s) => ({
