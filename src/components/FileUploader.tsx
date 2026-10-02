@@ -25,6 +25,14 @@ export interface FileUploaderProps {
   onUploaded?: (meta: UploadedFileMeta) => void
   /** Called once per file that could not be stored, with a sentence to show. */
   onError?: (message: string) => void
+  /**
+   * Called with true when the first upload starts and false when the last one
+   * settles. For a form that holds the file until it is submitted: without this
+   * it cannot tell "no attachment" from "attachment still on its way", and a
+   * phone photo — several MB over a mobile connection — is on its way for a
+   * while. Submitting in that gap saved the form without the file.
+   */
+  onBusyChange?: (uploading: boolean) => void
   accept?: string
   label?: string
 }
@@ -41,12 +49,15 @@ export default function FileUploader({
   prefix,
   onUploaded,
   onError,
+  onBusyChange,
   accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp,.heic',
   label = 'Drop files here or browse',
 }: FileUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [queue, setQueue] = useState<QueueItem[]>([])
+  /** Uploads in flight. A ref, not state: it is read in promise callbacks. */
+  const inFlight = useRef(0)
 
   const fail = useCallback(
     (id: string, message: string) => {
@@ -72,8 +83,22 @@ export default function FileUploader({
         }
 
         const storagePath = buildStoragePath(prefix, file.name)
+        inFlight.current += 1
+        if (inFlight.current === 1) onBusyChange?.(true)
+        // Settled before onUploaded/fail is called, so a parent that swaps this
+        // component out on success has already been told nothing is pending.
+        // Once only per file: if the success handler below ever threw, the
+        // catch would run for the same upload and count it twice.
+        let settled = false
+        const settle = () => {
+          if (settled) return
+          settled = true
+          inFlight.current -= 1
+          if (inFlight.current === 0) onBusyChange?.(false)
+        }
         void uploadDocument(file, storagePath)
           .then(() => {
+            settle()
             setQueue((q) => q.map((i) => (i.id === id ? { ...i, state: 'done' } : i)))
             onUploaded?.({
               title: file.name.replace(/\.[^.]+$/, ''),
@@ -84,6 +109,7 @@ export default function FileUploader({
             setTimeout(() => setQueue((q) => q.filter((i) => i.id !== id)), 2600)
           })
           .catch((error: unknown) => {
+            settle()
             fail(
               id,
               error instanceof Error
@@ -93,7 +119,7 @@ export default function FileUploader({
           })
       })
     },
-    [prefix, onUploaded, fail],
+    [prefix, onUploaded, onBusyChange, fail],
   )
 
   return (

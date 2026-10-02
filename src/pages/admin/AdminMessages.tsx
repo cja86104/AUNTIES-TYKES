@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import { Megaphone, MessageSquare, Paperclip, Plus, Send, Users, Inbox, ArrowLeft, X } from 'lucide-react'
@@ -53,6 +53,21 @@ export default function AdminMessages() {
   const [audience, setAudience] = useState('all')
   const [errors, setErrors] = useState<AnnouncementErrors>({})
   const [attachment, setAttachment] = useState<UploadedFileMeta | null>(null)
+  /** True while the attachment is still uploading, so Post cannot go without it. */
+  const [uploading, setUploading] = useState(false)
+  /**
+   * Which announcement draft is on screen. Bumped every time the form is posted
+   * or cancelled.
+   *
+   * An upload outlives the form that started it: a phone photo can still be on
+   * its way when she posts or cancels. `draftId` is the id the form was rendered
+   * with — and so the one an upload started from it remembers — and `liveDraft`
+   * is the id right now. When they differ, the file belongs to a draft that is
+   * gone, and it is deleted rather than quietly becoming the attachment on
+   * whatever she writes next.
+   */
+  const [draftId, setDraftId] = useState(0)
+  const liveDraft = useRef(0)
 
   const [activeThreadId, setActiveThreadId] = useState<string | null>(threads[0]?.id ?? null)
   /**
@@ -90,10 +105,33 @@ export default function AdminMessages() {
     })
   }
 
+  /** Clears the form and retires its draft id, so nothing in flight can land on the next one. */
+  const resetAnnouncementForm = () => {
+    liveDraft.current += 1
+    setDraftId(liveDraft.current)
+    setOpen(false)
+    setTitle('')
+    setBody('')
+    setAudience('all')
+    setAttachment(null)
+    setUploading(false)
+    setErrors({})
+  }
+
   const onAttachmentUploaded = (meta: UploadedFileMeta) => {
+    // Finished after its draft was posted or cancelled — not this form's file.
+    if (draftId !== liveDraft.current) {
+      discardStagedAttachment(meta)
+      return
+    }
     // Only one file per announcement — replacing a choice drops the one before it.
     discardStagedAttachment(attachment)
     setAttachment(meta)
+  }
+
+  const onAttachmentBusy = (busy: boolean) => {
+    // A stale uploader reporting in must not unlock or lock the current form.
+    if (draftId === liveDraft.current) setUploading(busy)
   }
 
   const onAttachmentError = (message: string) => {
@@ -107,15 +145,14 @@ export default function AdminMessages() {
 
   const closeAnnouncementModal = () => {
     discardStagedAttachment(attachment)
-    setOpen(false)
-    setTitle('')
-    setBody('')
-    setAudience('all')
-    setAttachment(null)
-    setErrors({})
+    resetAnnouncementForm()
   }
 
   const publish = () => {
+    // The button is disabled while a file uploads; this is the same rule for
+    // any path that reaches here without it. Posting now would save the
+    // announcement with no attachment and leave the photo behind.
+    if (uploading) return
     const next: AnnouncementErrors = {}
     if (!title.trim()) next.title = 'Give the announcement a title'
     if (body.trim().length < 10) next.body = 'Write at least a sentence'
@@ -130,12 +167,7 @@ export default function AdminMessages() {
       attachmentSize: attachment?.size,
       attachmentStoragePath: attachment?.storagePath,
     })
-    setOpen(false)
-    setTitle('')
-    setBody('')
-    setAudience('all')
-    setAttachment(null)
-    setErrors({})
+    resetAnnouncementForm()
     pushToast({
       title: 'Announcement posted',
       description: audience === 'all' ? 'Every family can see it now.' : `Sent to ${familyName(audience)}.`,
@@ -463,8 +495,8 @@ export default function AdminMessages() {
             <Button variant="ghost" onClick={closeAnnouncementModal}>
               Cancel
             </Button>
-            <Button onClick={publish}>
-              <Megaphone size={16} /> Post announcement
+            <Button onClick={publish} disabled={uploading}>
+              <Megaphone size={16} /> {uploading ? 'Waiting for the upload…' : 'Post announcement'}
             </Button>
           </>
         }
@@ -517,10 +549,14 @@ export default function AdminMessages() {
               </div>
             ) : (
               <FileUploader
+                // Keyed to the draft so a new announcement starts with an empty
+                // uploader instead of the last one's queue.
+                key={draftId}
                 prefix="admin"
                 label="Attach a flyer, form, or order sheet"
                 onUploaded={onAttachmentUploaded}
                 onError={onAttachmentError}
+                onBusyChange={onAttachmentBusy}
               />
             )}
           </Field>
