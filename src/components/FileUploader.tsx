@@ -135,7 +135,22 @@ export default function FileUploader({
           setDragging(false)
           handleFiles(e.dataTransfer.files)
         }}
-        onClick={() => inputRef.current?.click()}
+        onClick={(e) => {
+          // The input sits inside this box, so its own click bubbles back up to
+          // here. That one must be left alone: it is the click that opens the
+          // picker, and cancelling or repeating it would break or double it.
+          if (e.target === inputRef.current) return
+          // When this component is placed inside a <label> — as <Field> in
+          // ui.tsx does — the browser forwards every tap in the label to the
+          // input as well. Together with the click() below that asked for the
+          // file picker twice from one tap. Desktop browsers shrug that off;
+          // iOS Safari took the photo and then handed it to nobody, so the
+          // camera option looked like it worked and attached nothing.
+          // preventDefault cancels the label's forwarded tap, leaving exactly
+          // one request for the picker wherever this is rendered.
+          e.preventDefault()
+          inputRef.current?.click()
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click()
         }}
