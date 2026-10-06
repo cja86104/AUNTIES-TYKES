@@ -29,6 +29,7 @@ import { readPendingRule } from './tools/rules.js'
 import { readAmount, readInvoiceBalance, readMethod, toCents } from './tools/billing.js'
 import { DEFAULT_TEACHER, exactPattern, pickHue, readPendingFamily } from './tools/families.js'
 import { emailInUse, LOGIN_SECRET, readPendingLogin } from './tools/accounts.js'
+import { familyWithEmail, readEnrollmentSnapshot } from './tools/enrollments.js'
 import { createParentAccount } from '../parentLogin.js'
 import { money } from './projection.js'
 import { readInt, readString, type ToolContext } from './tools/kit.js'
@@ -820,6 +821,171 @@ const createParentLoginExecutor: Executor = {
   },
 }
 
+/**
+ * Approves or declines one enrollment form, mirroring `approveEnrollment` /
+ * `declineEnrollment` in useStore.ts.
+ *
+ * The order is the safety property, and it differs from the console's on purpose:
+ *
+ *  1. For an approval, the email is checked against existing families first —
+ *     before anything is changed, so a clash costs nothing to back out of.
+ *  2. The form is claimed: `pending` -> the decision, in one conditional update.
+ *     Nothing matched means someone already decided it — in the console, or by a
+ *     second tap — and nothing further runs. This is what stops one form
+ *     becoming two families.
+ *  3. Only then are the family and children written. If either fails, the
+ *     family is removed (which cascades to any child rows that landed) and the
+ *     form is put back to pending, so a failure never leaves a family on file
+ *     for a form that still says it is waiting, or the reverse.
+ *  4. The form is linked to the family it created.
+ *
+ * No undo: taking back an approval means deleting a family, and nothing in Ro
+ * deletes (§3). A declined form stays declined, as it does in the console.
+ */
+const decideEnrollmentExecutor: Executor = {
+  tool: 'enrollment.decide',
+  run: async (ctx, proposal) => {
+    const enrollmentId = readString(proposal.arguments, 'enrollmentId')
+    const decision = readString(proposal.arguments, 'decision')
+    if (enrollmentId === null || (decision !== 'approve' && decision !== 'decline')) {
+      return { ok: false, error: 'That action is missing the form or the decision' }
+    }
+    const label = proposal.familyLabel.length > 0 ? proposal.familyLabel : 'That family'
+    const stamp = new Date().toISOString()
+
+    /** pending -> decided, or false when it was no longer pending. */
+    const claim = async (status: 'approved' | 'declined'): Promise<boolean | string> => {
+      const claimed = await ctx.caller.db
+        .from('enrollments')
+        .update({ status, reviewed_at: stamp })
+        .eq('id', enrollmentId)
+        .eq('status', 'pending')
+        .select('id')
+      if (claimed.error !== null) return `Could not update that form: ${claimed.error.message}`
+      return claimed.data.length > 0
+    }
+    const alreadyDecided = async (): Promise<string> => {
+      const current = await ctx.caller.db.from('enrollments').select('status').eq('id', enrollmentId).maybeSingle()
+      if (current.error !== null || current.data === null) return 'That form no longer exists. Nothing was changed.'
+      return `That form was already ${current.data.status}. Nothing was changed.`
+    }
+
+    if (decision === 'decline') {
+      const claimed = await claim('declined')
+      if (typeof claimed === 'string') return { ok: false, error: claimed }
+      if (!claimed) return { ok: false, error: await alreadyDecided() }
+      return {
+        ok: true,
+        summary: `Declined the form from ${label}. They have not been told — let them know yourself.`,
+        targets: [enrollmentId],
+      }
+    }
+
+    const snapshot = readEnrollmentSnapshot(proposal.arguments)
+    if (typeof snapshot === 'string') {
+      return { ok: false, error: `That form could not be read back: ${snapshot}. Nothing was changed.` }
+    }
+
+    const clash = await familyWithEmail(ctx, snapshot.email)
+    if (!clash.ok) return { ok: false, error: clash.error }
+    if (clash.value !== null) {
+      return {
+        ok: false,
+        error: `${clash.value.name} already uses ${snapshot.email}, so the form was not approved.`,
+      }
+    }
+
+    const claimed = await claim('approved')
+    if (typeof claimed === 'string') return { ok: false, error: claimed }
+    if (!claimed) return { ok: false, error: await alreadyDecided() }
+
+    /** Step 3's back-out: the form returns to pending, as if never tapped. */
+    const release = async (): Promise<string> => {
+      const released = await ctx.caller.db
+        .from('enrollments')
+        .update({ status: 'pending', reviewed_at: null, created_family_id: null })
+        .eq('id', enrollmentId)
+      return released.error === null
+        ? 'The form is back to waiting on you.'
+        : `The form could not be put back to pending (${released.error.message}) — check Future Arrivals.`
+    }
+
+    const familyId = uid('fam')
+    const created = await ctx.caller.db.from('families').insert({
+      id: familyId,
+      name: snapshot.familyName,
+      primary_contact: snapshot.primaryContact,
+      relation: snapshot.relation,
+      email: snapshot.email,
+      phone: snapshot.phone,
+      address: snapshot.address,
+      secondary: snapshot.secondary,
+      emergency: snapshot.emergency,
+      joined_at: ctx.today,
+      notes: snapshot.notes,
+      custom_weekly_rate: null,
+    })
+    if (created.error !== null) {
+      return { ok: false, error: `Could not add the family: ${created.error.message}. ${await release()}` }
+    }
+
+    const childIds: string[] = []
+    if (snapshot.children.length > 0) {
+      const counted = await ctx.caller.db.from('children').select('id', { count: 'exact', head: true })
+      const offset = counted.error === null ? (counted.count ?? 0) : 0
+      const rows = snapshot.children.map((child, index) => {
+        const id = uid('chd')
+        childIds.push(id)
+        return {
+          id,
+          family_id: familyId,
+          name: child.name,
+          dob: child.dob,
+          age_group: child.ageGroup,
+          status: 'active' as const,
+          plan: child.plan,
+          start_date: child.startDate.length > 0 ? child.startDate : null,
+          teacher: DEFAULT_TEACHER,
+          allergies: child.allergies,
+          medications: child.medications,
+          notes: child.notes,
+          hue: pickHue(offset + index),
+        }
+      })
+      const added = await ctx.caller.db.from('children').insert(rows)
+      if (added.error !== null) {
+        const removed = await ctx.caller.db.from('families').delete().eq('id', familyId)
+        const familyNote =
+          removed.error === null
+            ? 'The family was taken back off the roster.'
+            : `The family itself did save and could not be removed (${removed.error.message}) — check Families.`
+        return {
+          ok: false,
+          error: `Could not add the children: ${added.error.message}. ${familyNote} ${await release()}`,
+        }
+      }
+    }
+
+    // The family exists and the form says approved; only the link between them is
+    // left. A failure here is reported but not rolled back — undoing a complete,
+    // correct enrollment over a missing cross-reference would be the worse outcome.
+    const linked = await ctx.caller.db
+      .from('enrollments')
+      .update({ created_family_id: familyId })
+      .eq('id', enrollmentId)
+    const names = snapshot.children.map((child) => child.name)
+    return {
+      ok: true,
+      summary:
+        `Approved. ${snapshot.familyName} is on the roster` +
+        (names.length > 0 ? ` with ${names.join(' and ')}` : '') +
+        '. They have not been told and have no login yet — ask me to set one up.' +
+        (linked.error === null ? '' : ' (The form could not be linked to the new family; everything else saved.)'),
+      targets: [enrollmentId, familyId, ...childIds],
+    }
+  },
+}
+
 const executors: Executor[] = [
   saveRuleExecutor,
   retireRuleExecutor,
@@ -833,6 +999,7 @@ const executors: Executor[] = [
   recordPaymentExecutor,
   addFamilyExecutor,
   createParentLoginExecutor,
+  decideEnrollmentExecutor,
 ]
 
 const byTool = new Map<string, Executor>(executors.map((executor) => [executor.tool, executor]))

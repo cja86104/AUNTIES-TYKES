@@ -496,6 +496,17 @@ export interface TranscriptionSuccess {
   text: string
   /** Billed audio length, when the provider reports it. */
   seconds: number | null
+  /** How long OpenRouter took to answer the call that succeeded, in ms. */
+  upstreamMs: number
+  /**
+   * The provider slugs this request was pinned to, or empty when it was left to
+   * OpenRouter's own routing. Empty is the case worth seeing in a log: the pin
+   * is an optional environment variable, so a deployment missing it fails
+   * silently onto the cheaper, slower provider.
+   */
+  pinnedTo: string[]
+  /** Which provider OpenRouter says answered, when the response names one. */
+  servedBy: string | null
 }
 
 export interface SpeechSuccess {
@@ -596,7 +607,9 @@ export async function transcribe(
       payload.provider = { only: providerSlugs, allow_fallbacks: false }
     }
 
+    const startedAt = Date.now()
     const result = await postJson(`${BASE_URL}/audio/transcriptions`, config, payload, timeoutMs)
+    const upstreamMs = Date.now() - startedAt
     if (result.status === null) {
       attempts.push({ model, status: null, detail: result.detail })
       continue
@@ -614,7 +627,16 @@ export async function transcribe(
 
     const usage = result.body.usage
     const seconds = isRecord(usage) && typeof usage.seconds === 'number' ? usage.seconds : null
-    return { ok: true, model, text: result.body.text, seconds }
+    const provider = result.body.provider
+    return {
+      ok: true,
+      model,
+      text: result.body.text,
+      seconds,
+      upstreamMs,
+      pinnedTo: providerSlugs ?? [],
+      servedBy: typeof provider === 'string' && provider.length > 0 ? provider : null,
+    }
   }
 
   const last = attempts[attempts.length - 1]

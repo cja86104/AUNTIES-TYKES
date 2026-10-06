@@ -182,6 +182,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return
   }
 
+  // One line per transcription, so a slow one can be explained from the logs:
+  // how long OpenRouter took, how much audio it was given, and whether the
+  // provider pin was actually in force on this deployment. No transcript text —
+  // what she said does not belong in a log.
+  console.log(
+    '[ro] transcribe ok',
+    JSON.stringify({
+      model: result.model,
+      pinnedTo: result.pinnedTo.length > 0 ? result.pinnedTo : 'NOT PINNED',
+      servedBy: result.servedBy,
+      upstreamMs: result.upstreamMs,
+      audioKb: Math.round((payload.audioBase64.length * 3) / 4 / 1024),
+      audioSeconds: result.seconds,
+      format: payload.format,
+    }),
+  )
+
   const text = stripOpeningArtifact(result.text)
   res.status(200).json({ text, model: result.model, seconds: result.seconds })
 }

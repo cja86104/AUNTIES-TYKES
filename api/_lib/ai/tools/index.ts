@@ -23,6 +23,7 @@ import { accountTools } from './accounts.js'
 import { billingTools } from './billing.js'
 import { familyTools } from './families.js'
 import { draftTools } from './drafts.js'
+import { enrollmentTools } from './enrollments.js'
 import { readTools } from './reads.js'
 import { officeTools } from './office.js'
 import { recordTools } from './records.js'
@@ -43,6 +44,7 @@ export const roTools: ToolSpec[] = [
   ...billingTools,
   ...familyTools,
   ...accountTools,
+  ...enrollmentTools,
 ]
 
 const byName = new Map<string, ToolSpec>(roTools.map((tool) => [tool.name, tool]))

@@ -214,7 +214,7 @@ have not been written; the path they plug into has been.
 | `addLead` / `updateLead` | `lead.mutate` | Low | **Built 2026-09-28** |
 | ~~`setWaitlist`~~ | ~~`waitlist.mutate`~~ | — | **Cancelled 2026-09-28 — see below** |
 | `addFamily` / ~~`updateFamily`~~ / `addChild` / ~~`updateChild`~~ | `family.add` | Medium | **Built 2026-10-01** — a new family with its children in one step, gated, no undo; changing an existing family or child still Waiting |
-| `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium | Waiting |
+| `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium | **Built 2026-10-05** — gated, no undo; the form is claimed with a compare-and-swap before the family is written, an email already on file blocks approval, and a failed write rolls back and returns the form to pending |
 | `updateSettings` / `updateRates` / `updatePolicies` | `settings.mutate` | **Money** — *added 2026-09-27* | Waiting |
 | `startThread` / `sendThreadMessage` | `message.send` | **Send** | **Built 2026-09-28** |
 | `addAnnouncement` | `announcement.send` | **Send** | **Built 2026-09-28** |

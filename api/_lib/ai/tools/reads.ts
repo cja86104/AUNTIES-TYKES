@@ -785,7 +785,8 @@ const enrollmentList: ToolSpec = {
   tier: 'read',
   description:
     'Enrollment submissions from the public form. Defaults to the pending ones, ' +
-    'with how long each has been waiting. Approving one is not something you can do.',
+    'with how long each has been waiting. To approve or decline one, use ' +
+    'enrollment_decide — and only once she has said which.',
   parameters: schema({
     status: { type: 'string', enum: ['pending', 'approved', 'declined', 'all'] },
   }),
