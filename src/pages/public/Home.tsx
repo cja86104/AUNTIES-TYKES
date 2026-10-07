@@ -44,9 +44,6 @@ export default function Home() {
               <Button as={Link} to="/login" size="lg" variant="rainbow">
                 <LogIn size={17} /> Parent login
               </Button>
-              <Button as={Link} to="/contact" size="lg" variant="outline">
-                Get in touch
-              </Button>
             </motion.div>
           </div>
 
