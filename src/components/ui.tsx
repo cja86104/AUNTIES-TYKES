@@ -19,6 +19,8 @@ const variants = {
   /** Rainbow-gradient CTA, echoing the classroom rainbow-wall photo. Public landing page only. */
   rainbow:
     'bg-gradient-to-r from-rainbow-red via-rainbow-gold to-rainbow-blue text-white shadow-control hover:brightness-110 hover:-translate-y-0.5',
+  /** Tan, matching the classroom-photo wall tone. Public landing page only. */
+  tan: 'bg-[#DCC5A5] text-ink shadow-control hover:brightness-95 hover:-translate-y-0.5',
 } as const
 
 const sizes = {
