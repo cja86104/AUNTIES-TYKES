@@ -16,6 +16,9 @@ const variants = {
   ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
   danger: 'bg-rose-600 text-white hover:bg-rose-700 hover:-translate-y-0.5',
   dark: 'bg-slate-900 text-white hover:bg-slate-800 hover:-translate-y-0.5',
+  /** Rainbow-gradient CTA, echoing the classroom rainbow-wall photo. Public landing page only. */
+  rainbow:
+    'bg-gradient-to-r from-rainbow-red via-rainbow-gold to-rainbow-blue text-white shadow-control hover:brightness-110 hover:-translate-y-0.5',
 } as const
 
 const sizes = {

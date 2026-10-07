@@ -15,19 +15,24 @@ export default function Home() {
               initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.06 }}
-              className="font-display text-4xl font-black leading-[1.1] tracking-tight text-slate-900 sm:text-5xl"
+              className="font-display text-4xl font-black leading-[1.1] tracking-tight sm:text-5xl"
             >
-              Welcome to your Aunties Tykes portal.
+              <span className="text-rainbow-red rainbow-outline">Welcome</span>{' '}
+              <span className="text-rainbow-orange rainbow-outline">to</span>{' '}
+              <span className="text-rainbow-gold rainbow-outline">your</span>{' '}
+              <span className="text-brand rainbow-outline">Aunties</span>{' '}
+              <span className="text-rainbow-blue rainbow-outline">Tykes</span>{' '}
+              <span className="text-rainbow-purple rainbow-outline">portal.</span>
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.14 }}
-              className="mt-7 max-w-xl text-lg leading-relaxed text-slate-600"
+              className="mt-7 max-w-xl text-lg leading-relaxed text-ink"
             >
-              This is your family's spot to check in any time: daily reports, photos from the day, attendance,
-              invoices, and a way to reach us, all in one place.
+              This is your Family's spot to check in anytime to see the menu, materials list, events, photos
+              and a way to reach me all in one place.
             </motion.p>
 
             <motion.div
@@ -36,7 +41,7 @@ export default function Home() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mt-9 flex flex-wrap items-center gap-5"
             >
-              <Button as={Link} to="/login" size="lg">
+              <Button as={Link} to="/login" size="lg" variant="rainbow">
                 <LogIn size={17} /> Parent login
               </Button>
               <Button as={Link} to="/contact" size="lg" variant="outline">
@@ -55,9 +60,9 @@ export default function Home() {
               <div className="h-[420px] w-full overflow-hidden sm:h-[520px]">
                 <img
                   data-aiwp-slot="1"
-                  src="https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&w=1600&q=80"
-                  alt="Children playing in the Aunties Tykes playroom"
-                  className="h-full w-full object-cover"
+                  src="/hero-rainbow-wall.jpg"
+                  alt="A classroom wall at Aunties Tykes decorated with colorful bubble-letter affirmations -- be kind, honest, thankful, brave, happy, humble, creative, you -- beside a plush rainbow with clouds and a handwritten quote: you're braver than you believe, stronger than you seem, smarter than you think"
+                  className="h-full w-full object-cover object-[50%_32%]"
                 />
               </div>
             </div>
@@ -71,7 +76,7 @@ export default function Home() {
           <div className="mx-auto max-w-5xl text-center">
             <p
               style={{ fontFamily: "'Caveat', cursive" }}
-              className="text-4xl leading-[1.15] text-slate-800 sm:text-5xl lg:text-[3.4rem]"
+              className="text-4xl leading-[1.15] text-ink sm:text-5xl lg:text-[3.4rem]"
             >
               Every family who walks through this door becomes part of mine — that's not a slogan, it's just how I
               do things here.

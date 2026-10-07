@@ -36,6 +36,14 @@ export const colors = {
   ink: '#2b2f3a',
   canvas: '#FCF7EA',
   console: '#1F2537',
+  /** Decorative rainbow accents for the hero headline + wordmark, echoing the classroom rainbow-wall photo. Not for general UI. */
+  rainbow: {
+    red: '#EF4136',
+    orange: '#F97316',
+    gold: '#F2B705',
+    blue: '#2F7DE1',
+    purple: '#A855F7',
+  },
 } as const
 
 export const radius = {

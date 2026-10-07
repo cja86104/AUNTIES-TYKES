@@ -13,7 +13,7 @@ export default function PublicFooter() {
             <img src="/logo-mark.png" alt="Aunties Tykes" className="h-11 w-11 shrink-0 object-contain" />
             <span className="font-display text-xl font-extrabold text-slate-900">Aunties Tykes</span>
           </div>
-          <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-600">{settings.tagline}</p>
+          <p className="mt-5 max-w-md text-sm leading-relaxed text-ink">{settings.tagline}</p>
         </div>
 
         <div>
@@ -25,7 +25,7 @@ export default function PublicFooter() {
               ['/login', 'Parent portal login'],
             ].map(([to, label]) => (
               <li key={to}>
-                <Link to={to} className="text-slate-600 transition hover:text-[#3F8570]">
+                <Link to={to} className="text-ink transition hover:text-[#3F8570]">
                   {label}
                 </Link>
               </li>
@@ -35,7 +35,7 @@ export default function PublicFooter() {
 
         <div>
           <h4 className="font-display text-sm font-bold uppercase tracking-wider text-slate-900">Visit & contact</h4>
-          <ul className="mt-4 space-y-3.5 text-sm text-slate-600">
+          <ul className="mt-4 space-y-3.5 text-sm text-ink">
             <li className="flex gap-2.5">
               <MapPin size={16} className="mt-0.5 shrink-0 text-[#3F8570]" />
               {settings.address}
@@ -55,7 +55,7 @@ export default function PublicFooter() {
       </div>
 
       <div className="border-t border-slate-200">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-xs text-slate-700 sm:flex-row sm:items-center sm:justify-between lg:px-8">
           <p>© {new Date().getFullYear()} Aunties Tykes Family Child Care. All rights reserved.</p>
           <p>Made with care in Camp Hill, Pennsylvania.</p>
         </div>

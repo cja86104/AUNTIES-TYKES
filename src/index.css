@@ -81,6 +81,18 @@ h1, h2, h3, h4, h5, .font-display {
   100% { background-position: 0 50%; }
 }
 
+/* Black outline on the colorful rainbow headline/wordmark text so the colors stay legible on any background */
+.rainbow-outline {
+  -webkit-text-stroke: 1.5px #000;
+  text-stroke: 1.5px #000;
+  paint-order: stroke fill;
+}
+.rainbow-outline-sm {
+  -webkit-text-stroke: 0.75px #000;
+  text-stroke: 0.75px #000;
+  paint-order: stroke fill;
+}
+
 /* Markdown */
 .md > * + * { margin-top: 0.75rem; }
 .md h1, .md h2, .md h3 {

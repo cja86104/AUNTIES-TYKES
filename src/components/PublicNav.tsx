@@ -43,9 +43,11 @@ export default function PublicNav() {
             className="h-11 w-11 shrink-0 object-contain transition-transform duration-300 group-hover:rotate-6"
           />
           <span className="leading-tight">
-            <span className="block font-display text-lg font-extrabold tracking-tight text-slate-900">Aunties Tykes</span>
-            <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Home daycare School and Summer camp 
+            <span className="block font-display text-lg font-extrabold tracking-tight">
+              <span className="text-brand rainbow-outline-sm">Aunties</span> <span className="text-rainbow-blue rainbow-outline-sm">Tykes</span>
+            </span>
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ink">
+              Family Daycare, Preschool, Pre-K and Summer camp
             </span>
           </span>
         </Link>
@@ -58,7 +60,7 @@ export default function PublicNav() {
               className={({ isActive }) =>
                 cx(
                   'relative rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
-                  isActive ? 'text-[#3F8570]' : 'text-slate-600 hover:text-slate-900',
+                  isActive ? 'text-[#3F8570]' : 'text-ink hover:text-[#3F8570]',
                 )
               }
             >
@@ -116,7 +118,7 @@ export default function PublicNav() {
                     className={({ isActive }) =>
                       cx(
                         'block rounded-xl px-3 py-3 text-base font-semibold',
-                        isActive ? 'bg-[#3F8570]/10 text-[#1F4A3D]' : 'text-slate-700 hover:bg-slate-50',
+                        isActive ? 'bg-[#3F8570]/10 text-[#1F4A3D]' : 'text-ink hover:bg-slate-50',
                       )
                     }
                   >
