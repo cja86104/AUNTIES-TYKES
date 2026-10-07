@@ -44,7 +44,7 @@ export default function PublicNav() {
           />
           <span className="leading-tight">
             <span className="block font-display text-lg font-extrabold tracking-tight">
-              <span className="text-brand rainbow-outline-sm">Aunties</span> <span className="text-rainbow-blue rainbow-outline-sm">Tykes</span>
+              <span className="text-[#FF13F0] rainbow-outline-sm">Aunties</span> <span className="text-rainbow-blue rainbow-outline-sm">Tykes</span>
             </span>
             <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ink">
               Family Daycare, Preschool, Pre-K and Summer camp

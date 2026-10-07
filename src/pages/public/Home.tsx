@@ -20,7 +20,7 @@ export default function Home() {
               <span className="text-rainbow-red rainbow-outline">Welcome</span>{' '}
               <span className="text-rainbow-orange rainbow-outline">to</span>{' '}
               <span className="text-rainbow-gold rainbow-outline">your</span>{' '}
-              <span className="text-brand rainbow-outline">Aunties</span>{' '}
+              <span className="text-[#FF13F0] rainbow-outline">Aunties</span>{' '}
               <span className="text-rainbow-blue rainbow-outline">Tykes</span>{' '}
               <span className="text-rainbow-purple rainbow-outline">portal.</span>
             </motion.h1>
@@ -83,7 +83,7 @@ export default function Home() {
             </p>
             <p
               style={{ fontFamily: "'Caveat', cursive" }}
-              className="mt-6 text-3xl text-[#3F8570] sm:text-4xl"
+              className="mt-6 text-3xl text-[#FF13F0] sm:text-4xl"
             >
               — AUNTIE 
             </p>

@@ -11,7 +11,7 @@ export default function PublicFooter() {
         <div className="lg:col-span-2">
           <div className="flex items-center gap-3">
             <img src="/logo-mark.png" alt="Aunties Tykes" className="h-11 w-11 shrink-0 object-contain" />
-            <span className="font-display text-xl font-extrabold text-slate-900">Aunties Tykes</span>
+            <span className="font-display text-xl font-extrabold text-slate-900"><span className="text-[#FF13F0]">Aunties</span> Tykes</span>
           </div>
           <p className="mt-5 max-w-md text-sm leading-relaxed text-ink">{settings.tagline}</p>
         </div>
@@ -56,7 +56,7 @@ export default function PublicFooter() {
 
       <div className="border-t border-slate-200">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-xs text-slate-700 sm:flex-row sm:items-center sm:justify-between lg:px-8">
-          <p>© {new Date().getFullYear()} Aunties Tykes Family Child Care. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} <span className="text-[#FF13F0]">Aunties</span> Tykes Family Child Care. All rights reserved.</p>
           <p>Made with care in Camp Hill, Pennsylvania.</p>
         </div>
       </div>
