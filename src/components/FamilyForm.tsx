@@ -107,7 +107,7 @@ export default function FamilyForm({ value, onChange, errors = {} }: FamilyFormP
       <div className="rounded-2xl bg-slate-50 p-4">
         <p className="mb-1 text-sm font-semibold text-slate-700">Billing</p>
         <p className="mb-3 text-xs text-slate-500">
-          Leave blank to bill this family at the standard rate card in Settings.
+          Invoice prefill bills every enrolled child at this rate. Leave blank and prefill will ask for it.
         </p>
         <div className="sm:max-w-xs">
           <Field label="Custom weekly tuition rate" error={errors.customWeeklyRate} hint="Applies to every enrolled child in this family.">

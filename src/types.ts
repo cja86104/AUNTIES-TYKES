@@ -56,11 +56,10 @@ export interface Family {
   joinedAt: string
   notes: string
   /**
-   * Weekly tuition rate agreed with this family, if it differs from the
-   * standard rate card in Settings. When set, invoice prefill bills every
-   * enrolled child in this family at this rate instead of the published
-   * full-time/part-time price. Undefined/absent means "use the standard
-   * rate card."
+   * Weekly tuition rate agreed with this family, per enrolled child. Invoice
+   * prefill bills every enrolled child at this rate for 4 weeks. Undefined
+   * means no rate on file: prefill asks for one instead of guessing (the
+   * Settings rate card drives only the public estimator).
    */
   customWeeklyRate?: number
 }

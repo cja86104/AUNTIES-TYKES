@@ -15,8 +15,10 @@
  *    least 6.
  *  - `validateChildForm` / `formToChild` in src/components/ChildForm.tsx — name
  *    at least 2, a date of birth and a start date, teacher defaulting to
- *    "Auntie Melissa".
- *  - The age groups, plans and relations are the same option lists those forms
+ *    "Auntie Melissa", and a weekly schedule that is optional: left out, the
+ *    child is "schedule not set", never guessed. The legacy `plan` text is no
+ *    longer written.
+ *  - The age groups and relations are the same option lists those forms
  *    offer. If one list changes, change both.
  *
  * Deliberately NOT here: changing an existing family or child, the secondary
@@ -25,6 +27,8 @@
  * family's page — a card that tries to show all of it stops being readable.
  */
 
+import type { WeeklySchedule } from '../../../../src/types.js'
+import { formatWeeklySchedule } from '../../../../src/lib/schedule.js'
 import { propose } from '../audit.js'
 import { prettyDate } from '../clock.js'
 import {
@@ -39,13 +43,11 @@ import {
   type ToolOutcome,
   type ToolSpec,
 } from './kit.js'
+import { readWeek, WEEK_SCHEMA } from './schedules.js'
 
 /** Mirrors AGE_GROUPS in src/components/ChildForm.tsx and the `age_group` enum. */
 export const AGE_GROUPS = ['Infant', 'Toddler', 'Preschool'] as const
 export type AgeGroup = (typeof AGE_GROUPS)[number]
-
-/** Mirrors PLANS in src/components/ChildForm.tsx. */
-export const PLANS = ['Full-time', 'Part-time (M/W/F)', 'Part-time (T/Th)', 'Drop-in as needed'] as const
 
 /** Mirrors the `child_status` enum. */
 export const CHILD_STATUSES = ['active', 'waitlist'] as const
@@ -95,7 +97,8 @@ export interface PendingChild {
   name: string
   dob: string
   ageGroup: AgeGroup
-  plan: string
+  /** Null = not given; the child is added as "schedule not set". */
+  schedule: WeeklySchedule | null
   startDate: string
   status: ChildStatus
   allergies: string[]
@@ -155,15 +158,19 @@ function readChild(raw: unknown, index: number, today: string): PendingChild | s
   if (startDate === null) return `${name} needs a start date (yyyy-MM-dd)`
   const ageGroup = pick(readString(args, 'ageGroup'), AGE_GROUPS)
   if (ageGroup === null) return `${name} needs an age group: ${AGE_GROUPS.join(', ')}`
-  const plan = pick(readString(args, 'plan'), PLANS)
-  if (plan === null) return `${name} needs a plan: ${PLANS.join(', ')}`
+  let schedule: WeeklySchedule | null = null
+  if (args.schedule !== undefined && args.schedule !== null) {
+    const week = readWeek(args.schedule)
+    if (typeof week === 'string') return `${name}: ${week}`
+    schedule = week
+  }
   const status = pick(readString(args, 'status'), CHILD_STATUSES) ?? 'active'
 
   return {
     name,
     dob,
     ageGroup,
-    plan,
+    schedule,
     startDate,
     status,
     allergies: readList(args.allergies),
@@ -223,8 +230,10 @@ const familyAdd: ToolSpec = {
     'add a family that is already there. It does not save on its own: she sees ' +
     'everything and taps. Use ONLY what she told you. If the main contact, email, ' +
     'phone or home address is missing, or a child is missing a date of birth, ' +
-    'start date, age group or plan, ask her for it in one question — never fill ' +
-    'in something plausible. Allergies and medications go in only if she said ' +
+    'start date or age group, ask her for it in one question — never fill ' +
+    'in something plausible. Give a child\'s weekly schedule only if she said the ' +
+    'days and times; otherwise leave it out and the child shows as "schedule not ' +
+    'set" for her to fill in. Allergies and medications go in only if she said ' +
     'them; leave them out otherwise, and the card will show none recorded.',
   parameters: schema(
     {
@@ -243,14 +252,19 @@ const familyAdd: ToolSpec = {
             name: { type: 'string', description: "Child's full name" },
             dob: { type: 'string', description: 'Date of birth, yyyy-MM-dd' },
             ageGroup: { type: 'string', enum: AGE_GROUPS },
-            plan: { type: 'string', enum: PLANS },
+            schedule: {
+              ...WEEK_SCHEMA,
+              description:
+                'Only if she gave days and times: keyed mon…sun, each a list of {start, end} ' +
+                'in 24-hour HH:mm. A day left out is a day they do not come',
+            },
             startDate: { type: 'string', description: 'yyyy-MM-dd' },
             status: { type: 'string', enum: CHILD_STATUSES, description: 'Defaults to active' },
             allergies: { type: 'array', items: { type: 'string' } },
             medications: { type: 'array', items: { type: 'string' } },
             notes: { type: 'string' },
           },
-          ['name', 'dob', 'ageGroup', 'plan', 'startDate'],
+          ['name', 'dob', 'ageGroup', 'startDate'],
         ),
       },
     },
@@ -326,7 +340,7 @@ const familyAdd: ToolSpec = {
       const parts = [
         `born ${prettyDate(child.dob)}`,
         child.ageGroup,
-        child.plan,
+        child.schedule === null ? 'schedule not set' : formatWeeklySchedule(child.schedule, 'en-US'),
         `starts ${prettyDate(child.startDate)}`,
       ]
       if (child.status === 'waitlist') parts.push('waitlist')

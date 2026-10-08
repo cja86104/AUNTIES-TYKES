@@ -32,7 +32,10 @@ page does not download recharts or the admin console.
 ## Data model — `src/types.ts`
 
 ```
-User ──familyId──> Family ──> Child[] ──> AttendanceRecord[], DailyLog[]
+User ──familyId──> Family ──> Child[] ──> AttendanceRecord[] + AttendanceVisit[], DailyLog[]
+                      │          │
+                      │          └──> schedule (WeeklySchedule | null), ScheduleChange[] (one date),
+                      │               SchedulePlan[] (new weekly schedule from a date)
                       │
                       ├──> Invoice[] ──> LineItem[], Payment[]
                       └──> Thread[]  ──> ThreadMessage[]
@@ -55,7 +58,26 @@ explicitly — add a new slice there or it silently will not survive a reload.
 Notable actions: `checkIn`/`checkOut`/`markAbsent`, `addDailyLog`,
 `createInvoice`/`recordPayment`, `addDocument`/`toggleDocVisibility`/`acknowledgeDocument`,
 `addAnnouncement`/`sendThreadMessage`, `addFamily`/`updateFamily`/`addChild`/`updateChild`,
-`createParentLogin`, `submitEnrollment`/`approveEnrollment`/`declineEnrollment`.
+`createParentLogin`, `submitEnrollment`/`approveEnrollment`/`declineEnrollment`,
+`saveScheduleChange`/`removeScheduleChange`, `saveSchedulePlan`/`removeSchedulePlan`.
+
+`checkIn`/`checkOut` write one `AttendanceVisit` per arrival/departure and keep
+the day's `AttendanceRecord` as the summary; `markAbsent` returns false and
+refuses (with a toast) once times are recorded.
+
+## Schedules — `src/lib/schedule.ts`
+
+The one resolver for "who is expected on this date". `resolveChildDay` applies,
+in order: inactive → not started → closure → a child's "not coming" calendar
+note → one-off change → no schedule entered (unknown, never "off") → the weekly
+pattern in force that date (the newest started `SchedulePlan`, else
+`child.schedule`); an early close trims the blocks. `buildDayRoster` groups a
+date into `main` / `unscheduled` / `notToday` with counts, and is what the
+attendance page, the dashboards, the parent portal and Ro (via
+`api/_lib/ai/schedules.ts`) all build from. It has no runtime imports, so the
+server functions and `node --test` can load it directly. Started plans are
+folded into `child.schedule` by `promote_due_schedule_plans` when the console
+loads and when Ro starts.
 
 `approveEnrollment` is one atomic commit — family, children, user account, and
 submission status all move together, so there is no half-enrolled state.

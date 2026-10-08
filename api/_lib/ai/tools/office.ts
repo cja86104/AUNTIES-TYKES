@@ -27,7 +27,7 @@
  * file. Only visibility is reachable.
  */
 
-import { propose } from '../audit.js'
+import { propose, type AuditSubject } from '../audit.js'
 import { prettyDate } from '../clock.js'
 import {
   alreadyProposed,
@@ -49,13 +49,16 @@ const MAX_TITLE = 200
 
 const CALENDAR_KINDS = ['closure', 'early_close', 'activity', 'reminder'] as const
 
-/** Every tool here follows the same three steps, so they share one. */
-async function offer(
+/**
+ * Every tool here follows the same three steps, so they share one. Exported for
+ * the schedule tools in `./schedules.ts`, which are the same Low tier.
+ */
+export async function offer(
   ctx: ToolContext,
   tool: string,
   payload: Record<string, unknown>,
   preview: Omit<ActionPreview, 'id'>,
-  subject: { familyId?: string | null; familyLabel?: string; targets?: unknown[] } = {},
+  subject: AuditSubject = {},
 ): Promise<ToolOutcome> {
   const key = `${tool}:${JSON.stringify(payload)}`
   const seen = alreadyProposed(ctx, key)

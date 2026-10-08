@@ -23,6 +23,7 @@
 
 import { prettyDate, timeInZone } from './clock.js'
 import { invoiceState, money } from './projection.js'
+import { loadDays } from './schedules.js'
 import { activeRules, describeRule, openCommitments } from './rules.js'
 import type { TriggerSweep } from './triggers.js'
 import type { ToolContext } from './tools/kit.js'
@@ -30,10 +31,21 @@ import type { ToolContext } from './tools/kit.js'
 export interface TodayNumbers {
   activeChildren: number
   families: number
-  checkedIn: number
-  checkedOut: number
+  /** True when today's roster could not be read; the counts below are then meaningless. */
+  rosterUnavailable: boolean
+  /** The closure's title when the daycare is closed today, else null. */
+  closedToday: string | null
+  /** HH:mm when the daycare closes early today, else null. */
+  earlyCloseAt: string | null
+  /** Today's roster counts, from the same buildDayRoster as the attendance page. */
+  here: number
+  goneHome: number
   absent: number
-  noAttendanceRecord: number
+  /** Still to arrive today, including those coming back later. */
+  stillExpected: number
+  comingBack: number
+  /** Active children with no weekly schedule entered: unknown, not "off". */
+  scheduleUnknown: number
   overdueInvoices: number
   unpaidNotYetDue: number
   totalOutstanding: number
@@ -134,8 +146,9 @@ const howYouRespond = (owner: string): string => `HOW YOU RESPOND
   look similar from the outside:
   Sending a message, posting an announcement, saving a standing rule and turning
   one off all need her tap, and so do recording a payment against an invoice,
-  adding a new family, setting up a parent's portal login, and approving or
-  declining an enrollment form.
+  adding a new family, setting up a parent's portal login, approving or
+  declining an enrollment form, and saving a schedule change — one different day
+  or a new weekly schedule from a date.
   When you call one of those tools, a card appears under your message with the
   details and a button. So say it is ready for her — never "I've sent it", "I've
   saved it" or "I've recorded it", which would be a lie until she taps. Don't
@@ -155,8 +168,8 @@ const howYouRespond = (owner: string): string => `HOW YOU RESPOND
   so do not say they have been notified.
   Writing down one of your own follow-ups happens immediately and needs no tap.
   That one you can report in the past tense.
-  Creating, changing or deleting an invoice, changing an existing family or child,
-  and changing settings you still cannot do at all. Say so plainly if she asks.
+  Creating, changing or deleting an invoice, changing an existing family's or
+  child's details, and changing settings you still cannot do at all. Say so plainly if she asks.
 - What sending actually does, so you never promise more than happens: it puts the
   message in that family's parent portal, where they see it next time they look.
   It does not email or text them. If ${owner} needs someone reached right now, say
@@ -164,6 +177,12 @@ const howYouRespond = (owner: string): string => `HOW YOU RESPOND
 - When one of her own standing rules stops a send, do not offer to send it
   anyway. Tell her which rule it is, in her own words, and let her decide — she
   can turn the rule off if she means to.
+- Schedules go by date. Each child has a usual week; a one-off change for a
+  date overrides it that day, and a new weekly schedule can be set to take over
+  from a later date. A child with no schedule entered is unknown — say you don't
+  know, never that they are off. When she tells you about a change ahead of time,
+  put it on a card with schedule_change_set or schedule_plan_set, so the
+  attendance page and the family's portal follow it on the day.
 - Names and details you use must match the records exactly. This is a childcare
   business: a wrong allergy or a wrong pickup name is not a rounding error.`
 
@@ -172,14 +191,33 @@ const howYouRespond = (owner: string): string => `HOW YOU RESPOND
 function numbersBlock(numbers: TodayNumbers): string {
   const lines = [
     `- ${numbers.activeChildren} children enrolled across ${numbers.families} families`,
-    `- Today: ${numbers.checkedIn} checked in, ${numbers.checkedOut} checked out, ` +
-      `${numbers.absent} absent, ${numbers.noAttendanceRecord} with nothing recorded yet`,
+    todayLine(numbers),
     `- Invoices: ${numbers.overdueInvoices} overdue, ${numbers.unpaidNotYetDue} unpaid but not yet due, ` +
       `${money(numbers.totalOutstanding)} outstanding in total`,
     `- ${numbers.pendingEnrollments} enrollment ${numbers.pendingEnrollments === 1 ? 'submission' : 'submissions'} waiting on her`,
     `- ${numbers.awaitingReply} message ${numbers.awaitingReply === 1 ? 'thread' : 'threads'} where a parent spoke last`,
   ]
   return `TODAY — real numbers, read from the records just now\n\n${lines.join('\n')}`
+}
+
+function todayLine(numbers: TodayNumbers): string {
+  if (numbers.rosterUnavailable) {
+    return "- Today: attendance could not be read just now — don't give her numbers for it"
+  }
+  if (numbers.closedToday !== null) return `- Today: the daycare is closed (${numbers.closedToday})`
+  const parts = [
+    `${numbers.here} here now`,
+    `${numbers.goneHome} gone home`,
+    `${numbers.absent} absent`,
+    numbers.comingBack > 0
+      ? `${numbers.stillExpected} still expected (${numbers.comingBack} of them coming back later)`
+      : `${numbers.stillExpected} still expected`,
+  ]
+  if (numbers.scheduleUnknown > 0) {
+    parts.push(`${numbers.scheduleUnknown} with no schedule entered, so not known either way`)
+  }
+  const early = numbers.earlyCloseAt === null ? '' : `; closing early at ${numbers.earlyCloseAt}`
+  return `- Today, by each child's schedule: ${parts.join(', ')}${early}`
 }
 
 function listBlock(title: string, items: string[], emptyLine: string, footer = ''): string {
@@ -287,13 +325,11 @@ export async function gatherPromptState(
     .eq('status', 'pending')
   if (pending.error !== null) failures.push(`enrollments: ${pending.error.message}`)
 
-  const attendance = await ctx.caller.db
-    .from('attendance')
-    .select('child_id, status')
-    .eq('date', ctx.today)
-  if (attendance.error !== null) failures.push(`attendance: ${attendance.error.message}`)
-  const rows = attendance.data ?? []
-  const tally = (status: string): number => rows.filter((row) => row.status === status).length
+  // The same roster the attendance page builds, so "still expected" here and
+  // there can never disagree.
+  const loaded = await loadDays(ctx, [ctx.today])
+  if (typeof loaded === 'string') failures.push(loaded)
+  const roster = typeof loaded === 'string' ? undefined : loaded.days[0]?.roster
 
   const settings = await ctx.caller.db
     .from('settings')
@@ -357,7 +393,6 @@ export async function gatherPromptState(
   if (!commitments.ok) failures.push(commitments.error)
 
   const activeChildren = children.count ?? 0
-  const recorded = rows.length
 
   return {
     state: {
@@ -368,10 +403,15 @@ export async function gatherPromptState(
       numbers: {
         activeChildren,
         families: families.count ?? 0,
-        checkedIn: tally('present'),
-        checkedOut: tally('checked-out'),
-        absent: tally('absent'),
-        noAttendanceRecord: Math.max(0, activeChildren - recorded),
+        rosterUnavailable: roster === undefined,
+        closedToday: roster?.closure?.title ?? null,
+        earlyCloseAt: roster?.earlyClose?.closesAt ?? null,
+        here: roster?.counts.here ?? 0,
+        goneHome: roster?.counts.gone ?? 0,
+        absent: roster?.counts.absent ?? 0,
+        stillExpected: roster?.counts.due ?? 0,
+        comingBack: roster?.counts.returning ?? 0,
+        scheduleUnknown: roster?.unscheduled.length ?? 0,
         overdueInvoices: overdue.length,
         unpaidNotYetDue,
         totalOutstanding: overdueOutstanding + futureOutstanding,

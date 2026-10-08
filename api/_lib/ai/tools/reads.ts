@@ -14,8 +14,9 @@
  * Nothing in this file writes.
  */
 
-import type { Contact, Incident } from '../../../../src/types.js'
-import { daysSince, shiftDays } from '../clock.js'
+import type { Contact, Incident, WeeklySchedule } from '../../../../src/types.js'
+import { expectedWords, loadDays, MAX_DAYS, notExpectedWords, scheduleWords } from '../schedules.js'
+import { daysSince, prettyDate, shiftDays } from '../clock.js'
 import {
   invoiceState,
   type AttendanceBrief,
@@ -58,7 +59,7 @@ import {
 // prettier-ignore
 const FAMILY_COLUMNS = 'id, name, primary_contact, relation, email, phone, address, secondary, emergency, joined_at, notes, custom_weekly_rate'
 // prettier-ignore
-const CHILD_COLUMNS = 'id, family_id, name, dob, age_group, status, plan, start_date, teacher, allergies, medications, notes'
+const CHILD_COLUMNS = 'id, family_id, name, dob, age_group, status, plan, schedule, start_date, teacher, allergies, medications, notes'
 const ATTENDANCE_COLUMNS = 'child_id, date, status, check_in, check_out, note'
 const LOG_COLUMNS = 'id, child_id, date, meals, naps, potty, mood, activities, notes, author, attachments, incident'
 const INVOICE_COLUMNS = 'id, family_id, period, issued_at, due_date, amount, memo'
@@ -120,6 +121,7 @@ interface ChildRowShape {
   age_group: string
   status: string
   plan: string
+  schedule: WeeklySchedule | null
   start_date: string | null
   teacher: string
   allergies: string[]
@@ -135,7 +137,7 @@ function toChildBrief(row: ChildRowShape): ChildBrief {
     dob: row.dob,
     ageGroup: row.age_group,
     status: row.status,
-    plan: row.plan,
+    schedule: scheduleWords(row),
     startDate: row.start_date,
     teacher: row.teacher,
     allergies: row.allergies,
@@ -381,61 +383,145 @@ const attendanceToday: ToolSpec = {
   name: 'attendance_today',
   tier: 'read',
   description:
-    "Today's attendance sheet: who is checked in, checked out, absent or still " +
-    'expected, plus any active child with no record at all yet. Also answers ' +
-    '"how many are here right now".',
+    "The attendance sheet for a day (default today), worked out from each child's real " +
+    'schedule — the same list the owner sees on the attendance page. `expected` is who ' +
+    'is scheduled that day, with their times and where they are now (present, ' +
+    'checked-out, absent, or not in yet); a split-day child who left between visits ' +
+    'shows `returnsAt`. Anyone with a record that day is in `expected` even if not ' +
+    'scheduled (a drop-in). `scheduleUnknown` means nobody ever entered their schedule: ' +
+    'say you do not know whether they are coming — NEVER call them absent or off. ' +
+    '`notScheduled` is who is not due that day, with the reason. `closed` is set when ' +
+    'the daycare is closed. Use summary for "how many are here right now".',
   parameters: schema({ date: { type: 'string', description: 'yyyy-MM-dd; defaults to today' } }),
   execute: async (args, ctx): Promise<ToolOutcome> => {
     const date = readDate(args, 'date') ?? ctx.today
 
-    const children = await ctx.caller.db
-      .from('children')
-      .select(CHILD_COLUMNS)
-      .eq('status', 'active')
-      .limit(MAX_ROWS)
-    if (children.error !== null) return dbFailure('the roster', children.error)
+    const loaded = await loadDays(ctx, [date])
+    if (typeof loaded === 'string') return { ok: false, error: `Could not read ${loaded}` }
+    const day = loaded.days[0]
+    if (day === undefined) return { ok: false, error: 'Could not build that day' }
+    const { roster } = day
+    const familyName = (familyId: string): string => loaded.familyNames.get(familyId) ?? ''
+    const visitsOf = (childId: string): string[] =>
+      loaded.visits
+        .filter((visit) => visit.childId === childId && visit.date === date)
+        .map((visit) => `${visit.checkIn.slice(0, 5)}–${visit.checkOut === null ? 'still here' : visit.checkOut.slice(0, 5)}`)
 
-    const records = await ctx.caller.db
-      .from('attendance')
-      .select(ATTENDANCE_COLUMNS)
-      .eq('date', date)
-      .limit(MAX_ROWS)
-    if (records.error !== null) return dbFailure("today's attendance", records.error)
-
-    const byChild = new Map(records.data.map((row) => [row.child_id, row]))
-    const familyNames = await familyLabels(ctx)
-    const lines = children.data.map((child) => {
-      const record = byChild.get(child.id)
-      const line: AttendanceBrief & { childName: string; familyId: string; familyName: string } = {
-        childId: child.id,
-        childName: child.name,
-        familyId: child.family_id,
-        familyName: familyNames.get(child.family_id) ?? '',
-        date,
-        // 'not recorded' is not an attendance_status value in the schema — it is
-        // this tool's word for "no row exists yet", which is what §5's
-        // daily_log_missing and a "who is still expected" question both turn on.
-        status: record?.status ?? 'not recorded',
-        checkIn: record?.check_in ?? null,
-        checkOut: record?.check_out ?? null,
-        note: record?.note ?? '',
-      }
-      return line
-    })
-
-    const tally = (status: string): number => lines.filter((line) => line.status === status).length
     return {
       ok: true,
       data: {
         date,
+        closed: roster.closure ? roster.closure.title : null,
+        earlyClose: roster.earlyClose,
         summary: {
-          present: tally('present'),
-          checkedOut: tally('checked-out'),
-          absent: tally('absent'),
-          expected: tally('expected'),
-          notRecorded: tally('not recorded'),
+          present: roster.counts.here,
+          goneHome: roster.counts.gone,
+          absent: roster.counts.absent,
+          stillExpected: roster.counts.due,
+          comingBackLater: roster.counts.returning,
+          scheduleUnknown: roster.unscheduled.length,
+          notScheduled: roster.notToday.length,
         },
-        children: lines,
+        expected: roster.main.map((row) => ({
+          childId: row.child.id,
+          childName: row.child.name,
+          familyId: row.child.familyId,
+          familyName: familyName(row.child.familyId),
+          scheduledTimes:
+            row.day.state === 'expected' ? expectedWords(row.day) : `not scheduled (${notExpectedWords(row.day)}) — came in anyway`,
+          status: row.phase === 'returning' ? 'between visits' : (row.record?.status ?? 'not in yet'),
+          returnsAt: row.returnsAt ?? null,
+          visits: visitsOf(row.child.id),
+          note: row.record?.note ?? '',
+        })),
+        scheduleUnknown: roster.unscheduled.map((row) => ({
+          childId: row.child.id,
+          childName: row.child.name,
+          familyName: familyName(row.child.familyId),
+        })),
+        notScheduled: roster.notToday.map((row) => ({
+          childId: row.child.id,
+          childName: row.child.name,
+          reason: notExpectedWords(row.day),
+        })),
+      },
+    }
+  },
+}
+
+const scheduleForDate: ToolSpec = {
+  name: 'schedule_for_date',
+  tier: 'read',
+  description:
+    'Who is coming on a date, or one child\'s schedule over the coming days — for ' +
+    '"who\'s here Thursday?", "is Ellie in on Saturday?", "what does next week look ' +
+    'like?". Applies everything the attendance page does: weekly schedules, one-off ' +
+    'changes, closures, early closes, a child\'s "not coming" calendar note, and new ' +
+    'weekly schedules that start on a date. Give childId for one child (with their ' +
+    'weekly schedule and any new one planned), or leave it out for everyone. ' +
+    '"schedule unknown" means nobody entered it — say you do not know, never that ' +
+    'they are off.',
+  parameters: schema({
+    date: { type: 'string', description: 'yyyy-MM-dd, the first day. Defaults to today' },
+    days: { type: 'integer', description: `How many days from that date, 1-${String(MAX_DAYS)}. Default 1` },
+    childId: { type: 'string', description: 'From roster_list. Omit for everyone' },
+  }),
+  execute: async (args, ctx): Promise<ToolOutcome> => {
+    const first = readDate(args, 'date') ?? ctx.today
+    const count = readInt(args, 'days', 1, MAX_DAYS, 1)
+    const childId = readString(args, 'childId')
+    const dates = Array.from({ length: count }, (_, index) => shiftDays(first, index))
+
+    const loaded = await loadDays(ctx, dates)
+    if (typeof loaded === 'string') return { ok: false, error: `Could not read ${loaded}` }
+
+    if (childId !== null) {
+      const child = loaded.children.find((entry) => entry.id === childId)
+      if (child === undefined) return { ok: true, data: { found: false, childId } }
+      const upcoming = await ctx.caller.db
+        .from('child_schedule_plans')
+        .select('starts_on, schedule, note')
+        .eq('child_id', childId)
+        .gt('starts_on', ctx.today)
+        .order('starts_on', { ascending: true })
+      if (upcoming.error !== null) return dbFailure('planned schedules', upcoming.error)
+      return {
+        ok: true,
+        data: {
+          found: true,
+          childName: child.name,
+          weeklyScheduleNow: scheduleWords(child),
+          newWeeklySchedulesPlanned: upcoming.data.map((plan) => ({
+            startsOn: plan.starts_on,
+            schedule: scheduleWords({ schedule: plan.schedule, plan: '' }),
+            note: plan.note,
+          })),
+          days: loaded.days.map(({ date, roster }) => {
+            const row = [...roster.main, ...roster.unscheduled, ...roster.notToday].find((entry) => entry.child.id === childId)
+            const dayLabel = prettyDate(date)
+            if (row === undefined) return { date, day: dayLabel, coming: 'no', why: 'not active' }
+            if (row.day.state === 'expected') return { date, day: dayLabel, coming: 'yes', times: expectedWords(row.day) }
+            if (row.day.state === 'unscheduled') return { date, day: dayLabel, coming: 'unknown', why: 'schedule never entered' }
+            return { date, day: dayLabel, coming: 'no', why: notExpectedWords(row.day) }
+          }),
+        },
+      }
+    }
+
+    return {
+      ok: true,
+      data: {
+        days: loaded.days.map(({ date, roster }) => ({
+          date,
+          day: prettyDate(date),
+          closed: roster.closure ? roster.closure.title : null,
+          earlyClose: roster.earlyClose,
+          expected: roster.main
+            .filter((row) => row.day.state === 'expected')
+            .map((row) => ({ childId: row.child.id, childName: row.child.name, times: expectedWords(row.day) })),
+          scheduleUnknown: roster.unscheduled.map((row) => row.child.name),
+          notScheduled: roster.notToday.map((row) => ({ childName: row.child.name, why: notExpectedWords(row.day) })),
+        })),
       },
     }
   },
@@ -965,6 +1051,7 @@ export const readTools: ToolSpec[] = [
   familyGet,
   rosterList,
   attendanceToday,
+  scheduleForDate,
   attendanceHistory,
   dailyLogList,
   invoiceList,

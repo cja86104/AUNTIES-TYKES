@@ -27,12 +27,13 @@ demo login: every account is created by the owner in the admin console.
 npm run dev        # local dev server
 npm run typecheck  # tsc --noEmit (strict), app + api
 npm run lint       # eslint, type-aware rules + react-hooks
+npm test           # Node's built-in test runner over tests/**/*.test.ts
 npm run build      # typecheck THEN vite build — type errors block a deploy
 npm run preview    # serve the production build
 ```
 
-**Non-negotiable:** `npm run lint` and `npm run typecheck` must both exit 0
-before any change is called done. Both currently exit 0 with zero warnings
+**Non-negotiable:** `npm run lint`, `npm run typecheck` and `npm test` must
+all exit 0 before any change is called done. Both currently exit 0 with zero warnings
 and zero errors — the last 3 `react-hooks/exhaustive-deps` warnings were
 fixed 2026-09-26. Keep it at zero.
 
@@ -85,6 +86,37 @@ schema/domain mismatch at build time rather than at runtime against live data.
 - **Ro keeps up.** Ro already writes daily reports; any new part of a
   feature Ro covers must be reachable through Ro's tools too
   (`api/_lib/ai/tools/`).
+
+## Schedules & attendance — read before touching either
+
+- A child's usual week is `children.schedule`: `mon`…`sun`, each up to 3
+  `{start, end}` blocks in 24h `HH:mm`, sorted, non-overlapping, end after
+  start. `NULL` means never entered — the child is "schedule not set"
+  (unknown), never "off". Weekends are ordinary days (the owner also runs a
+  camp); do not special-case them.
+- `children.plan` is legacy free text ("Full-time" …). It is no longer edited
+  or written, and is shown only as a hint where no schedule is set.
+- One date that differs: `child_schedule_changes` (one per child per date;
+  `blocks = []` = not coming). A new usual week from a later date:
+  `child_schedule_plans` (one per child per start date).
+  `promote_due_schedule_plans(today)` folds started plans into
+  `children.schedule` when the console loads and when Ro starts. There is no
+  scheduled job, and none is needed: the resolver reads plans by date.
+- Who is expected on a date comes from ONE resolver, `src/lib/schedule.ts`
+  (`resolveChildDay`, `buildDayRoster`), shared by the attendance page, both
+  dashboards, the parent portal and Ro (`api/_lib/ai/schedules.ts`).
+  Precedence: inactive → not started yet → closure → "not coming" calendar
+  note → one-off change → no schedule (unknown) → weekly pattern; an early
+  close trims the blocks. Never work out who is expected anywhere else. Its
+  validation mirrors the check functions in migration 0020.
+- `attendance_visits` holds every arrival and departure (split days);
+  `attendance` stays the day summary. Marking absent is refused once times are
+  recorded.
+- Eastern time only: `DAYCARE_TIME_ZONE` in `src/lib/helpers.ts`, and
+  `todayInZone()` on the server.
+- Invoice prefill bills each enrolled child at the family's own weekly rate
+  (`customWeeklyRate`) for 4 weeks; with no rate on file it asks for one. The
+  Settings rate card drives only the public estimator and the sibling discount.
 
 ## Brand
 

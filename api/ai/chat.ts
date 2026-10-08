@@ -152,6 +152,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
   const warnings: string[] = []
 
+  // New weekly schedules whose start date has arrived become the child's
+  // schedule first (migration 0021), the same step the console runs when it
+  // loads. Everything below resolves by date either way, so a failure here is
+  // reported rather than fatal: the profile just shows the old week until the
+  // next successful run.
+  const promoted = await ctx.caller.db.rpc('promote_due_schedule_plans', { today: ctx.today })
+  if (promoted.error !== null) {
+    warnings.push(`Could not apply new weekly schedules that have started: ${promoted.error.message}`)
+  }
+
   // Today's state, read before the model is involved in anything.
   const { sweep, failures: sweepFailures } = await runTriggers(ctx)
   for (const failure of sweepFailures) {

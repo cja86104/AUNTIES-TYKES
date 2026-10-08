@@ -49,7 +49,7 @@ export interface FamilyBrief {
   joinedAt: string
   /** The owner's own operational note about this family. */
   notes: string
-  /** The agreed weekly rate when it differs from the rate card; null if not. */
+  /** The family's weekly rate per child, which invoice prefill bills; null = none on file. */
   customWeeklyRate: number | null
 }
 
@@ -61,7 +61,13 @@ export interface ChildBrief {
   dob: string
   ageGroup: string
   status: string
-  plan: string
+  /**
+   * The weekly schedule in words: "Mon 7–9 am, 3–6 pm · Wed 9 am–3 pm", or
+   * "schedule unknown — never entered" (never the same as "not coming"). Use
+   * schedule_for_date for a particular day, which also applies one-off changes,
+   * closures and new schedules starting on a date.
+   */
+  schedule: string
   startDate: string | null
   teacher: string
   allergies: string[]

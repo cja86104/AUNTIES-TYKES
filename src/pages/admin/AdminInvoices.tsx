@@ -104,11 +104,13 @@ export default function AdminInvoices() {
     setLines((ls) => ls.map((l) => (l.id === id ? { ...l, [key]: value } : l)))
 
   /**
-   * Build tuition lines from the family's enrolled children.
+   * Build tuition lines from the family's enrolled children, at the family's
+   * own weekly rate (Families -> Edit details -> Billing), 4 weeks per child.
    *
-   * A family with a `customWeeklyRate` on file (Families -> Edit details ->
-   * Billing) is billed that rate for every enrolled child instead of the
-   * published full-time/part-time price from the rate card in Settings.
+   * There is no fallback to the Settings rate card: children no longer carry a
+   * full-time/part-time plan (their schedule is days and times), so the card
+   * cannot say which price applies. A family with no rate on file is asked for
+   * one rather than billed a guess.
    */
   const prefillFromEnrollment = () => {
     if (!familyId) {
@@ -122,18 +124,22 @@ export default function AdminInvoices() {
     }
     const rate = settings.rates
     const family = families.find((f) => f.id === familyId)
-    const customRate = family?.customWeeklyRate
-    const next: DraftLine[] = kids.map((c) => {
-      const partTime = c.plan.toLowerCase().includes('part')
-      const weeklyRate = customRate != null ? customRate : partTime ? rate.partTime : rate.fullTime
-      const rateNote = customRate != null ? ' · family rate' : ''
-      return {
-        id: uid('line'),
-        label: `${c.name} — ${partTime ? 'Part-time' : 'Full-time'} tuition (4 weeks)${rateNote}`,
-        qty: '4',
-        unit: String(weeklyRate),
-      }
-    })
+    const weeklyRate = family?.customWeeklyRate
+    if (weeklyRate == null) {
+      pushToast({
+        tone: 'info',
+        title: 'No weekly rate for this family',
+        description:
+          'Add it on the family\'s page under Edit details → Billing, then prefill again — or type the tuition lines yourself.',
+      })
+      return
+    }
+    const next: DraftLine[] = kids.map((c) => ({
+      id: uid('line'),
+      label: `${c.name} — Tuition (4 weeks)`,
+      qty: '4',
+      unit: String(weeklyRate),
+    }))
 
     if (kids.length > 1 && rate.siblingDiscountPct > 0) {
       const weekly = next.map((l) => Number(l.unit) || 0).sort((a, b) => a - b)
@@ -151,7 +157,7 @@ export default function AdminInvoices() {
 
     setLines(next)
     setErrors((e) => ({ ...e, lines: undefined }))
-    pushToast({ title: 'Lines prefilled', description: `${kids.length} enrolled ${kids.length === 1 ? 'child' : 'children'} added from the rate card.` })
+    pushToast({ title: 'Lines prefilled', description: `${kids.length} enrolled ${kids.length === 1 ? 'child' : 'children'} added at the family's weekly rate.` })
   }
 
   const submit = async () => {

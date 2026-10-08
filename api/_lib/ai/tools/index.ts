@@ -27,6 +27,7 @@ import { enrollmentTools } from './enrollments.js'
 import { readTools } from './reads.js'
 import { officeTools } from './office.js'
 import { recordTools } from './records.js'
+import { scheduleTools } from './schedules.js'
 import { ruleTools } from './rules.js'
 import { sendTools } from './sends.js'
 import type { ToolContext, ToolOutcome, ToolSpec } from './kit.js'
@@ -41,6 +42,7 @@ export const roTools: ToolSpec[] = [
   ...sendTools,
   ...recordTools,
   ...officeTools,
+  ...scheduleTools,
   ...billingTools,
   ...familyTools,
   ...accountTools,

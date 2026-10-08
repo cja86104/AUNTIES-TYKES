@@ -177,7 +177,7 @@ export default function AdminFamilyDetail() {
                 <p className="text-xs text-slate-500">
                   {family.customWeeklyRate != null
                     ? `Custom rate: ${money(family.customWeeklyRate)}/week per child`
-                    : 'Billed at the standard rate card'}
+                    : 'No weekly rate set — invoice prefill needs one'}
                 </p>
               </div>
               <Badge tone={balance > 0 ? 'amber' : 'green'}>

@@ -23,7 +23,9 @@
  */
 
 import type { Proposal } from './audit.js'
-import type { Incident } from '../../../src/types.js'
+import type { Incident, ScheduleBlock } from '../../../src/types.js'
+import { formatDayBlocks, formatWeeklySchedule } from '../../../src/lib/schedule.js'
+import { prettyDate } from './clock.js'
 import { uid } from './ids.js'
 import { retireRule, saveRule, type SendTarget } from './rules.js'
 import { readPendingRule } from './tools/rules.js'
@@ -35,6 +37,7 @@ import { createParentAccount } from '../parentLogin.js'
 import { money } from './projection.js'
 import { readInt, readString, type ToolContext } from './tools/kit.js'
 import { attendanceId, mergeIncident, readIncidentArgs, stampTime, visitId } from './tools/records.js'
+import { MAX_SCHEDULE_NOTE, readBlocks, readRealDate, readWeek } from './tools/schedules.js'
 
 /**
  * How long "undo" stays offered after a send — §8's undo window.
@@ -588,6 +591,179 @@ const calendarExecutor: Executor = {
   },
 }
 
+/**
+ * Saves or takes back one date's one-off change, mirroring `saveScheduleChange`
+ * / `removeScheduleChange`. A date that already has a change keeps its row id
+ * and gets new times; `updated_at` is restamped either way, so the family sees
+ * an edited change as new, as from the console. No undo: taking it back is
+ * another change she can ask for.
+ */
+const scheduleChangeExecutor: Executor = {
+  tool: 'schedule.change',
+  run: async (ctx, proposal) => {
+    const childId = readString(proposal.arguments, 'childId')
+    const childName = readString(proposal.arguments, 'childName') ?? 'That child'
+    const date = readRealDate(proposal.arguments, 'date')
+    const action = readString(proposal.arguments, 'action')
+    const note = readString(proposal.arguments, 'note')?.slice(0, MAX_SCHEDULE_NOTE) ?? ''
+    if (childId === null || date === null) return { ok: false, error: 'That change is missing the child or the date' }
+    if (date < ctx.today) return { ok: false, error: `${prettyDate(date)} has already passed, so nothing was changed.` }
+
+    if (action === 'remove') {
+      const removed = await ctx.caller.db
+        .from('child_schedule_changes')
+        .delete()
+        .eq('child_id', childId)
+        .eq('date', date)
+        .select('id')
+      if (removed.error !== null) return { ok: false, error: `Could not take that change back: ${removed.error.message}` }
+      return {
+        ok: true,
+        summary:
+          removed.data.length === 0
+            ? `${childName} was already on the usual schedule for ${prettyDate(date)}.`
+            : `${childName} is back on the usual schedule for ${prettyDate(date)}.`,
+        targets: removed.data.map((row) => row.id),
+      }
+    }
+
+    let blocks: ScheduleBlock[]
+    if (action === 'off') {
+      blocks = []
+    } else if (action === 'times') {
+      const read = readBlocks(proposal.arguments.blocks)
+      if (typeof read === 'string') return { ok: false, error: read }
+      blocks = read
+    } else {
+      return { ok: false, error: 'That change does not say what to do' }
+    }
+
+    const existing = await ctx.caller.db
+      .from('child_schedule_changes')
+      .select('id')
+      .eq('child_id', childId)
+      .eq('date', date)
+      .maybeSingle()
+    if (existing.error !== null) return { ok: false, error: `Could not check that date: ${existing.error.message}` }
+
+    const stamp = new Date().toISOString()
+    let id: string
+    if (existing.data !== null) {
+      id = existing.data.id
+      const updated = await ctx.caller.db
+        .from('child_schedule_changes')
+        .update({ blocks, note, updated_at: stamp })
+        .eq('id', id)
+        .select('id')
+      if (updated.error !== null) return { ok: false, error: `Could not save that change: ${updated.error.message}` }
+      if (updated.data.length === 0) return { ok: false, error: 'That change was removed meanwhile — ask again' }
+    } else {
+      id = uid('csc')
+      const created = await ctx.caller.db.from('child_schedule_changes').insert({
+        id,
+        child_id: childId,
+        date,
+        blocks,
+        note,
+        created_by: ctx.caller.id,
+        updated_at: stamp,
+      })
+      if (created.error !== null) return { ok: false, error: `Could not save that change: ${created.error.message}` }
+    }
+
+    return {
+      ok: true,
+      summary:
+        blocks.length === 0
+          ? `${childName} is down as not coming on ${prettyDate(date)}.`
+          : `${childName} is down for ${formatDayBlocks(blocks, 'en-US')} on ${prettyDate(date)}.`,
+      targets: [id],
+    }
+  },
+}
+
+/**
+ * Saves or cancels a new weekly schedule from a date, mirroring
+ * `saveSchedulePlan` / `removeSchedulePlan`: one per child per start date, so
+ * saving on a date already planned replaces that plan in place.
+ */
+const schedulePlanExecutor: Executor = {
+  tool: 'schedule.plan',
+  run: async (ctx, proposal) => {
+    const childId = readString(proposal.arguments, 'childId')
+    const childName = readString(proposal.arguments, 'childName') ?? 'That child'
+    const startsOn = readRealDate(proposal.arguments, 'startsOn')
+    const cancel = proposal.arguments.cancel === true
+    const note = readString(proposal.arguments, 'note')?.slice(0, MAX_SCHEDULE_NOTE) ?? ''
+    if (childId === null || startsOn === null) return { ok: false, error: 'That schedule is missing the child or the start date' }
+
+    if (cancel) {
+      const removed = await ctx.caller.db
+        .from('child_schedule_plans')
+        .delete()
+        .eq('child_id', childId)
+        .eq('starts_on', startsOn)
+        .select('id')
+      if (removed.error !== null) return { ok: false, error: `Could not cancel it: ${removed.error.message}` }
+      return {
+        ok: true,
+        summary:
+          removed.data.length === 0
+            ? `${childName} had no new schedule planned from ${prettyDate(startsOn)} any more.`
+            : `Cancelled ${childName}'s new schedule from ${prettyDate(startsOn)}.`,
+        targets: removed.data.map((row) => row.id),
+      }
+    }
+
+    // Promotion folds a started plan into the profile and deletes it, so a plan
+    // for a day already gone would never be seen again.
+    if (startsOn < ctx.today) {
+      return { ok: false, error: `${prettyDate(startsOn)} has already passed, so nothing was saved. Ask Ro again with a new date.` }
+    }
+    const week = readWeek(proposal.arguments.schedule)
+    if (typeof week === 'string') return { ok: false, error: week }
+
+    const existing = await ctx.caller.db
+      .from('child_schedule_plans')
+      .select('id')
+      .eq('child_id', childId)
+      .eq('starts_on', startsOn)
+      .maybeSingle()
+    if (existing.error !== null) return { ok: false, error: `Could not check that date: ${existing.error.message}` }
+
+    const stamp = new Date().toISOString()
+    let id: string
+    if (existing.data !== null) {
+      id = existing.data.id
+      const updated = await ctx.caller.db
+        .from('child_schedule_plans')
+        .update({ schedule: week, note, updated_at: stamp })
+        .eq('id', id)
+        .select('id')
+      if (updated.error !== null) return { ok: false, error: `Could not save that schedule: ${updated.error.message}` }
+      if (updated.data.length === 0) return { ok: false, error: 'That planned schedule was removed meanwhile — ask again' }
+    } else {
+      id = uid('csp')
+      const created = await ctx.caller.db.from('child_schedule_plans').insert({
+        id,
+        child_id: childId,
+        starts_on: startsOn,
+        schedule: week,
+        note,
+        created_by: ctx.caller.id,
+        updated_at: stamp,
+      })
+      if (created.error !== null) return { ok: false, error: `Could not save that schedule: ${created.error.message}` }
+    }
+
+    return {
+      ok: true,
+      summary: `From ${prettyDate(startsOn)}, ${childName} is down for ${formatWeeklySchedule(week, 'en-US')}.`,
+      targets: [id],
+    }
+  },
+}
+
 /** Records or updates one enquiry, mirroring `addLead` / `updateLead`. */
 const leadExecutor: Executor = {
   tool: 'lead.mutate',
@@ -802,7 +978,9 @@ const addFamilyExecutor: Executor = {
           dob: child.dob,
           age_group: child.ageGroup,
           status: child.status,
-          plan: child.plan,
+          // Legacy free text, no longer written; the schedule replaces it.
+          plan: '',
+          schedule: child.schedule,
           start_date: child.startDate,
           teacher: DEFAULT_TEACHER,
           allergies: child.allergies,
@@ -1060,6 +1238,8 @@ const executors: Executor[] = [
   attendanceExecutor,
   dailyLogExecutor,
   calendarExecutor,
+  scheduleChangeExecutor,
+  schedulePlanExecutor,
   leadExecutor,
   documentExecutor,
   recordPaymentExecutor,

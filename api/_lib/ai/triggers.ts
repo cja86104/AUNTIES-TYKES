@@ -1,7 +1,7 @@
 /**
  * What Ro notices without being asked — plan §5.
  *
- * Eight watchers, each a plain read evaluated by ordinary code. No model call
+ * Nine watchers, each a plain read evaluated by ordinary code. No model call
  * happens anywhere in this file, and that is the point: whether an invoice is
  * actually overdue is a fact to look up, not a judgment to risk a model on.
  * §8's "no invented facts" guardrail depends on this boundary holding, so every
@@ -20,8 +20,9 @@
  * so Phase 2 has something to dedupe and cool down against.
  */
 
-import { daysSince, timeInZone } from './clock.js'
-import { resolveChildDay, toHHmm } from '../../../src/lib/schedule.js'
+import { daysSince, prettyDate, shiftDays, timeInZone } from './clock.js'
+import { formatWeeklySchedule, resolveChildDay, toHHmm } from '../../../src/lib/schedule.js'
+import { scheduleWords } from './schedules.js'
 import { invoiceState, money } from './projection.js'
 import type { ToolContext } from './tools/kit.js'
 
@@ -34,6 +35,7 @@ export type TriggerKind =
   | 'incident_unacknowledged'
   | 'unanswered_message'
   | 'cold_lead'
+  | 'schedule_plan_starting'
 
 export type TriggerPriority = 'low' | 'medium' | 'high'
 
@@ -84,6 +86,8 @@ const INCIDENT_ACK_HIGH_HOURS = 24
 const INCIDENT_WINDOW_DAYS = 30
 /** A lead with no movement for this long has gone cold. */
 const COLD_LEAD_DAYS = 7
+/** A new weekly schedule starting within this many days is mentioned ahead. */
+const PLAN_NOTICE_DAYS = 7
 /** Quiet hours boundaries, local to the daycare. */
 const QUIET_BEFORE = '07:00'
 const QUIET_AFTER = '20:00'
@@ -624,10 +628,62 @@ async function coldLead(ctx: ToolContext): Promise<Trigger[] | string> {
   return triggers
 }
 
+/**
+ * A new weekly schedule (migration 0021) that starts within the next week —
+ * the reminder for a change she told Ro or the console about ahead of time.
+ * Low: nothing needs doing, the schedule takes over by itself; this is so the
+ * start date does not catch her by surprise. Gone once the day arrives, when
+ * the plan is folded into the child's profile.
+ */
+async function schedulePlanStarting(ctx: ToolContext): Promise<Trigger[] | string> {
+  const plans = await ctx.caller.db
+    .from('child_schedule_plans')
+    .select('id, child_id, starts_on, schedule, note')
+    .gt('starts_on', ctx.today)
+    .lte('starts_on', shiftDays(ctx.today, PLAN_NOTICE_DAYS))
+    .order('starts_on', { ascending: true })
+  if (plans.error !== null) return plans.error.message
+  if (plans.data.length === 0) return []
+
+  const children = await ctx.caller.db
+    .from('children')
+    .select('id, name, schedule, plan')
+    .in('id', plans.data.map((row) => row.child_id))
+  if (children.error !== null) return children.error.message
+  const byId = new Map(children.data.map((row) => [row.id, row]))
+
+  return plans.data.map((plan) => {
+    const child = byId.get(plan.child_id)
+    const name = child?.name ?? 'A child'
+    const now = child === undefined ? 'unknown' : scheduleWords(child)
+    const next = formatWeeklySchedule(plan.schedule, 'en-US')
+    const away = daysSince(plan.starts_on)
+    return {
+      kind: 'schedule_plan_starting' as const,
+      priority: 'low' as const,
+      key: `schedule_plan_starting:${plan.id}`,
+      summary:
+        `${name}'s new weekly schedule starts ${prettyDate(plan.starts_on)}: ${next} ` +
+        `(currently ${now})${plan.note !== '' ? ` — "${plan.note}"` : ''}.`,
+      facts: {
+        childId: plan.child_id,
+        childName: name,
+        startsOn: plan.starts_on,
+        newSchedule: next,
+        currentSchedule: now,
+        note: plan.note,
+        daysAway: away === null ? null : -away,
+      },
+      // Not standing yet — it has not happened. Plans arrive soonest first.
+      ageDays: null,
+    }
+  })
+}
+
 /* ---------------------------------- sweep --------------------------------- */
 
 /**
- * Runs all eight watchers.
+ * Runs all nine watchers.
  *
  * A watcher that cannot read does not fail the sweep — the others still
  * have something worth saying, and Ro reporting five real things beats
@@ -648,6 +704,7 @@ export async function runTriggers(
     incidentUnacknowledged(ctx, now),
     unansweredMessage(ctx, now),
     coldLead(ctx),
+    schedulePlanStarting(ctx),
   ])
   const kinds = [
     'daily_log_missing',
@@ -658,6 +715,7 @@ export async function runTriggers(
     'incident_unacknowledged',
     'unanswered_message',
     'cold_lead',
+    'schedule_plan_starting',
   ]
 
   const triggers: Trigger[] = []

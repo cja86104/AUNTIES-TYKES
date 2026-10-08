@@ -52,7 +52,7 @@ export type FamilyRow = {
   joined_at: string
   notes: string
   created_at: string
-  /** NULL means "use the standard rate card in settings.rates". */
+  /** Per child, per week. NULL = no rate on file; invoice prefill asks for one. */
   custom_weekly_rate: number | null
 }
 

@@ -164,7 +164,7 @@ export default function AdminSettings() {
             </span>
             <div>
               <h2 className="font-display text-lg font-bold text-slate-900">Rate card</h2>
-              <p className="text-sm text-slate-500">Drives the public estimator and the invoice prefill.</p>
+              <p className="text-sm text-slate-500">Drives the public estimator. Invoice prefill uses each family's own weekly rate, plus the sibling discount here.</p>
             </div>
           </div>
 
