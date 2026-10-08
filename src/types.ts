@@ -129,6 +129,24 @@ export interface ScheduleChange {
   updatedAt: string
 }
 
+/**
+ * A new weekly pattern that starts on a future date ("from the 20th, Mon/Wed/
+ * Fri"). From `startsOn` the resolver uses it instead of `Child.schedule`; the
+ * console then folds it into the child record (migration 0021).
+ */
+export interface SchedulePlan {
+  id: string
+  childId: string
+  /** ISO date, yyyy-MM-dd: the first day the new pattern applies. */
+  startsOn: string
+  /** Never empty: at least one day has a time. */
+  schedule: WeeklySchedule
+  note: string
+  createdAt: string
+  /** Restamped on every edit; drives the parent's "New" marker. */
+  updatedAt: string
+}
+
 export interface WaitlistProspect {
   id: string
   childName: string

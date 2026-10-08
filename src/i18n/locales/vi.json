@@ -370,6 +370,7 @@
       "reminder": "Lời nhắc",
       "schedule_exception": "Thay đổi lịch",
       "schedule_change": "Lịch đặc biệt",
+      "schedule_plan": "Lịch hằng tuần mới",
       "birthday": "Sinh nhật"
     }
   },
@@ -377,6 +378,7 @@
     "notSet": "Chưa có lịch",
     "noDays": "Không có ngày nào trong lịch",
     "notComing": "Không đến ngày này",
-    "upcomingTitle": "Thay đổi lịch sắp tới"
+    "upcomingTitle": "Thay đổi lịch sắp tới",
+    "newWeeklyFrom": "Lịch hằng tuần mới từ {{date}}"
   }
 }

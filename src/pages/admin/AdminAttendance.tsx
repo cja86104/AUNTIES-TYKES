@@ -30,6 +30,7 @@ export default function AdminAttendance() {
   const attendance = useStore((s) => s.attendance)
   const attendanceVisits = useStore((s) => s.attendanceVisits)
   const scheduleChanges = useStore((s) => s.scheduleChanges)
+  const schedulePlans = useStore((s) => s.schedulePlans)
   const calendarEvents = useStore((s) => s.calendarEvents)
   const checkIn = useStore((s) => s.checkIn)
   const checkOut = useStore((s) => s.checkOut)
@@ -44,8 +45,8 @@ export default function AdminAttendance() {
   // Who is expected comes from the real schedules (src/lib/schedule.ts), the
   // same grouping the dashboard and Ro use, so the three can never disagree.
   const roster = useMemo(
-    () => buildDayRoster(children, attendance, scheduleChanges, calendarEvents, date),
-    [children, attendance, scheduleChanges, calendarEvents, date],
+    () => buildDayRoster(children, attendance, scheduleChanges, calendarEvents, date, schedulePlans),
+    [children, attendance, scheduleChanges, calendarEvents, date, schedulePlans],
   )
   const { counts } = roster
 

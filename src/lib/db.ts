@@ -25,6 +25,7 @@ import type {
   Lead,
   Payment,
   ScheduleChange,
+  SchedulePlan,
   SessionUser,
   Settings,
   Thread,
@@ -38,6 +39,7 @@ import type {
   CalendarEventRow,
   ChildRow,
   ChildScheduleChangeRow,
+  ChildSchedulePlanRow,
   Database,
   DailyLogRow,
   DocumentRow,
@@ -137,6 +139,18 @@ export function toScheduleChange(row: ChildScheduleChangeRow): ScheduleChange {
     childId: row.child_id,
     date: row.date,
     blocks: row.blocks,
+    note: row.note,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function toSchedulePlan(row: ChildSchedulePlanRow): SchedulePlan {
+  return {
+    id: row.id,
+    childId: row.child_id,
+    startsOn: row.starts_on,
+    schedule: row.schedule,
     note: row.note,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -398,6 +412,19 @@ export function fromScheduleChange(change: ScheduleChange, createdBy: string | n
     note: change.note,
     created_at: change.createdAt,
     updated_at: change.updatedAt,
+    created_by: createdBy,
+  }
+}
+
+export function fromSchedulePlan(plan: SchedulePlan, createdBy: string | null): Ins<'child_schedule_plans'> {
+  return {
+    id: plan.id,
+    child_id: plan.childId,
+    starts_on: plan.startsOn,
+    schedule: plan.schedule,
+    note: plan.note,
+    created_at: plan.createdAt,
+    updated_at: plan.updatedAt,
     created_by: createdBy,
   }
 }

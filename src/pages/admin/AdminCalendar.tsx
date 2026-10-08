@@ -19,7 +19,7 @@ import {
 import type { Tone } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { buildCalendar } from '../../lib/calendar'
-import { formatDayBlocks } from '../../lib/schedule'
+import { formatDayBlocks, formatWeeklySchedule } from '../../lib/schedule'
 import type { CalendarEntry, CalendarEntryKind } from '../../lib/calendar'
 import { fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 import type { CalendarEvent, CalendarEventKind } from '../../types'
@@ -31,6 +31,7 @@ const KIND_META: Record<CalendarEntryKind, { label: string; tone: Tone }> = {
   reminder: { label: 'Reminder', tone: 'neutral' },
   schedule_exception: { label: 'Schedule change', tone: 'amber' },
   schedule_change: { label: 'Special schedule', tone: 'violet' },
+  schedule_plan: { label: 'New weekly schedule', tone: 'blue' },
   birthday: { label: 'Birthday', tone: 'green' },
   payment_due: { label: 'Payment due', tone: 'amber' },
 }
@@ -73,6 +74,7 @@ export default function AdminCalendar() {
   const children = useStore((s) => s.children)
   const invoices = useStore((s) => s.invoices)
   const scheduleChanges = useStore((s) => s.scheduleChanges)
+  const schedulePlans = useStore((s) => s.schedulePlans)
   const addCalendarEvent = useStore((s) => s.addCalendarEvent)
   const updateCalendarEvent = useStore((s) => s.updateCalendarEvent)
   const deleteCalendarEvent = useStore((s) => s.deleteCalendarEvent)
@@ -96,8 +98,16 @@ export default function AdminCalendar() {
 
   const entries = useMemo(
     () =>
-      buildCalendar({ events: calendarEvents, children, invoices, from: range.from, to: range.to, scheduleChanges }),
-    [calendarEvents, children, invoices, range, scheduleChanges],
+      buildCalendar({
+        events: calendarEvents,
+        children,
+        invoices,
+        from: range.from,
+        to: range.to,
+        scheduleChanges,
+        schedulePlans,
+      }),
+    [calendarEvents, children, invoices, range, scheduleChanges, schedulePlans],
   )
 
   const byMonth = useMemo(() => {
@@ -243,8 +253,10 @@ export default function AdminCalendar() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge tone={meta.tone}>{meta.label}</Badge>
-                          {entry.derived && entry.kind !== 'schedule_change' && <Badge tone="neutral">Automatic</Badge>}
-                          {entry.kind === 'schedule_change' && (
+                          {entry.derived && entry.kind !== 'schedule_change' && entry.kind !== 'schedule_plan' && (
+                            <Badge tone="neutral">Automatic</Badge>
+                          )}
+                          {(entry.kind === 'schedule_change' || entry.kind === 'schedule_plan') && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
                               <Users size={12} /> Family can see this
                             </span>
@@ -269,6 +281,14 @@ export default function AdminCalendar() {
                         )}
                         {entry.kind === 'schedule_exception' && (
                           <p className="text-xs text-slate-500">{childName(entry.childId)}</p>
+                        )}
+                        {entry.kind === 'schedule_plan' && (
+                          <p className="text-xs text-slate-500">
+                            From this day: {entry.weekly ? formatWeeklySchedule(entry.weekly, 'en-US') : ''} ·{' '}
+                            <Link to={`/admin/children/${entry.childId ?? ''}`} className="font-semibold text-brand hover:underline">
+                              Change on {childName(entry.childId).split(' ')[0]}&apos;s page
+                            </Link>
+                          </p>
                         )}
                         {entry.kind === 'schedule_change' && (
                           <p className="text-xs text-slate-500">

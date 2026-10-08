@@ -370,6 +370,7 @@
       "reminder": "Recordatorio",
       "schedule_exception": "Cambio de horario",
       "schedule_change": "Horario especial",
+      "schedule_plan": "Nuevo horario semanal",
       "birthday": "Cumpleaños"
     }
   },
@@ -377,6 +378,7 @@
     "notSet": "Horario aún sin definir",
     "noDays": "Sin días programados",
     "notComing": "No asiste ese día",
-    "upcomingTitle": "Próximos cambios de horario"
+    "upcomingTitle": "Próximos cambios de horario",
+    "newWeeklyFrom": "Nuevo horario semanal desde el {{date}}"
   }
 }

@@ -110,6 +110,18 @@ export type ChildScheduleChangeRow = {
   created_by: string | null
 }
 
+/** Migration 0021. A weekly pattern that starts on `starts_on`. Never empty. */
+export type ChildSchedulePlanRow = {
+  id: string
+  child_id: string
+  starts_on: string
+  schedule: WeeklySchedule
+  note: string
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
 /** Migration 0020. One arrival/departure; `attendance` stays the day summary. */
 export type AttendanceVisitRow = {
   id: string
@@ -402,6 +414,7 @@ export type Database = {
       attendance: Table<AttendanceRow, 'child_id' | 'date'>
       attendance_visits: Table<AttendanceVisitRow, 'id' | 'child_id' | 'date' | 'check_in'>
       child_schedule_changes: Table<ChildScheduleChangeRow, 'id' | 'child_id' | 'date'>
+      child_schedule_plans: Table<ChildSchedulePlanRow, 'id' | 'child_id' | 'starts_on' | 'schedule'>
       daily_logs: Table<DailyLogRow, 'child_id' | 'date'>
       invoices: Table<InvoiceRow, 'family_id' | 'period' | 'due_date'>
       payments: Table<PaymentRow, 'invoice_id' | 'amount'>
@@ -430,6 +443,10 @@ export type Database = {
       /** Migration 0020. Pure validators behind the schedule check constraints. */
       valid_schedule_blocks: { Args: { blocks: ScheduleBlock[] }; Returns: boolean }
       valid_weekly_schedule: { Args: { schedule: WeeklySchedule }; Returns: boolean }
+      /** Migration 0021. */
+      schedule_has_days: { Args: { schedule: WeeklySchedule }; Returns: boolean }
+      /** Migration 0021. Owner only. Folds started plans into children.schedule; returns children updated. */
+      promote_due_schedule_plans: { Args: { today: string }; Returns: number }
     }
     Enums: {
       user_role: UserRoleDb

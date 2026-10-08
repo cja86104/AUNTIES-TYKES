@@ -188,6 +188,14 @@ async function dailyLogMissing(ctx: ToolContext): Promise<Trigger[] | string> {
     .select('kind, title, starts_on, ends_on, closes_at, child_id')
     .lte('starts_on', ctx.today)
   if (events.error !== null) return events.error.message
+  // A weekly plan that started today counts even before it is folded into the child.
+  const plans = await ctx.caller.db
+    .from('child_schedule_plans')
+    .select('child_id, starts_on, schedule')
+    .lte('starts_on', ctx.today)
+    .in('child_id', unlogged)
+  if (plans.error !== null) return plans.error.message
+  const planRows = plans.data.map((row) => ({ childId: row.child_id, startsOn: row.starts_on, schedule: row.schedule }))
   const changeRows = changes.data.map((row) => ({ childId: row.child_id, date: row.date, blocks: row.blocks, note: row.note }))
   const eventRows = events.data.map((row) => ({
     kind: row.kind,
@@ -208,6 +216,7 @@ async function dailyLogMissing(ctx: ToolContext): Promise<Trigger[] | string> {
           ctx.today,
           changeRows,
           eventRows,
+          planRows,
         )
         return day.blocks.some((block) => block.start > toHHmm(leftAt))
       })

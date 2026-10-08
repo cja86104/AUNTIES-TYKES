@@ -44,6 +44,7 @@ const CALENDAR_KIND_LABEL: Record<CalendarEntryKind, string> = {
   reminder: 'Reminder',
   schedule_exception: 'Schedule change',
   schedule_change: 'Special schedule',
+  schedule_plan: 'New weekly schedule',
   birthday: 'Birthday',
   payment_due: 'Payment due',
 }
@@ -65,6 +66,7 @@ export default function AdminDashboard() {
   const inquiriesSeen = useStore((s) => s.sectionViews.inquiries)
   const calendarEvents = useStore((s) => s.calendarEvents)
   const scheduleChanges = useStore((s) => s.scheduleChanges)
+  const schedulePlans = useStore((s) => s.schedulePlans)
   const checkIn = useStore((s) => s.checkIn)
   const checkOut = useStore((s) => s.checkOut)
   const markAbsent = useStore((s) => s.markAbsent)
@@ -75,8 +77,8 @@ export default function AdminDashboard() {
   // Who is expected comes from the real schedules, the same grouping the
   // attendance page and Ro use (src/lib/schedule.ts).
   const roster = useMemo(
-    () => buildDayRoster(children, attendance, scheduleChanges, calendarEvents, today),
-    [children, attendance, scheduleChanges, calendarEvents, today],
+    () => buildDayRoster(children, attendance, scheduleChanges, calendarEvents, today, schedulePlans),
+    [children, attendance, scheduleChanges, calendarEvents, today, schedulePlans],
   )
   const rows = roster.main
   const offList = roster.unscheduled.length + roster.notToday.length

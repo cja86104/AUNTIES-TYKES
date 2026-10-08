@@ -8,12 +8,21 @@
  */
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { ChildDay, ResolverChange, ResolverChild, ResolverEvent, RosterChild, RosterRecord } from '../src/lib/schedule.ts'
+import type {
+  ChildDay,
+  ResolverChange,
+  ResolverChild,
+  ResolverEvent,
+  ResolverPlan,
+  RosterChild,
+  RosterRecord,
+} from '../src/lib/schedule.ts'
 import {
   buildDayRoster,
   dayProblem,
   formatBlock,
   formatWeeklySchedule,
+  patternOn,
   resolveChildDay,
   sanitizeWeeklySchedule,
   scheduleForSaving,
@@ -680,5 +689,57 @@ void describe('buildDayRoster', () => {
     const roster = buildDayRoster(kids, [], changes, [], TUE)
     assert.deepStrictEqual(roster.main.map((r) => r.child.id), ['ava', 'cal'])
     assert.deepStrictEqual(roster.notToday.map((r) => r.child.id), ['ben', 'fay'])
+  })
+})
+
+void describe('schedule plans (a weekly pattern starting on a date)', () => {
+  // Ellie's own pattern has her Tuesdays 9–3. From Wed Oct 7 a new pattern
+  // has her in Mon/Wed/Fri 8–12 only; from Oct 19 another one adds Saturdays.
+  const plans: ResolverPlan[] = [
+    { childId: 'chd_ellie', startsOn: WED, schedule: { mon: [{ start: '08:00', end: '12:00' }], wed: [{ start: '08:00', end: '12:00' }], fri: [{ start: '08:00', end: '12:00' }] } },
+    { childId: 'chd_ellie', startsOn: '2026-10-19', schedule: { sat: [{ start: '09:00', end: '13:00' }] } },
+    { childId: 'chd_other', startsOn: '2026-10-01', schedule: {} },
+  ]
+
+  void it('uses the child\'s own pattern before any plan starts', () => {
+    assert.deepStrictEqual(resolveChildDay(child(), TUE, none, noEvents, plans).blocks, [{ start: '09:00', end: '15:00' }])
+  })
+
+  void it('switches to the plan on its first day', () => {
+    hasFields(resolveChildDay(child(), WED, none, noEvents, plans), { state: 'expected', blocks: [{ start: '08:00', end: '12:00' }], source: 'pattern' })
+  })
+
+  void it('drops days the new pattern does not include', () => {
+    // Tuesday the 13th: the plan from the 7th has no Tuesday.
+    hasFields(resolveChildDay(child(), '2026-10-13', none, noEvents, plans), { state: 'not_expected', source: 'pattern' })
+  })
+
+  void it('takes the newest plan that has started', () => {
+    hasFields(resolveChildDay(child(), '2026-10-24', none, noEvents, plans), { state: 'expected', blocks: [{ start: '09:00', end: '13:00' }] })
+    // Friday the 16th is before the second plan (Oct 19), so the first still applies…
+    hasFields(resolveChildDay(child(), '2026-10-16', none, noEvents, plans), { state: 'expected', blocks: [{ start: '08:00', end: '12:00' }] })
+    // …and Friday the 23rd is after it, when only Saturdays remain.
+    hasFields(resolveChildDay(child(), '2026-10-23', none, noEvents, plans), { state: 'not_expected' })
+  })
+
+  void it('gives a never-scheduled child a schedule once their plan starts', () => {
+    assert.equal(resolveChildDay(child({ schedule: undefined }), TUE, none, noEvents, plans).state, 'unscheduled')
+    assert.equal(resolveChildDay(child({ schedule: undefined }), WED, none, noEvents, plans).state, 'expected')
+  })
+
+  void it('still lets one-off changes, exceptions and closures win', () => {
+    const changes: ResolverChange[] = [{ childId: 'chd_ellie', date: WED, blocks: [], note: 'trip' }]
+    assert.equal(resolveChildDay(child(), WED, changes, noEvents, plans).source, 'change')
+    assert.equal(resolveChildDay(child(), WED, none, [event({ kind: 'closure', startsOn: WED })], plans).state, 'closed')
+  })
+
+  void it("ignores another child's plan", () => {
+    assert.deepStrictEqual(patternOn({ id: 'chd_ellie', schedule: { tue: [] } }, '2026-12-01', plans.slice(2)), { tue: [] })
+  })
+
+  void it('feeds the roster too', () => {
+    const kids: RosterChild[] = [{ ...child(), name: 'Ellie' }]
+    assert.equal(buildDayRoster(kids, [], [], [], WED).notToday.length, 1)
+    assert.equal(buildDayRoster(kids, [], [], [], WED, plans).main.length, 1)
   })
 })

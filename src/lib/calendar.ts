@@ -1,20 +1,30 @@
 /**
  * Assembles the Family Calendar.
  *
- * Four streams are merged into one ordered list:
+ * Five streams are merged into one ordered list:
  *   1. events the owner authored (`calendar_events`)
  *   2. one-off schedule changes (`child_schedule_changes`), when passed in
- *   3. birthdays, derived from `Child.dob`
- *   4. payment due dates, derived from unpaid `Invoice.dueDate`
+ *   3. new weekly schedules starting on a date (`child_schedule_plans`), when passed in
+ *   4. birthdays, derived from `Child.dob`
+ *   5. payment due dates, derived from unpaid `Invoice.dueDate`
  *
- * Only the first two are stored. Deriving the other two means birthdays never need
+ * Only the first three are stored. Deriving the other two means birthdays never need
  * re-entering each year and never drift when a date of birth is corrected,
  * and a due date cannot disagree with the invoice it came from.
  */
-import type { CalendarEvent, CalendarEventKind, Child, Invoice, ScheduleBlock, ScheduleChange } from '../types'
+import type {
+  CalendarEvent,
+  CalendarEventKind,
+  Child,
+  Invoice,
+  ScheduleBlock,
+  ScheduleChange,
+  SchedulePlan,
+  WeeklySchedule,
+} from '../types'
 import { invoiceBalance } from './helpers'
 
-export type CalendarEntryKind = CalendarEventKind | 'schedule_change' | 'birthday' | 'payment_due'
+export type CalendarEntryKind = CalendarEventKind | 'schedule_change' | 'schedule_plan' | 'birthday' | 'payment_due'
 
 export interface CalendarEntry {
   id: string
@@ -31,7 +41,9 @@ export interface CalendarEntry {
   childId?: string
   /** Only on `schedule_change`: that day's times. Empty = not coming. */
   blocks?: ScheduleBlock[]
-  /** Only on `schedule_change`: when it was last set, for the "New" marker. */
+  /** Only on `schedule_plan`: the new weekly pattern starting that day. */
+  weekly?: WeeklySchedule
+  /** On `schedule_change` and `schedule_plan`: when it was last set, for the "New" marker. */
   changedAt?: string
   /** Derived entries are read-only — there is no row behind them to edit. */
   derived: boolean
@@ -78,10 +90,12 @@ export interface BuildCalendarOptions {
   familyChildIds?: string[]
   /** One-off schedule changes to include. Omit to leave them off. */
   scheduleChanges?: ScheduleChange[]
+  /** New weekly schedules to include, on the day each starts. Omit to leave them off. */
+  schedulePlans?: SchedulePlan[]
 }
 
 export function buildCalendar(options: BuildCalendarOptions): CalendarEntry[] {
-  const { events, children, invoices, from, to, parentView = false, familyChildIds, scheduleChanges = [] } = options
+  const { events, children, invoices, from, to, parentView = false, familyChildIds, scheduleChanges = [], schedulePlans = [] } = options
   const entries: CalendarEntry[] = []
 
   for (const event of events) {
@@ -120,6 +134,25 @@ export function buildCalendar(options: BuildCalendarOptions): CalendarEntry[] {
       childId: change.childId,
       blocks: change.blocks,
       changedAt: change.updatedAt,
+      derived: true,
+      visibleToParents: true,
+    })
+  }
+
+  for (const plan of schedulePlans) {
+    if (!inRange(plan.startsOn, from, to)) continue
+    if (familyChildIds && !familyChildIds.includes(plan.childId)) continue
+    const child = children.find((c) => c.id === plan.childId)
+    if (!child) continue
+    entries.push({
+      id: `plan:${plan.id}`,
+      kind: 'schedule_plan',
+      title: child.name,
+      note: plan.note,
+      date: plan.startsOn,
+      childId: plan.childId,
+      weekly: plan.schedule,
+      changedAt: plan.updatedAt,
       derived: true,
       visibleToParents: true,
     })

@@ -23,6 +23,7 @@ import {
   fromLead,
   fromPayment,
   fromScheduleChange,
+  fromSchedulePlan,
   fromSettings,
   fromThread,
   fromThreadMessage,
@@ -35,6 +36,7 @@ import {
   toInvoice,
   toLead,
   toScheduleChange,
+  toSchedulePlan,
   toSessionUser,
   toSettings,
   toThread,
@@ -61,6 +63,7 @@ import type {
   Lead,
   Payment,
   ScheduleChange,
+  SchedulePlan,
   SessionUser,
   Settings,
   Thread,
@@ -89,6 +92,8 @@ export interface HydratedData {
   calendarEvents: CalendarEvent[]
   /** One-off schedule changes. A parent only ever receives their own children's (RLS). */
   scheduleChanges: ScheduleChange[]
+  /** Weekly patterns starting on a future date (0021). A parent only receives their own children's (RLS). */
+  schedulePlans: SchedulePlan[]
   acknowledgements: DocumentAck[]
   incidentAcks: IncidentAck[]
   /** Last time this person opened each section. Missing = never opened. */
@@ -180,6 +185,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     waitlist,
     calendarEvents,
     scheduleChanges,
+    schedulePlans,
     sectionViews,
     settings,
   ] = await Promise.all([
@@ -205,6 +211,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     run(supabase.from('waitlist_prospects').select('*')),
     run(supabase.from('calendar_events').select('*')),
     run(supabase.from('child_schedule_changes').select('*').order('date', { ascending: true })),
+    run(supabase.from('child_schedule_plans').select('*').order('starts_on', { ascending: true })),
     run(supabase.from('section_views').select('*')),
     supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
   ])
@@ -228,6 +235,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     waitlist: waitlist.map(toWaitlistProspect),
     calendarEvents: calendarEvents.map(toCalendarEvent),
     scheduleChanges: scheduleChanges.map(toScheduleChange),
+    schedulePlans: schedulePlans.map(toSchedulePlan),
     acknowledgements: acks.map((a) => ({
       documentId: a.document_id,
       profileId: a.profile_id,
@@ -428,6 +436,24 @@ export const persist = {
 
   deleteScheduleChange: (id: string) =>
     run(supabase.from('child_schedule_changes').delete().eq('id', id).select()),
+
+  /** One child, one start date (`child_id, starts_on` is unique): saving on a taken date replaces it. */
+  schedulePlan: (plan: SchedulePlan, createdBy: string | null) =>
+    run(
+      supabase
+        .from('child_schedule_plans')
+        .upsert(fromSchedulePlan(plan, createdBy), { onConflict: 'child_id,starts_on' })
+        .select(),
+    ),
+
+  deleteSchedulePlan: (id: string) => run(supabase.from('child_schedule_plans').delete().eq('id', id).select()),
+
+  /**
+   * Owner only (the database refuses anyone else). Folds every plan that has
+   * started into its child's schedule, in one transaction, and returns how
+   * many children changed. `today` is the daycare's date, not the database's.
+   */
+  promoteSchedulePlans: (today: string) => run(supabase.rpc('promote_due_schedule_plans', { today })),
 
   settings: (settings: Settings) => run(supabase.from('settings').upsert(fromSettings(settings)).select()),
 

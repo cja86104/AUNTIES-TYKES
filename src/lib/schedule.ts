@@ -18,6 +18,10 @@
  *   5. A one-off schedule change for that date  → its blocks (empty = off)
  *   6. No weekly schedule ever set (NULL)       → UNSCHEDULED (unknown)
  *   7. The weekly pattern for that weekday      → its blocks (empty = off)
+ * "The weekly pattern" in 6–7 is the newest PLAN that has started by that date
+ * (a lasting change entered ahead of time, migration 0021), else the child's
+ * own schedule — so a plan applies on its first day whether or not anyone has
+ * opened the app to fold it into the child record.
  * Steps 5 and 7 then apply any `early_close` that day: block ends are capped
  * at its time, and blocks starting at or after it are dropped.
  *
@@ -71,6 +75,31 @@ export interface ResolverEvent {
   /** HH:mm or HH:mm:ss; only meaningful on `early_close`. */
   closesAt?: string | null
   childId?: string | null
+}
+
+/** A weekly pattern starting on a date. A domain `SchedulePlan` satisfies this. */
+export interface ResolverPlan {
+  childId: string
+  startsOn: string
+  schedule: WeeklySchedule
+}
+
+/**
+ * The weekly pattern in force for one child on one date: the newest plan whose
+ * start date has arrived, else the child's own schedule (undefined/null = never
+ * set).
+ */
+export function patternOn(
+  child: Pick<ResolverChild, 'id' | 'schedule'>,
+  date: string,
+  plans: readonly ResolverPlan[],
+): WeeklySchedule | null | undefined {
+  let best: ResolverPlan | undefined
+  for (const plan of plans) {
+    if (plan.childId !== child.id || plan.startsOn > date) continue
+    if (best === undefined || plan.startsOn > best.startsOn) best = plan
+  }
+  return best ? best.schedule : child.schedule
 }
 
 export type DayState = 'expected' | 'not_expected' | 'closed' | 'unscheduled'
@@ -166,6 +195,7 @@ export function resolveChildDay(
   date: string,
   changes: readonly ResolverChange[],
   events: readonly ResolverEvent[],
+  plans: readonly ResolverPlan[] = [],
 ): ChildDay {
   const weekday = weekdayOf(date)
   if (weekday === null) throw new RangeError(`Not a yyyy-MM-dd date: ${date}`)
@@ -190,9 +220,10 @@ export function resolveChildDay(
   const change = changes.find((entry) => entry.childId === child.id && entry.date === date)
   if (change !== undefined) return fromBlocks(change.blocks, 'change', change.note, closesAt)
 
-  if (child.schedule === undefined || child.schedule === null) return day('unscheduled', 'unscheduled')
+  const pattern = patternOn(child, date, plans)
+  if (pattern === undefined || pattern === null) return day('unscheduled', 'unscheduled')
 
-  return fromBlocks(child.schedule[weekday] ?? [], 'pattern', '', closesAt)
+  return fromBlocks(pattern[weekday] ?? [], 'pattern', '', closesAt)
 }
 
 /* ------------------------------ validation -------------------------------- */
@@ -499,6 +530,7 @@ export function buildDayRoster<C extends RosterChild, R extends RosterRecord>(
   changes: readonly ResolverChange[],
   events: readonly ResolverEvent[],
   date: string,
+  plans: readonly ResolverPlan[] = [],
 ): DayRoster<C, R> {
   const todays = events.filter((event) => covers(event, date))
   const closure = todays.find((event) => event.kind === 'closure')
@@ -518,7 +550,7 @@ export function buildDayRoster<C extends RosterChild, R extends RosterRecord>(
 
   for (const child of children) {
     if (child.status !== 'active') continue
-    const day = resolveChildDay(child, date, changes, events)
+    const day = resolveChildDay(child, date, changes, events, plans)
     const record = records.find((entry) => entry.childId === child.id && entry.date === date) ?? null
     const { phase, returnsAt } = phaseOf(day, record)
     const row: RosterRow<C, R> = returnsAt === undefined ? { child, record, day, phase } : { child, record, day, phase, returnsAt }

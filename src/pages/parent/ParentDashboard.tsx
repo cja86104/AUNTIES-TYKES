@@ -28,8 +28,8 @@ import {
 } from '../../components/ui'
 import DailyLogCard from '../../components/DailyLogCard'
 import IncidentAckStrip from '../../components/IncidentAckStrip'
-import { incidentsAwaitingAck, newScheduleChanges } from '../../lib/unread'
-import { buildDayRoster, formatClock, formatDayBlocks } from '../../lib/schedule'
+import { incidentsAwaitingAck, newScheduleChanges, newSchedulePlans } from '../../lib/unread'
+import { buildDayRoster, formatClock, formatDayBlocks, formatWeeklySchedule } from '../../lib/schedule'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { ageLabel, fmtDate, fmtTime, money, todayISO } from '../../lib/helpers'
@@ -42,6 +42,7 @@ export default function ParentDashboard() {
   const incidentAcks = useStore((s) => s.incidentAcks)
   const scheduleChanges = useStore((s) => s.scheduleChanges)
   const calendarEvents = useStore((s) => s.calendarEvents)
+  const schedulePlans = useStore((s) => s.schedulePlans)
   const sectionViews = useStore((s) => s.sectionViews)
   // Real readiness, not a timer: the store flips `ready` once bootstrap has
   // restored the session and hydrated the cache from Supabase.
@@ -53,7 +54,7 @@ export default function ParentDashboard() {
 
   // Today from each child's real schedule, the same grouping the owner's
   // console and Ro use (src/lib/schedule.ts), so "expected" means expected.
-  const roster = buildDayRoster(activeKids, attendance, scheduleChanges, calendarEvents, today)
+  const roster = buildDayRoster(activeKids, attendance, scheduleChanges, calendarEvents, today, schedulePlans)
   const todayRows = [...roster.main, ...roster.unscheduled, ...roster.notToday].sort(
     (a, b) => activeKids.indexOf(a.child) - activeKids.indexOf(b.child),
   )
@@ -80,6 +81,13 @@ export default function ParentDashboard() {
     sectionViews.schedule_changes,
     today,
   ).sort((a, b) => (a.date < b.date ? -1 : 1))
+  /** New weekly schedules starting later that this family has not seen yet. */
+  const changedWeeks = newSchedulePlans(
+    schedulePlans.filter((p) => kidIds.includes(p.childId)),
+    sectionViews.schedule_changes,
+    today,
+  ).sort((a, b) => (a.startsOn < b.startsOn ? -1 : 1))
+  const scheduleNews = changedDays.length + changedWeeks.length
 
   return (
     <PageTransition>
@@ -120,13 +128,22 @@ export default function ParentDashboard() {
         </Card>
       )}
 
-      {changedDays.length > 0 && (
+      {scheduleNews > 0 && (
         <Card className="mb-6 border-violet-200 bg-violet-50/70 p-5" role="status">
           <p className="flex items-center gap-2 font-display text-base font-bold text-violet-900">
-            <CalendarClock size={18} /> {t('dashboard.scheduleAlertTitle', { count: changedDays.length })}
+            <CalendarClock size={18} /> {t('dashboard.scheduleAlertTitle', { count: scheduleNews })}
           </p>
           <p className="mt-1 text-sm text-violet-900/80">{t('dashboard.scheduleAlertBody')}</p>
           <ul className="mt-3 space-y-2">
+            {changedWeeks.map((plan) => (
+              <li key={plan.id} className="rounded-xl bg-white/80 px-3 py-2 text-sm">
+                <span className="font-semibold text-slate-800">
+                  {kids.find((k) => k.id === plan.childId)?.name ?? ''} ·{' '}
+                  {t('schedule.newWeeklyFrom', { date: fmtDate(plan.startsOn, 'EEE, MMM d') })}
+                </span>
+                <span className="text-slate-600"> · {formatWeeklySchedule(plan.schedule, i18n.language)}</span>
+              </li>
+            ))}
             {changedDays.map((change) => (
               <li key={change.id} className="rounded-xl bg-white/80 px-3 py-2 text-sm">
                 <span className="font-semibold text-slate-800">

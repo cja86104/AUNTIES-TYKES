@@ -8,7 +8,7 @@ import type { Tone } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { buildCalendar } from '../../lib/calendar'
-import { formatDayBlocks } from '../../lib/schedule'
+import { formatDayBlocks, formatWeeklySchedule } from '../../lib/schedule'
 import { useSectionSeen } from '../../lib/unread'
 import type { CalendarEntry, CalendarEntryKind } from '../../lib/calendar'
 import { fmtDate, fmtTime, todayISO } from '../../lib/helpers'
@@ -21,6 +21,7 @@ const TONES: Partial<Record<CalendarEntryKind, Tone>> = {
   reminder: 'neutral',
   schedule_exception: 'amber',
   schedule_change: 'violet',
+  schedule_plan: 'blue',
   birthday: 'green',
 }
 
@@ -28,6 +29,7 @@ export default function ParentCalendar() {
   const { t, i18n } = useTranslation()
   const calendarEvents = useStore((s) => s.calendarEvents)
   const scheduleChanges = useStore((s) => s.scheduleChanges)
+  const schedulePlans = useStore((s) => s.schedulePlans)
   const { kids } = useFamilyScope()
   // Opening the calendar clears the "schedule changes" badge.
   const seen = useSectionSeen('schedule_changes')
@@ -45,8 +47,9 @@ export default function ParentCalendar() {
         parentView: true,
         familyChildIds: kids.map((c) => c.id),
         scheduleChanges,
+        schedulePlans,
       }),
-    [calendarEvents, kids, scheduleChanges],
+    [calendarEvents, kids, scheduleChanges, schedulePlans],
   )
 
   const byMonth = useMemo(() => {
@@ -93,11 +96,16 @@ export default function ParentCalendar() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <Badge tone={TONES[entry.kind] ?? 'neutral'}>{t(`calendar.kind.${entry.kind}`)}</Badge>
-                          {entry.kind === 'schedule_change' && seen.isNew(entry.changedAt) && (
+                          {(entry.kind === 'schedule_change' || entry.kind === 'schedule_plan') && seen.isNew(entry.changedAt) && (
                             <Badge tone="green">{t('common.new')}</Badge>
                           )}
                         </div>
                         <p className="mt-1.5 font-semibold text-slate-900">{entry.title}</p>
+                        {entry.kind === 'schedule_plan' && entry.weekly && (
+                          <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1F4A3D]">
+                            <Clock size={13} /> {formatWeeklySchedule(entry.weekly, i18n.language)}
+                          </p>
+                        )}
                         {entry.kind === 'schedule_change' && (
                           <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1F4A3D]">
                             <Clock size={13} />

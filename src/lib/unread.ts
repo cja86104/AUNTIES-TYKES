@@ -22,6 +22,7 @@ import type {
   IncidentAck,
   Lead,
   ScheduleChange,
+  SchedulePlan,
   Thread,
 } from '../types'
 
@@ -150,6 +151,14 @@ export function newScheduleChanges(
   return changes.filter((c) => c.date >= today && newerThan(c.updatedAt, seenAt))
 }
 
+/**
+ * Parent side: new weekly patterns starting on a future date, set or edited
+ * since they last looked. Counted with one-off changes under the same marker.
+ */
+export function newSchedulePlans(plans: SchedulePlan[], seenAt: string | undefined, today: string): SchedulePlan[] {
+  return plans.filter((p) => p.startsOn >= today && newerThan(p.updatedAt, seenAt))
+}
+
 /* -------------------------------- nav badges ------------------------------ */
 
 export interface UnreadCounts {
@@ -177,8 +186,9 @@ export interface UnreadCounts {
   /** Owner only: contact-form inquiries since she last opened the inbox. Always 0 for a parent. */
   inquiries: number
   /**
-   * Parent only: upcoming one-off schedule changes for their children made or
-   * edited since they last looked. Always 0 for the owner, who makes them.
+   * Parent only: upcoming one-off schedule changes and new weekly schedules for
+   * their children, made or edited since they last looked. Always 0 for the
+   * owner, who makes them.
    */
   calendar: number
 }
@@ -203,6 +213,7 @@ export function useUnreadCounts(): UnreadCounts {
   const documentAcks = useStore((s) => s.acknowledgements)
   const leads = useStore((s) => s.leads)
   const scheduleChanges = useStore((s) => s.scheduleChanges)
+  const schedulePlans = useStore((s) => s.schedulePlans)
 
   if (!user) return { documents: 0, messages: 0, enrollments: 0, dailyReports: 0, inquiries: 0, calendar: 0 }
 
@@ -237,10 +248,16 @@ export function useUnreadCounts(): UnreadCounts {
     enrollments: 0,
     dailyReports: reportIds.size,
     inquiries: 0,
-    calendar: newScheduleChanges(
-      scheduleChanges.filter((c) => kidIds.has(c.childId)),
-      sectionViews.schedule_changes,
-      todayISO(),
-    ).length,
+    calendar:
+      newScheduleChanges(
+        scheduleChanges.filter((c) => kidIds.has(c.childId)),
+        sectionViews.schedule_changes,
+        todayISO(),
+      ).length +
+      newSchedulePlans(
+        schedulePlans.filter((p) => kidIds.has(p.childId)),
+        sectionViews.schedule_changes,
+        todayISO(),
+      ).length,
   }
 }

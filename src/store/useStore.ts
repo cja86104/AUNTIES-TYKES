@@ -42,6 +42,8 @@ import type {
   NewLead,
   ScheduleBlock,
   ScheduleChange,
+  SchedulePlan,
+  WeeklySchedule,
   NewPayment,
   NewThread,
   NewThreadMessage,
@@ -106,6 +108,11 @@ interface DataSlice {
    * pattern. A parent only ever holds their own children's (RLS).
    */
   scheduleChanges: ScheduleChange[]
+  /**
+   * Weekly patterns that start on a future date. From that date the resolver
+   * uses the plan; on the owner's next sign-in it is folded into the child.
+   */
+  schedulePlans: SchedulePlan[]
   /** Documents parents have acknowledged. A parent only ever sees their own. */
   acknowledgements: DocumentAck[]
   /** Parent acknowledgements of incident reports. A parent only ever sees their own. */
@@ -223,6 +230,14 @@ export interface StoreState extends DataSlice {
   /** Takes a one-off change away; the child is back on their weekly pattern that date. */
   removeScheduleChange: (id: string) => void
 
+  /**
+   * Sets a new weekly pattern starting on `startsOn`, replacing any plan already
+   * starting that date. Restamps `updatedAt` so the family sees it as new.
+   */
+  saveSchedulePlan: (plan: { childId: string; startsOn: string; schedule: WeeklySchedule; note: string }) => void
+  /** Cancels a planned weekly pattern before it starts. */
+  removeSchedulePlan: (id: string) => void
+
   updateSettings: (patch: Partial<Settings>) => void
   updateRates: (patch: Partial<Rates>) => void
   updatePolicies: (patch: Partial<Policies>) => void
@@ -261,6 +276,7 @@ const emptyData: DataSlice = {
   waitlist: [],
   calendarEvents: [],
   scheduleChanges: [],
+  schedulePlans: [],
   acknowledgements: [],
   incidentAcks: [],
   sectionViews: {},
@@ -315,11 +331,31 @@ export const useStore = create<StoreState>()((set, get) => {
       waitlist: data.waitlist,
       calendarEvents: data.calendarEvents,
       scheduleChanges: data.scheduleChanges,
+      schedulePlans: data.schedulePlans,
       acknowledgements: data.acknowledgements,
       incidentAcks: data.incidentAcks,
       sectionViews: data.sectionViews,
       ...(data.settings ? { settings: data.settings } : {}),
     })
+  }
+
+  /**
+   * Owner only: folds weekly plans whose start date has arrived into the child
+   * record, so the profile shows the schedule actually in force. Runs at
+   * sign-in and on page load, before the data is read. A failure is shown but
+   * not fatal: the resolver honours a started plan either way.
+   */
+  const promoteDuePlans = async (): Promise<void> => {
+    if (get().user?.role !== 'admin') return
+    try {
+      await persist.promoteSchedulePlans(todayISO())
+    } catch (error) {
+      get().pushToast({
+        tone: 'error',
+        title: 'Could not apply a planned schedule',
+        description: error instanceof Error ? error.message : 'It will be tried again next time you open the app.',
+      })
+    }
   }
 
   /**
@@ -368,6 +404,7 @@ export const useStore = create<StoreState>()((set, get) => {
       try {
         const session = await signIn(email, password)
         set({ user: session })
+        await promoteDuePlans()
         await applyHydration()
         startRealtime()
         return { ok: true, user: session }
@@ -399,6 +436,7 @@ export const useStore = create<StoreState>()((set, get) => {
         const session = await restoreSession()
         if (session) {
           set({ user: session })
+          await promoteDuePlans()
           await applyHydration()
           startRealtime()
         }
@@ -961,6 +999,28 @@ export const useStore = create<StoreState>()((set, get) => {
       commit(
         (s) => ({ scheduleChanges: s.scheduleChanges.filter((c) => c.id !== id) }),
         () => persist.deleteScheduleChange(id),
+      ),
+
+    saveSchedulePlan: ({ childId, startsOn, schedule, note }) => {
+      const stamp = nowISO()
+      commit(
+        (s) => {
+          const existing = s.schedulePlans.find((p) => p.childId === childId && p.startsOn === startsOn)
+          const saved: SchedulePlan = existing
+            ? { ...existing, schedule, note, updatedAt: stamp }
+            : { id: uid('csp'), childId, startsOn, schedule, note, createdAt: stamp, updatedAt: stamp }
+          return { schedulePlans: [...s.schedulePlans.filter((p) => p !== existing), saved] }
+        },
+        (s) => {
+          const saved = s.schedulePlans.find((p) => p.childId === childId && p.startsOn === startsOn)
+          return saved ? persist.schedulePlan(saved, authorId(s)) : Promise.resolve()
+        },
+      )
+    },
+    removeSchedulePlan: (id) =>
+      commit(
+        (s) => ({ schedulePlans: s.schedulePlans.filter((p) => p.id !== id) }),
+        () => persist.deleteSchedulePlan(id),
       ),
 
     /* ------------------------------ settings ------------------------------ */

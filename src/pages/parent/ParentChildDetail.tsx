@@ -17,7 +17,7 @@ import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 import { PortalSchedule } from '../../components/ScheduleSummary'
-import { formatDayBlocks } from '../../lib/schedule'
+import { formatDayBlocks, formatWeeklySchedule } from '../../lib/schedule'
 import { useSectionSeen } from '../../lib/unread'
 import { visitsOn } from '../../lib/visits'
 
@@ -28,6 +28,7 @@ export default function ParentChildDetail() {
   const attendance = useStore((s) => s.attendance)
   const scheduleChanges = useStore((s) => s.scheduleChanges)
   const attendanceVisits = useStore((s) => s.attendanceVisits)
+  const schedulePlans = useStore((s) => s.schedulePlans)
   // Opening a child's page clears the "schedule changes" badge, like the calendar.
   const seen = useSectionSeen('schedule_changes')
   const dailyLogs = useStore((s) => s.dailyLogs)
@@ -58,6 +59,9 @@ export default function ParentChildDetail() {
   const upcomingChanges = scheduleChanges
     .filter((c) => c.childId === child.id && c.date >= today)
     .sort((a, b) => (a.date < b.date ? -1 : 1))
+  const upcomingPlans = schedulePlans
+    .filter((p) => p.childId === child.id && p.startsOn > today)
+    .sort((a, b) => (a.startsOn < b.startsOn ? -1 : 1))
   const recentAttendance = attendance
     .filter((a) => a.childId === child.id)
     .sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -168,10 +172,22 @@ export default function ParentChildDetail() {
             </p>
           </Card>
 
-          {upcomingChanges.length > 0 && (
+          {(upcomingChanges.length > 0 || upcomingPlans.length > 0) && (
             <Card className="p-5">
               <h2 className="font-display text-lg font-bold text-slate-900">{t('schedule.upcomingTitle')}</h2>
               <ul className="mt-3 divide-y divide-slate-100">
+                {upcomingPlans.map((plan) => (
+                  <li key={plan.id} className="py-2.5 first:pt-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-800">
+                        {t('schedule.newWeeklyFrom', { date: fmtDate(plan.startsOn, 'EEE, MMM d') })}
+                      </span>
+                      {seen.isNew(plan.updatedAt) && <Badge tone="green">{t('common.new')}</Badge>}
+                    </div>
+                    <p className="mt-0.5 text-sm text-[#1F4A3D]">{formatWeeklySchedule(plan.schedule, i18n.language)}</p>
+                    {plan.note && <p className="mt-0.5 text-sm text-slate-600">{plan.note}</p>}
+                  </li>
+                ))}
                 {upcomingChanges.map((change) => (
                   <li key={change.id} className="py-2.5 first:pt-0 last:pb-0">
                     <div className="flex flex-wrap items-center gap-2">

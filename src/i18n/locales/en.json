@@ -370,6 +370,7 @@
       "reminder": "Reminder",
       "schedule_exception": "Schedule change",
       "schedule_change": "Special schedule",
+      "schedule_plan": "New weekly schedule",
       "birthday": "Birthday"
     }
   },
@@ -377,6 +378,7 @@
     "notSet": "Schedule not set yet",
     "noDays": "No days scheduled",
     "notComing": "Not coming that day",
-    "upcomingTitle": "Schedule changes coming up"
+    "upcomingTitle": "Schedule changes coming up",
+    "newWeeklyFrom": "New weekly schedule from {{date}}"
   }
 }
