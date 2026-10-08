@@ -22,10 +22,12 @@
 import { propose } from '../audit.js'
 import { prettyDate, timeInZone } from '../clock.js'
 import { uid } from '../ids.js'
+import type { Incident } from '../../../../src/types.js'
 import {
   alreadyProposed,
   dbFailure,
   proposed,
+  readBoolean,
   readDate,
   readEnum,
   readString,
@@ -194,6 +196,30 @@ const attendanceSet: ToolSpec = {
 
 const LOG_FIELDS = ['meals', 'naps', 'potty', 'mood', 'notes'] as const
 
+/** The moods the console offers. Ro may still use her own words if she says something else. */
+const MOOD_CHOICES = [
+  'Cheerful',
+  'Sleepy but sweet',
+  'Busy & curious',
+  'Snuggly',
+  'Silly',
+  'Focused',
+  'Tender',
+  'Grumpy',
+  'Tired',
+  'Feeling sick',
+]
+
+const INCIDENT_LABELS: Record<IncidentKey, string> = {
+  time: 'Incident time',
+  location: 'Where it happened',
+  description: 'What happened',
+  injury: 'Injury',
+  firstAid: 'First aid given',
+  witnessedBy: 'Witnessed by',
+  parentNotified: 'Parent notified',
+}
+
 const dailyLogWrite: ToolSpec = {
   name: 'dailyLog_write',
   tier: 'low',
@@ -202,6 +228,9 @@ const dailyLogWrite: ToolSpec = {
     'day first — if a log already exists, this updates it, and anything you leave ' +
     'out keeps its current value. Fill in only what the owner actually told you or ' +
     'what the records show: never invent a meal, a nap, a mood or an activity. ' +
+    'Every part is optional — the family sees only the parts that were filled in. ' +
+    'Can also add, change or remove an incident / injury report. Photos and PDFs ' +
+    'cannot be attached here; she adds those from the Daily logs page. ' +
     'This does not save on its own; she sees it and taps.',
   parameters: schema(
     {
@@ -210,9 +239,28 @@ const dailyLogWrite: ToolSpec = {
       meals: { type: 'string' },
       naps: { type: 'string' },
       potty: { type: 'string' },
-      mood: { type: 'string' },
-      notes: { type: 'string' },
+      mood: { type: 'string', description: `Usually one of: ${MOOD_CHOICES.join(', ')}` },
+      notes: { type: 'string', description: 'The note home' },
       activities: { type: 'array', items: { type: 'string' }, description: 'Replaces the existing list' },
+      incident: {
+        type: 'object',
+        description:
+          'An incident or injury report on this log. Merged into any incident already ' +
+          'on it. A new incident needs time, location, description and parentNotified — ' +
+          'ask her for any she has not given rather than guessing. The family is asked ' +
+          'to confirm they read it, and asked again if it changes.',
+        properties: {
+          time: { type: 'string', description: 'HH:mm, 24-hour' },
+          location: { type: 'string' },
+          description: { type: 'string', description: 'What happened' },
+          injury: { type: 'string', description: 'The injury and body part; omit if nobody was hurt' },
+          firstAid: { type: 'string' },
+          witnessedBy: { type: 'string' },
+          parentNotified: { type: 'string', description: 'How and when the parent was told' },
+        },
+        additionalProperties: false,
+      },
+      removeIncident: { type: 'boolean', description: 'Take the incident report off this log' },
     },
     ['childId'],
   ),
@@ -237,19 +285,52 @@ const dailyLogWrite: ToolSpec = {
       ? rawActivities.filter((entry): entry is string => typeof entry === 'string').slice(0, 20)
       : null
 
-    if (Object.keys(fields).length === 0 && activities === null) {
+    const incidentChanges = readIncidentArgs(args.incident)
+    const removeIncident = readBoolean(args, 'removeIncident', false)
+    if (removeIncident && incidentChanges !== null) {
+      return { ok: false, error: 'Either change the incident or remove it, not both' }
+    }
+
+    if (Object.keys(fields).length === 0 && activities === null && incidentChanges === null && !removeIncident) {
       return { ok: false, error: 'Nothing to write — give at least one part of the log' }
     }
 
     const existing = await ctx.caller.db
       .from('daily_logs')
-      .select('id')
+      .select('id, incident')
       .eq('child_id', childId)
       .eq('date', date)
       .maybeSingle()
     if (existing.error !== null) return dbFailure('that daily log', existing.error)
 
-    const payload = { childId, childName: child.name, date, fields, activities, logId: existing.data?.id ?? null }
+    const currentIncident = existing.data?.incident ?? null
+    if (removeIncident && currentIncident === null) {
+      return { ok: true, data: { written: false, reason: 'that log has no incident to remove' } }
+    }
+    // Checked here as well as on save, so she is asked for what is missing
+    // before a card goes up rather than after she taps it.
+    let incidentPreview: IncidentDetails | null = null
+    if (incidentChanges !== null) {
+      const merged = mergeIncident(currentIncident, incidentChanges, '')
+      if (!merged.ok) {
+        return {
+          ok: false,
+          error: `The incident report still needs: ${merged.missing.map((k) => INCIDENT_LABELS[k].toLowerCase()).join(', ')}. Ask her.`,
+        }
+      }
+      incidentPreview = merged.incident
+    }
+
+    const payload = {
+      childId,
+      childName: child.name,
+      date,
+      fields,
+      activities,
+      incident: incidentChanges,
+      removeIncident,
+      logId: existing.data?.id ?? null,
+    }
     const key = `dailyLog.write:${JSON.stringify(payload)}`
     const seen = alreadyProposed(ctx, key)
     if (seen !== undefined) return proposed(seen)
@@ -283,6 +364,16 @@ const dailyLogWrite: ToolSpec = {
     if (activities !== null) {
       detail.push({ label: 'Activities', value: activities.length > 0 ? activities.join(', ') : 'none' })
     }
+    if (incidentPreview !== null) {
+      for (const key of INCIDENT_KEYS) {
+        const value = incidentPreview[key]
+        if (value.trim().length > 0) detail.push({ label: INCIDENT_LABELS[key], value })
+      }
+      detail.push({ label: 'Family', value: 'Will be asked to confirm they read the incident report.' })
+    }
+    if (removeIncident) {
+      detail.push({ label: 'Incident', value: 'Removed from this log.' })
+    }
     detail.push({
       label: existing.data === null ? 'This is' : 'Careful',
       value:
@@ -307,6 +398,62 @@ const dailyLogWrite: ToolSpec = {
 export const recordTools: ToolSpec[] = [attendanceSet, dailyLogWrite]
 
 /* --------------------------- shared with execute --------------------------- */
+
+export const INCIDENT_KEYS = [
+  'time',
+  'location',
+  'description',
+  'injury',
+  'firstAid',
+  'witnessedBy',
+  'parentNotified',
+] as const
+
+type IncidentKey = (typeof INCIDENT_KEYS)[number]
+export type IncidentDetails = Omit<Incident, 'recordedAt'>
+
+/** Same rule as the console's form: these four make an incident report. */
+const INCIDENT_REQUIRED: readonly IncidentKey[] = ['time', 'location', 'description', 'parentNotified']
+
+/** The incident fields Ro supplied, trimmed and capped; null when none were. */
+export function readIncidentArgs(raw: unknown): Partial<IncidentDetails> | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const source = raw as Record<string, unknown>
+  const out: Partial<IncidentDetails> = {}
+  for (const key of INCIDENT_KEYS) {
+    const value = source[key]
+    if (typeof value === 'string') out[key] = value.trim().slice(0, MAX_FIELD)
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
+/**
+ * Lays the changes over the incident already on the log and checks the result
+ * is a complete report. `recordedAt` — the version a parent acknowledges — is
+ * kept when nothing actually changed and set to `now` when anything did, the
+ * same rule the console uses, so an edit asks the family to confirm again.
+ */
+export function mergeIncident(
+  existing: Incident | null,
+  changes: Partial<IncidentDetails>,
+  now: string,
+): { ok: true; incident: Incident } | { ok: false; missing: IncidentKey[] } {
+  const base: IncidentDetails = {
+    time: existing?.time ?? '',
+    location: existing?.location ?? '',
+    description: existing?.description ?? '',
+    injury: existing?.injury ?? '',
+    firstAid: existing?.firstAid ?? '',
+    witnessedBy: existing?.witnessedBy ?? '',
+    parentNotified: existing?.parentNotified ?? '',
+  }
+  const merged: IncidentDetails = { ...base, ...changes }
+  const missing = INCIDENT_REQUIRED.filter((k) => merged[k].trim().length === 0)
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(merged.time) && !missing.includes('time')) missing.unshift('time')
+  if (missing.length > 0) return { ok: false, missing }
+  const unchanged = existing !== null && INCIDENT_KEYS.every((k) => merged[k] === base[k])
+  return { ok: true, incident: { ...merged, recordedAt: unchanged ? existing.recordedAt : now } }
+}
 
 /** The time of day a check-in or check-out is stamped with, `HH:mm`. */
 export function stampTime(): string {

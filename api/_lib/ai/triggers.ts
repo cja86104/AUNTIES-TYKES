@@ -1,7 +1,7 @@
 /**
  * What Ro notices without being asked — plan §5.
  *
- * Seven watchers, each a plain read evaluated by ordinary code. No model call
+ * Eight watchers, each a plain read evaluated by ordinary code. No model call
  * happens anywhere in this file, and that is the point: whether an invoice is
  * actually overdue is a fact to look up, not a judgment to risk a model on.
  * §8's "no invented facts" guardrail depends on this boundary holding, so every
@@ -30,6 +30,7 @@ export type TriggerKind =
   | 'enrollment_new'
   | 'enrollment_stale'
   | 'ack_pending'
+  | 'incident_unacknowledged'
   | 'unanswered_message'
   | 'cold_lead'
 
@@ -76,6 +77,10 @@ const UNANSWERED_HIGH_DAYS = 1
  * the sweep from flagging something she read four minutes ago.
  */
 const UNANSWERED_FLOOR_HOURS = 3
+/** An incident report still unconfirmed after this long is chased harder. */
+const INCIDENT_ACK_HIGH_HOURS = 24
+/** How far back incident reports are watched. Older ones are history. */
+const INCIDENT_WINDOW_DAYS = 30
 /** A lead with no movement for this long has gone cold. */
 const COLD_LEAD_DAYS = 7
 /** Quiet hours boundaries, local to the daycare. */
@@ -90,6 +95,13 @@ const QUIET_AFTER = '20:00'
  * column is free text and the admin UI's list may grow.
  */
 const CLOSED_LEAD_STATUSES = new Set(['enrolled', 'not a fit'])
+
+/** yyyy-MM-dd, `days` before `date`. */
+function daysBefore(date: string, days: number): string {
+  const d = new Date(`${date}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - days)
+  return d.toISOString().slice(0, 10)
+}
 
 /* --------------------------------- helpers -------------------------------- */
 
@@ -167,6 +179,74 @@ async function dailyLogMissing(ctx: ToolContext): Promise<Trigger[] | string> {
       summary: `${name} was checked out today with no daily log written.`,
       facts: { childId, childName: name, date: ctx.today },
       ageDays: 0,
+    }
+  })
+}
+
+/**
+ * Incident / injury reports no parent in the family has confirmed reading, in
+ * their current version — an edit after a parent confirmed asks them again,
+ * and this keeps watching until they do.
+ */
+async function incidentUnacknowledged(ctx: ToolContext, now: Date): Promise<Trigger[] | string> {
+  const logs = await ctx.caller.db
+    .from('daily_logs')
+    .select('id, child_id, date, incident')
+    .gte('date', daysBefore(ctx.today, INCIDENT_WINDOW_DAYS))
+    .not('incident', 'is', null)
+  if (logs.error !== null) return logs.error.message
+  const withIncident = logs.data.flatMap((row) => (row.incident === null ? [] : [{ ...row, incident: row.incident }]))
+  if (withIncident.length === 0) return []
+
+  const acks = await ctx.caller.db
+    .from('incident_acknowledgements')
+    .select('log_id, incident_version')
+    .in(
+      'log_id',
+      withIncident.map((row) => row.id),
+    )
+  if (acks.error !== null) return acks.error.message
+  const confirmed = new Set(acks.data.map((row) => `${row.log_id}:${row.incident_version}`))
+
+  const pending = withIncident.filter((row) => !confirmed.has(`${row.id}:${row.incident.recordedAt}`))
+  if (pending.length === 0) return []
+
+  const children = await ctx.caller.db
+    .from('children')
+    .select('id, name, family_id')
+    .in('id', [...new Set(pending.map((row) => row.child_id))])
+  if (children.error !== null) return children.error.message
+  const childById = new Map(children.data.map((row) => [row.id, row]))
+
+  // A family with no portal login cannot confirm anything in the app; say so
+  // instead of implying they are ignoring it.
+  const parents = await ctx.caller.db.from('profiles').select('family_id').eq('role', 'parent')
+  if (parents.error !== null) return parents.error.message
+  const familiesWithAccounts = new Set(parents.data.flatMap((row) => (row.family_id === null ? [] : [row.family_id])))
+
+  return pending.map((row) => {
+    const child = childById.get(row.child_id)
+    const name = child?.name ?? 'A child'
+    const hasAccount = child !== undefined && familiesWithAccounts.has(child.family_id)
+    const hours = hoursSince(row.incident.recordedAt, now)
+    const priority = hours !== null && hours >= INCIDENT_ACK_HIGH_HOURS ? ('high' as const) : ('medium' as const)
+    return {
+      kind: 'incident_unacknowledged' as const,
+      priority,
+      key: `incident_unacknowledged:${row.id}:${row.incident.recordedAt}`,
+      summary: hasAccount
+        ? `No parent has confirmed reading ${name}'s incident report from ${row.date}.`
+        : `${name}'s incident report from ${row.date} is unconfirmed — the family has no portal login, so tell them directly.`,
+      facts: {
+        logId: row.id,
+        childId: row.child_id,
+        childName: name,
+        date: row.date,
+        description: row.incident.description,
+        familyHasPortalLogin: hasAccount,
+        recordedAt: row.incident.recordedAt,
+      },
+      ageDays: daysSince(row.incident.recordedAt.slice(0, 10)),
     }
   })
 }
@@ -491,9 +571,9 @@ async function coldLead(ctx: ToolContext): Promise<Trigger[] | string> {
 /* ---------------------------------- sweep --------------------------------- */
 
 /**
- * Runs all seven watchers.
+ * Runs all eight watchers.
  *
- * A watcher that cannot read does not fail the sweep — the other five still
+ * A watcher that cannot read does not fail the sweep — the others still
  * have something worth saying, and Ro reporting five real things beats
  * reporting nothing because the leads table hiccuped. Failures come back in
  * `error` on the result only when every watcher failed; otherwise they are
@@ -509,6 +589,7 @@ export async function runTriggers(
     enrollmentNew(ctx),
     enrollmentStale(ctx),
     ackPending(ctx),
+    incidentUnacknowledged(ctx, now),
     unansweredMessage(ctx, now),
     coldLead(ctx),
   ])
@@ -518,6 +599,7 @@ export async function runTriggers(
     'enrollment_new',
     'enrollment_stale',
     'ack_pending',
+    'incident_unacknowledged',
     'unanswered_message',
     'cold_lead',
   ]

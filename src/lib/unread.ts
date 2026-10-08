@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import type { SectionName } from './database.types'
-import type { Announcement, DailyLog, DocumentRecord, IncidentAck, Thread } from '../types'
+import type { Announcement, DailyLog, DocumentAck, DocumentRecord, IncidentAck, Lead, Thread } from '../types'
 
 /** Never opened means everything in it is new. */
 function newerThan(at: string | undefined, seenAt: string | undefined): boolean {
@@ -111,9 +111,28 @@ export function incidentsAwaitingAck(
   })
 }
 
+/** Owner side: parents who confirmed a document since she last opened Documents. */
+export function newDocumentAcks(acks: DocumentAck[], seenAt: string | undefined): DocumentAck[] {
+  return acks.filter((a) => newerThan(a.acknowledgedAt, seenAt))
+}
+
+/** Owner side: parents who confirmed an incident report since she last opened Daily logs. */
+export function newIncidentAcks(acks: IncidentAck[], seenAt: string | undefined): IncidentAck[] {
+  return acks.filter((a) => newerThan(a.acknowledgedAt, seenAt))
+}
+
+/** Owner side: contact-form inquiries since she last opened the inquiry inbox. */
+export function newLeads(leads: Lead[], seenAt: string | undefined): Lead[] {
+  return leads.filter((l) => newerThan(l.createdAt, seenAt))
+}
+
 /* -------------------------------- nav badges ------------------------------ */
 
 export interface UnreadCounts {
+  /**
+   * New files from the other side; for the owner, also parents who have
+   * acknowledged a document since she last looked.
+   */
   documents: number
   messages: number
   /**
@@ -127,9 +146,12 @@ export interface UnreadCounts {
   /**
    * Parent only: reports posted since they last opened Daily reports, plus
    * any incident still waiting for their acknowledgement, counted once per
-   * report. Always 0 for the owner, who writes the reports.
+   * report. For the owner: parents who confirmed an incident report since she
+   * last opened Daily logs.
    */
   dailyReports: number
+  /** Owner only: contact-form inquiries since she last opened the inbox. Always 0 for a parent. */
+  inquiries: number
 }
 
 /**
@@ -149,18 +171,21 @@ export function useUnreadCounts(): UnreadCounts {
   const dailyLogs = useStore((s) => s.dailyLogs)
   const children = useStore((s) => s.children)
   const incidentAcks = useStore((s) => s.incidentAcks)
+  const documentAcks = useStore((s) => s.acknowledgements)
+  const leads = useStore((s) => s.leads)
 
-  if (!user) return { documents: 0, messages: 0, enrollments: 0, dailyReports: 0 }
+  if (!user) return { documents: 0, messages: 0, enrollments: 0, dailyReports: 0, inquiries: 0 }
 
   const docsSeen = sectionViews.documents
   const msgsSeen = sectionViews.messages
 
   if (user.role === 'admin') {
     return {
-      documents: newDocuments(documents, docsSeen, user.name).length,
+      documents: newDocuments(documents, docsSeen, user.name).length + newDocumentAcks(documentAcks, docsSeen).length,
       messages: newThreads(threads, msgsSeen, 'parent').length,
       enrollments: enrollments.filter((e) => e.status === 'pending').length,
-      dailyReports: 0,
+      dailyReports: newIncidentAcks(incidentAcks, sectionViews.daily_reports).length,
+      inquiries: newLeads(leads, sectionViews.inquiries).length,
     }
   }
 
@@ -180,5 +205,6 @@ export function useUnreadCounts(): UnreadCounts {
     messages: newThreads(ours, msgsSeen, 'admin').length + newAnnouncements(forUs, msgsSeen).length,
     enrollments: 0,
     dailyReports: reportIds.size,
+    inquiries: 0,
   }
 }

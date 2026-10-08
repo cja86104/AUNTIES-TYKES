@@ -38,6 +38,8 @@ export default function AdminDocuments() {
   const toggleDocVisibility = useStore((s) => s.toggleDocVisibility)
   const pushToast = useStore((s) => s.pushToast)
   const user = useStore((s) => s.user)
+  const users = useStore((s) => s.users)
+  const acknowledgements = useStore((s) => s.acknowledgements)
   const seen = useSectionSeen('documents')
 
   const [query, setQuery] = useState('')
@@ -205,6 +207,26 @@ export default function AdminDocuments() {
                   <p className="truncate text-xs text-slate-500">
                     {bytes(d.size)} · added {fmtDate(d.uploadedAt)} by {d.uploadedBy}
                   </p>
+                  {d.requiresAck && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
+                      {acknowledgements.filter((a) => a.documentId === d.id).length === 0 ? (
+                        <span>No parent has acknowledged it yet.</span>
+                      ) : (
+                        <>
+                          <span className="font-semibold">Acknowledged by</span>
+                          {acknowledgements
+                            .filter((a) => a.documentId === d.id)
+                            .sort((a, b) => (a.acknowledgedAt < b.acknowledgedAt ? 1 : -1))
+                            .map((a) => (
+                              <span key={a.profileId} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
+                                {users.find((u) => u.id === a.profileId)?.name ?? 'a parent'} · {fmtDate(a.acknowledgedAt, 'MMM d')}
+                                {seen.isNew(a.acknowledgedAt) && <Badge tone="violet">New</Badge>}
+                              </span>
+                            ))}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">

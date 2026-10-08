@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Utensils, Moon, UserRound, Smile, Sparkles, NotebookPen, Paperclip, ImageOff, AlertTriangle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Card, Badge, Avatar } from './ui'
-import { bytes, fmtDay, fmtTime } from '../lib/helpers'
+import { bytes, fmtDay, fmtTime, isFilled } from '../lib/helpers'
 import { downloadDocument, isInlineImage, viewDocumentUrl } from '../lib/storage'
 import { useStore } from '../store/useStore'
 import type { Child, DailyLog, Incident, LogAttachment } from '../types'
@@ -140,16 +140,31 @@ function IncidentPanel({ incident, footer }: { incident: Incident; footer?: Reac
       <p className="mb-3 flex items-center gap-2 font-display text-sm font-bold text-rose-800">
         <AlertTriangle size={16} /> {t('dailyLogCard.incidentTitle')}
       </p>
+      {/* Only the parts that were filled in. */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <IncidentRow label={t('dailyLogCard.incidentTime')}>{fmtTime(incident.time)}</IncidentRow>
-        <IncidentRow label={t('dailyLogCard.incidentLocation')}>{incident.location}</IncidentRow>
-        <div className="sm:col-span-2">
-          <IncidentRow label={t('dailyLogCard.incidentWhat')}>{incident.description}</IncidentRow>
-        </div>
-        <IncidentRow label={t('dailyLogCard.incidentInjury')}>{incident.injury || '—'}</IncidentRow>
-        <IncidentRow label={t('dailyLogCard.incidentFirstAid')}>{incident.firstAid || '—'}</IncidentRow>
-        <IncidentRow label={t('dailyLogCard.incidentWitness')}>{incident.witnessedBy || '—'}</IncidentRow>
-        <IncidentRow label={t('dailyLogCard.incidentNotified')}>{incident.parentNotified}</IncidentRow>
+        {isFilled(incident.time) && (
+          <IncidentRow label={t('dailyLogCard.incidentTime')}>{fmtTime(incident.time)}</IncidentRow>
+        )}
+        {isFilled(incident.location) && (
+          <IncidentRow label={t('dailyLogCard.incidentLocation')}>{incident.location}</IncidentRow>
+        )}
+        {isFilled(incident.description) && (
+          <div className="sm:col-span-2">
+            <IncidentRow label={t('dailyLogCard.incidentWhat')}>{incident.description}</IncidentRow>
+          </div>
+        )}
+        {isFilled(incident.injury) && (
+          <IncidentRow label={t('dailyLogCard.incidentInjury')}>{incident.injury}</IncidentRow>
+        )}
+        {isFilled(incident.firstAid) && (
+          <IncidentRow label={t('dailyLogCard.incidentFirstAid')}>{incident.firstAid}</IncidentRow>
+        )}
+        {isFilled(incident.witnessedBy) && (
+          <IncidentRow label={t('dailyLogCard.incidentWitness')}>{incident.witnessedBy}</IncidentRow>
+        )}
+        {isFilled(incident.parentNotified) && (
+          <IncidentRow label={t('dailyLogCard.incidentNotified')}>{incident.parentNotified}</IncidentRow>
+        )}
       </div>
       {footer && <div className="mt-4 border-t border-rose-100 pt-3">{footer}</div>}
     </div>
@@ -172,6 +187,9 @@ export interface DailyLogCardProps {
 
 export default function DailyLogCard({ log, child, index = 0, actions, incidentFooter, isNew = false }: DailyLogCardProps) {
   const { t } = useTranslation()
+  const activities = log.activities.filter(isFilled)
+  const hasBody =
+    isFilled(log.meals) || isFilled(log.naps) || isFilled(log.potty) || activities.length > 0 || isFilled(log.notes)
   return (
     <motion.div
       initial={{ opacity: 0, y: 18 }}
@@ -194,22 +212,31 @@ export default function DailyLogCard({ log, child, index = 0, actions, incidentF
                 <AlertTriangle size={12} /> {t('dailyLogCard.incidentBadge')}
               </Badge>
             )}
-            <Badge tone="amber">
-              <Smile size={12} /> {log.mood}
-            </Badge>
+            {isFilled(log.mood) && (
+              <Badge tone="amber">
+                <Smile size={12} /> {log.mood}
+              </Badge>
+            )}
             {actions}
           </div>
         </div>
 
-        <div className="grid gap-5 p-5 sm:grid-cols-2">
-          <Row icon={Utensils} label={t('dailyLogCard.meals')}>{log.meals}</Row>
-          <Row icon={Moon} label={t('dailyLogCard.naps')}>{log.naps}</Row>
-          <Row icon={UserRound} label={t('dailyLogCard.diapersPotty')}>{log.potty}</Row>
-          <Row icon={Sparkles} label={t('dailyLogCard.activities')}>{log.activities.join(' · ')}</Row>
-          <div className="sm:col-span-2">
-            <Row icon={NotebookPen} label={t('dailyLogCard.noteFrom', { author: log.author || t('dailyLogCard.defaultAuthor') })}>{log.notes || '—'}</Row>
+        {/* Only the sections that were filled in — an unused one is left out, not shown blank. */}
+        {hasBody && (
+          <div className="grid gap-5 p-5 sm:grid-cols-2">
+            {isFilled(log.meals) && <Row icon={Utensils} label={t('dailyLogCard.meals')}>{log.meals}</Row>}
+            {isFilled(log.naps) && <Row icon={Moon} label={t('dailyLogCard.naps')}>{log.naps}</Row>}
+            {isFilled(log.potty) && <Row icon={UserRound} label={t('dailyLogCard.diapersPotty')}>{log.potty}</Row>}
+            {activities.length > 0 && (
+              <Row icon={Sparkles} label={t('dailyLogCard.activities')}>{activities.join(' · ')}</Row>
+            )}
+            {isFilled(log.notes) && (
+              <div className="sm:col-span-2">
+                <Row icon={NotebookPen} label={t('dailyLogCard.noteFrom', { author: log.author || t('dailyLogCard.defaultAuthor') })}>{log.notes}</Row>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         {log.incident && <IncidentPanel incident={log.incident} footer={incidentFooter} />}
 

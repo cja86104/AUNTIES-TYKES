@@ -132,6 +132,24 @@ export interface DailyLogBrief {
   activities: string[]
   notes: string
   author: string
+  /** File names of the photos and PDFs attached to the note home. */
+  attachments: string[]
+  /** The incident / injury report, or null when there was none. */
+  incident: IncidentBrief | null
+}
+
+export interface IncidentBrief {
+  time: string
+  location: string
+  description: string
+  injury: string
+  firstAid: string
+  witnessedBy: string
+  parentNotified: string
+  /** Parents who confirmed they read this version, by name, with when. */
+  acknowledgedBy: { name: string; at: string }[]
+  /** True until at least one parent has confirmed the current version. */
+  awaitingAcknowledgement: boolean
 }
 
 export interface ThreadBrief {

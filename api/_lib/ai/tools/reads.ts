@@ -14,7 +14,7 @@
  * Nothing in this file writes.
  */
 
-import type { Contact } from '../../../../src/types.js'
+import type { Contact, Incident } from '../../../../src/types.js'
 import { daysSince, shiftDays } from '../clock.js'
 import {
   invoiceState,
@@ -23,6 +23,7 @@ import {
   type ChildBrief,
   type DailyLogBrief,
   type DocumentBrief,
+  type IncidentBrief,
   type EnrollmentBrief,
   type FamilyBrief,
   type InvoiceBrief,
@@ -59,7 +60,7 @@ const FAMILY_COLUMNS = 'id, name, primary_contact, relation, email, phone, addre
 // prettier-ignore
 const CHILD_COLUMNS = 'id, family_id, name, dob, age_group, status, plan, start_date, teacher, allergies, medications, notes'
 const ATTENDANCE_COLUMNS = 'child_id, date, status, check_in, check_out, note'
-const LOG_COLUMNS = 'id, child_id, date, meals, naps, potty, mood, activities, notes, author'
+const LOG_COLUMNS = 'id, child_id, date, meals, naps, potty, mood, activities, notes, author, attachments, incident'
 const INVOICE_COLUMNS = 'id, family_id, period, issued_at, due_date, amount, memo'
 const PAYMENT_COLUMNS = 'invoice_id, date, amount, method, ref'
 const THREAD_COLUMNS = 'id, family_id, subject, updated_at'
@@ -485,7 +486,9 @@ const dailyLogList: ToolSpec = {
   tier: 'read',
   description:
     'Daily logs, by date or by child. Use to check whether a log was written, or ' +
-    "to read what went into one before drafting a parent's message.",
+    "to read what went into one before drafting a parent's message. Includes any " +
+    'incident / injury report and whether the family has confirmed reading it, and ' +
+    'the names of attached photos and PDFs.',
   parameters: schema({
     date: { type: 'string', description: 'yyyy-MM-dd. Defaults to today when no childId is given' },
     childId: { type: 'string' },
@@ -509,6 +512,45 @@ const dailyLogList: ToolSpec = {
     if (logs.error !== null) return dbFailure('daily logs', logs.error)
 
     const childNames = await childLabels(ctx)
+
+    // Who has confirmed each incident, only for logs that have one.
+    const incidentLogIds = logs.data.filter((row) => row.incident !== null).map((row) => row.id)
+    const acksByLog = new Map<string, { profileId: string; version: string; at: string }[]>()
+    const names = new Map<string, string>()
+    if (incidentLogIds.length > 0) {
+      const acks = await ctx.caller.db
+        .from('incident_acknowledgements')
+        .select('log_id, profile_id, incident_version, acknowledged_at')
+        .in('log_id', incidentLogIds)
+      if (acks.error !== null) return dbFailure('incident acknowledgements', acks.error)
+      for (const ack of acks.data) {
+        const list = acksByLog.get(ack.log_id) ?? []
+        list.push({ profileId: ack.profile_id, version: ack.incident_version, at: ack.acknowledged_at })
+        acksByLog.set(ack.log_id, list)
+      }
+      const profileIds = [...new Set(acks.data.map((a) => a.profile_id))]
+      if (profileIds.length > 0) {
+        const profiles = await ctx.caller.db.from('profiles').select('id, name').in('id', profileIds)
+        if (profiles.error !== null) return dbFailure('parent names', profiles.error)
+        for (const p of profiles.data) names.set(p.id, p.name)
+      }
+    }
+
+    const briefIncident = (logId: string, incident: Incident): IncidentBrief => {
+      const current = (acksByLog.get(logId) ?? []).filter((a) => a.version === incident.recordedAt)
+      return {
+        time: incident.time,
+        location: incident.location,
+        description: incident.description,
+        injury: incident.injury,
+        firstAid: incident.firstAid,
+        witnessedBy: incident.witnessedBy,
+        parentNotified: incident.parentNotified,
+        acknowledgedBy: current.map((a) => ({ name: names.get(a.profileId) ?? 'a parent', at: a.at })),
+        awaitingAcknowledgement: current.length === 0,
+      }
+    }
+
     const list: DailyLogBrief[] = logs.data.map((row) => ({
       id: row.id,
       childId: row.child_id,
@@ -521,6 +563,8 @@ const dailyLogList: ToolSpec = {
       activities: row.activities,
       notes: row.notes,
       author: row.author,
+      attachments: row.attachments.map((a) => a.fileName),
+      incident: row.incident === null ? null : briefIncident(row.id, row.incident),
     }))
     return { ok: true, data: { count: list.length, logs: list } }
   },

@@ -23,6 +23,7 @@
  */
 
 import type { Proposal } from './audit.js'
+import type { Incident } from '../../../src/types.js'
 import { uid } from './ids.js'
 import { retireRule, saveRule, type SendTarget } from './rules.js'
 import { readPendingRule } from './tools/rules.js'
@@ -33,7 +34,7 @@ import { familyWithEmail, readEnrollmentSnapshot } from './tools/enrollments.js'
 import { createParentAccount } from '../parentLogin.js'
 import { money } from './projection.js'
 import { readInt, readString, type ToolContext } from './tools/kit.js'
-import { attendanceId, stampTime } from './tools/records.js'
+import { attendanceId, mergeIncident, readIncidentArgs, stampTime } from './tools/records.js'
 
 /**
  * How long "undo" stays offered after a send — §8's undo window.
@@ -402,11 +403,14 @@ const dailyLogExecutor: Executor = {
       ? rawActivities.filter((entry): entry is string => typeof entry === 'string')
       : null
 
+    const incidentChanges = readIncidentArgs(proposal.arguments.incident)
+    const removeIncident = proposal.arguments.removeIncident === true
+
     // Re-read rather than trusting the proposal's logId: she may have written the
     // log herself between reading this and tapping it.
     const existing = await ctx.caller.db
       .from('daily_logs')
-      .select('id')
+      .select('id, incident')
       .eq('child_id', childId)
       .eq('date', date)
       .maybeSingle()
@@ -415,6 +419,18 @@ const dailyLogExecutor: Executor = {
     }
 
     const label = proposal.childLabel.length > 0 ? proposal.childLabel : 'that child'
+
+    // Merged against the incident as it is now, not as it was when proposed.
+    let incident: Incident | null | undefined
+    if (removeIncident) {
+      incident = null
+    } else if (incidentChanges !== null) {
+      const merged = mergeIncident(existing.data?.incident ?? null, incidentChanges, new Date().toISOString())
+      if (!merged.ok) {
+        return { ok: false, error: `The incident report is missing: ${merged.missing.join(', ')}` }
+      }
+      incident = merged.incident
+    }
 
     if (existing.data !== null) {
       // Typed rather than a loose record: the generated Update shape rejects an
@@ -427,6 +443,7 @@ const dailyLogExecutor: Executor = {
         mood?: string
         notes?: string
         activities?: string[]
+        incident?: Incident | null
       } = {}
       if (fields.meals !== undefined) patch.meals = fields.meals
       if (fields.naps !== undefined) patch.naps = fields.naps
@@ -434,6 +451,7 @@ const dailyLogExecutor: Executor = {
       if (fields.mood !== undefined) patch.mood = fields.mood
       if (fields.notes !== undefined) patch.notes = fields.notes
       if (activities !== null) patch.activities = activities
+      if (incident !== undefined) patch.incident = incident
       const done = await ctx.caller.db.from('daily_logs').update(patch).eq('id', existing.data.id)
       if (done.error !== null) return { ok: false, error: `Could not update that log: ${done.error.message}` }
       return { ok: true, summary: `Updated ${label}'s log.`, targets: [existing.data.id] }
@@ -450,6 +468,7 @@ const dailyLogExecutor: Executor = {
       mood: fields.mood ?? '',
       notes: fields.notes ?? '',
       activities: activities ?? [],
+      incident: incident ?? null,
       // Written as her, the same as a log typed into the console.
       author: ctx.caller.name.length > 0 ? ctx.caller.name : 'Aunties Tykes',
       author_id: ctx.caller.id,

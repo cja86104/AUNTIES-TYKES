@@ -36,11 +36,11 @@ interface NavItem {
 
 const nav: NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/families', label: 'Families', icon: Users },
+  { to: '/admin/families', label: 'Families', icon: Users, badge: 'inquiries' },
   { to: '/admin/children', label: 'Children', icon: UserRound },
   { to: '/admin/calendar', label: 'Family Calendar', icon: CalendarDays },
   { to: '/admin/attendance', label: 'Attendance', icon: ClipboardCheck },
-  { to: '/admin/daily-logs', label: 'Daily Logs', icon: NotebookPen },
+  { to: '/admin/daily-logs', label: 'Daily Logs', icon: NotebookPen, badge: 'dailyReports' },
   { to: '/admin/billing', label: 'Billing', icon: Wallet },
   { to: '/admin/invoices', label: 'Invoices', icon: ReceiptText },
   { to: '/admin/documents', label: 'Documents', icon: FolderOpen, badge: 'documents' },

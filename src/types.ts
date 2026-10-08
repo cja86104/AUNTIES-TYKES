@@ -151,6 +151,13 @@ export interface Incident {
   recordedAt: string
 }
 
+/** A parent confirming they read a document that asked for it. */
+export interface DocumentAck {
+  documentId: string
+  profileId: string
+  acknowledgedAt: string
+}
+
 /** A parent confirming they read one version of an incident report. */
 export interface IncidentAck {
   logId: string

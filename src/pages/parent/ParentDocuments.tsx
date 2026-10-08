@@ -31,7 +31,8 @@ export default function ParentDocuments() {
 
   const [query, setQuery] = useState('')
 
-  const hasAcknowledged = (docId: string) => acknowledgements.includes(`${user?.id ?? 'anon'}:${docId}`)
+  const hasAcknowledged = (docId: string) =>
+    acknowledgements.some((a) => a.documentId === docId && a.profileId === user?.id)
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()

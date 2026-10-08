@@ -24,6 +24,7 @@ import type {
   CalendarEvent,
   Child,
   DailyLog,
+  DocumentAck,
   IncidentAck,
   DocumentRecord,
   Family,
@@ -90,8 +91,8 @@ interface DataSlice {
   waitlist: WaitlistProspect[]
   /** Owner-authored calendar entries. Birthdays and due dates are derived. */
   calendarEvents: CalendarEvent[]
-  /** `${userId}:${documentId}` pairs for documents a parent has acknowledged. */
-  acknowledgements: string[]
+  /** Documents parents have acknowledged. A parent only ever sees their own. */
+  acknowledgements: DocumentAck[]
   /** Parent acknowledgements of incident reports. A parent only ever sees their own. */
   incidentAcks: IncidentAck[]
   /**
@@ -566,9 +567,12 @@ export const useStore = create<StoreState>()((set, get) => {
     acknowledgeDocument: (docId) =>
       commit(
         (s) => {
-          const key = `${s.user?.id ?? 'anon'}:${docId}`
-          if (s.acknowledgements.includes(key)) return {}
-          return { acknowledgements: [...s.acknowledgements, key] }
+          const profileId = s.user?.id
+          if (!profileId) return {}
+          if (s.acknowledgements.some((a) => a.documentId === docId && a.profileId === profileId)) return {}
+          return {
+            acknowledgements: [...s.acknowledgements, { documentId: docId, profileId, acknowledgedAt: nowISO() }],
+          }
         },
         (s) => {
           const id = s.user?.id

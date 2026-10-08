@@ -60,6 +60,7 @@ export default function AdminDashboard() {
   const announcements = useStore((s) => s.announcements)
   const threads = useStore((s) => s.threads)
   const leads = useStore((s) => s.leads)
+  const inquiriesSeen = useStore((s) => s.sectionViews.inquiries)
   const calendarEvents = useStore((s) => s.calendarEvents)
   const checkIn = useStore((s) => s.checkIn)
   const checkOut = useStore((s) => s.checkOut)
@@ -357,7 +358,10 @@ export default function AdminDashboard() {
             {leads.slice(0, 3).map((l) => (
               <li key={l.id} className="rounded-xl border border-slate-200 p-3.5">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="truncate text-sm font-bold text-slate-900">{l.parentName}</p>
+                  <p className="flex min-w-0 items-center gap-2 text-sm font-bold text-slate-900">
+                    <span className="truncate">{l.parentName}</span>
+                    {(inquiriesSeen === undefined || l.createdAt > inquiriesSeen) && <Badge tone="violet">New</Badge>}
+                  </p>
                   <Badge tone={l.status === 'Tour scheduled' ? 'green' : 'amber'}>{l.status}</Badge>
                 </div>
                 <p className="truncate text-xs text-slate-500">

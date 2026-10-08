@@ -17,8 +17,9 @@ import {
 import DailyLogCard from '../../components/DailyLogCard'
 import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
-import { bytes, todayISO, fmtDate, nowISO, nowTime } from '../../lib/helpers'
+import { bytes, todayISO, fmtDate, isFilled, nowISO, nowTime } from '../../lib/helpers'
 import { removeDocumentFile } from '../../lib/storage'
+import { useSectionSeen } from '../../lib/unread'
 import type { DailyLog, Incident, LogAttachment, UploadedFileMeta } from '../../types'
 
 const moodOptions = [
@@ -110,6 +111,8 @@ export default function AdminDailyLogs() {
   const deleteDailyLog = useStore((s) => s.deleteDailyLog)
   const users = useStore((s) => s.users)
   const incidentAcks = useStore((s) => s.incidentAcks)
+  /** Marks parents' incident confirmations that came in since she last opened this page. */
+  const seen = useSectionSeen('daily_reports')
   const pushToast = useStore((s) => s.pushToast)
 
   const active = useMemo(() => children.filter((c) => c.status === 'active'), [children])
@@ -226,12 +229,13 @@ export default function AdminDailyLogs() {
     setForm({
       childId: log.childId,
       date: log.date,
-      meals: log.meals,
-      naps: log.naps,
-      potty: log.potty,
-      mood: log.mood || 'Cheerful',
+      // Older reports stored "—" for an empty section; the form shows it as empty.
+      meals: isFilled(log.meals) ? log.meals : '',
+      naps: isFilled(log.naps) ? log.naps : '',
+      potty: isFilled(log.potty) ? log.potty : '',
+      mood: log.mood,
       activities: log.activities.join('\n'),
-      notes: log.notes,
+      notes: isFilled(log.notes) ? log.notes : '',
     })
     setErrors({})
     setOpen(true)
@@ -252,8 +256,13 @@ export default function AdminDailyLogs() {
     const next: LogErrors = {}
     if (!form.childId) next.childId = 'Pick a child'
     if (!form.date) next.date = 'Pick a date'
-    if (!form.meals.trim()) next.meals = 'What did they eat?'
-    if (!form.naps.trim()) next.naps = 'Add nap times (or "no nap")'
+    // Every section is optional — the report shows only what was filled in —
+    // but a report with nothing in it at all is not posted.
+    const hasContent =
+      [form.meals, form.naps, form.potty, form.mood, form.activities, form.notes].some(isFilled) ||
+      attachments.length > 0 ||
+      incident !== null
+    if (!hasContent) next.notes = 'Fill in at least one section before posting'
     setErrors(next)
 
     const nextIncident: IncidentErrors = {}
@@ -289,6 +298,7 @@ export default function AdminDailyLogs() {
               <CheckCircle2 size={15} />
               Acknowledged by {users.find((u) => u.id === a.profileId)?.name ?? 'a parent'} ·{' '}
               {fmtDate(a.acknowledgedAt, 'MMM d, h:mm a')}
+              {seen.isNew(a.acknowledgedAt) && <Badge tone="violet">New</Badge>}
             </li>
           ))}
         </ul>
@@ -315,7 +325,7 @@ export default function AdminDailyLogs() {
       date: form.date,
       meals: form.meals.trim(),
       naps: form.naps.trim(),
-      potty: form.potty.trim() || '—',
+      potty: form.potty.trim(),
       mood: form.mood,
       activities: form.activities
         .split('\n')
@@ -524,9 +534,12 @@ export default function AdminDailyLogs() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Mood">
               <Select value={form.mood} onChange={set('mood')}>
+                <option value="">Not noted</option>
                 {moodOptions.map((m) => (
                   <option key={m}>{m}</option>
                 ))}
+                {/* A mood Ro wrote in its own words stays selectable, so saving does not change it. */}
+                {isFilled(form.mood) && !moodOptions.includes(form.mood) && <option>{form.mood}</option>}
               </Select>
             </Field>
             <Field label="Activities" hint="One per line.">

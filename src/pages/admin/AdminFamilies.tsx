@@ -24,6 +24,7 @@ import type { ChildFormValue } from '../../components/ChildForm'
 import { todayISO } from '../../lib/helpers'
 import { useStore } from '../../store/useStore'
 import { money, fmtDate, invoiceBalance, sum } from '../../lib/helpers'
+import { newLeads } from '../../lib/unread'
 
 const leadStatuses = ['New inquiry', 'Tour scheduled', 'Waitlisted', 'Enrolled', 'Not a fit']
 
@@ -76,6 +77,25 @@ export default function AdminFamilies() {
   const pushToast = useStore((s) => s.pushToast)
 
   const [tab, setTab] = useState('families')
+  const sectionViews = useStore((s) => s.sectionViews)
+  const markSectionSeen = useStore((s) => s.markSectionSeen)
+  /**
+   * When she last looked at the inbox, captured the first time she opens the
+   * tab on this visit. Frozen so the "New" pills stay up while she reads,
+   * instead of vanishing the moment the inbox is marked seen. Null until then.
+   */
+  const [inboxSeen, setInboxSeen] = useState<{ at: string | undefined } | null>(null)
+  const newLeadCount = newLeads(leads, sectionViews.inquiries).length
+
+  const openTab = (value: string) => {
+    setTab(value)
+    if (value === 'leads' && inboxSeen === null) {
+      setInboxSeen({ at: sectionViews.inquiries })
+      markSectionSeen('inquiries')
+    }
+  }
+  const isNewLead = (createdAt: string) =>
+    inboxSeen !== null && (inboxSeen.at === undefined || createdAt > inboxSeen.at)
   const [query, setQuery] = useState('')
 
   const enriched = useMemo(
@@ -143,10 +163,14 @@ export default function AdminFamilies() {
           <Tabs
             tabs={[
               { value: 'families', label: 'Enrolled families', count: families.length },
-              { value: 'leads', label: 'Inquiry inbox', count: leads.length },
+              {
+                value: 'leads',
+                label: newLeadCount > 0 ? `Inquiry inbox · ${newLeadCount} new` : 'Inquiry inbox',
+                count: leads.length,
+              },
             ]}
             value={tab}
-            onChange={setTab}
+            onChange={openTab}
           />
         </div>
       </PageHeader>
@@ -238,7 +262,10 @@ export default function AdminFamilies() {
               <Card className="p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h2 className="font-display text-lg font-bold text-slate-900">{l.parentName}</h2>
+                    <h2 className="flex items-center gap-2 font-display text-lg font-bold text-slate-900">
+                      {l.parentName}
+                      {isNewLead(l.createdAt) && <Badge tone="violet">New</Badge>}
+                    </h2>
                     <p className="text-sm text-slate-500">
                       {l.email} · {l.phone}
                     </p>

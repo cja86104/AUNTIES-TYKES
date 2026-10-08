@@ -135,3 +135,13 @@ export function isPlaceholder(value: string | null | undefined): boolean {
   if (!value) return true
   return /^TBD\b/i.test(value.trim())
 }
+
+/**
+ * True when a report field holds something someone actually wrote. Blank and
+ * the "—" that older reports stored for "nothing" both count as empty, so the
+ * report shows only the sections that were filled in.
+ */
+export function isFilled(value: string | null | undefined): boolean {
+  const v = (value ?? '').trim()
+  return v !== '' && v !== '—'
+}

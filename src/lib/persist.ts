@@ -46,6 +46,7 @@ import type {
   CalendarEvent,
   Child,
   DailyLog,
+  DocumentAck,
   DocumentRecord,
   IncidentAck,
   EnrollmentSubmission,
@@ -78,7 +79,7 @@ export interface HydratedData {
   leads: Lead[]
   waitlist: WaitlistProspect[]
   calendarEvents: CalendarEvent[]
-  acknowledgements: string[]
+  acknowledgements: DocumentAck[]
   incidentAcks: IncidentAck[]
   /** Last time this person opened each section. Missing = never opened. */
   sectionViews: Partial<Record<SectionName, string>>
@@ -211,7 +212,11 @@ export async function hydrateAll(): Promise<HydratedData> {
     leads: leads.map(toLead),
     waitlist: waitlist.map(toWaitlistProspect),
     calendarEvents: calendarEvents.map(toCalendarEvent),
-    acknowledgements: acks.map((a) => `${a.profile_id}:${a.document_id}`),
+    acknowledgements: acks.map((a) => ({
+      documentId: a.document_id,
+      profileId: a.profile_id,
+      acknowledgedAt: a.acknowledged_at,
+    })),
     incidentAcks: incidentAcks.map(toIncidentAck),
     sectionViews: Object.fromEntries(sectionViews.map((v) => [v.section, v.seen_at])),
     settings: settings.data ? toSettings(settings.data) : null,
