@@ -98,6 +98,30 @@ export async function downloadDocument(storagePath: string, fileName?: string): 
   link.remove()
 }
 
+/**
+ * File types a browser draws inline in an <img>. HEIC is accepted for upload
+ * but only Safari renders it, so it is offered as a download instead.
+ */
+const INLINE_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const
+
+export function isInlineImage(fileName: string): boolean {
+  const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
+  return (INLINE_IMAGE_EXTENSIONS as readonly string[]).includes(ext)
+}
+
+/**
+ * A signed URL that renders the file in place, for showing a photo on a page.
+ *
+ * Valid for an hour rather than a minute: it sits in an <img> for as long as
+ * the page is open, and a parent tapping it to see it full size should not
+ * hit an expired link. It still stops working on its own, unlike a public URL.
+ */
+export async function viewDocumentUrl(storagePath: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).createSignedUrl(storagePath, 60 * 60)
+  if (error || !data) throw new Error(error?.message ?? 'Could not load that file.')
+  return data.signedUrl
+}
+
 export async function removeDocumentFile(storagePath: string): Promise<void> {
   const { error } = await supabase.storage.from(DOCUMENTS_BUCKET).remove([storagePath])
   if (error) throw new Error(error.message)

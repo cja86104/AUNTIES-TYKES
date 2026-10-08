@@ -126,6 +126,7 @@ export function toDailyLog(row: DailyLogRow): DailyLog {
     activities: row.activities,
     notes: row.notes,
     photos: row.photos,
+    attachments: row.attachments,
     author: row.author,
   }
 }
@@ -348,6 +349,7 @@ export function fromDailyLog(log: DailyLog, authorId: string | null): Ins<'daily
     activities: log.activities,
     notes: log.notes,
     photos: log.photos,
+    attachments: log.attachments,
     author: log.author,
     author_id: authorId,
   }

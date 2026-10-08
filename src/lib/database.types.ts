@@ -9,7 +9,7 @@
  * camelCase domain types in src/types.ts stay unchanged; src/lib/db.ts maps
  * between the two.
  */
-import type { Contact, EnrollmentChildDraft, LineItem, LogPhoto } from '../types'
+import type { Contact, EnrollmentChildDraft, LineItem, LogAttachment, LogPhoto } from '../types'
 
 export type UserRoleDb = 'admin' | 'parent'
 export type LanguageDb = 'en' | 'vi' | 'es'
@@ -97,6 +97,8 @@ export type DailyLogRow = {
   activities: string[]
   notes: string
   photos: LogPhoto[]
+  /** Migration 0016. */
+  attachments: LogAttachment[]
   author: string
   author_id: string | null
   created_at: string

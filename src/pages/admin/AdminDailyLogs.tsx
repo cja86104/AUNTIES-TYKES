@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react'
-import { NotebookPen, Plus, Trash2, Pencil, Search, CalendarDays, X } from 'lucide-react'
+import React, { useMemo, useRef, useState } from 'react'
+import { NotebookPen, Plus, Trash2, Pencil, Search, CalendarDays, X, Paperclip } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
   Card,
@@ -15,11 +15,24 @@ import {
   Tabs,
 } from '../../components/ui'
 import DailyLogCard from '../../components/DailyLogCard'
+import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
-import { todayISO, fmtDate } from '../../lib/helpers'
-import type { DailyLog } from '../../types'
+import { bytes, todayISO, fmtDate } from '../../lib/helpers'
+import { removeDocumentFile } from '../../lib/storage'
+import type { DailyLog, LogAttachment, UploadedFileMeta } from '../../types'
 
-const moodOptions = ['Cheerful', 'Sleepy but sweet', 'Busy & curious', 'Snuggly', 'Silly', 'Focused', 'Tender']
+const moodOptions = [
+  'Cheerful',
+  'Sleepy but sweet',
+  'Busy & curious',
+  'Snuggly',
+  'Silly',
+  'Focused',
+  'Tender',
+  'Grumpy',
+  'Tired',
+  'Feeling sick',
+]
 
 interface LogForm {
   childId: string
@@ -33,6 +46,16 @@ interface LogForm {
 }
 
 type LogErrors = Partial<Record<keyof LogForm, string>>
+
+/** Photos and PDFs only — what the family sees on the report. */
+const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.heic'
+
+/** Best-effort removal of a stored file nothing points at any more. */
+const discardFile = (storagePath: string) => {
+  void removeDocumentFile(storagePath).catch(() => {
+    /* an orphaned object is harmless and unreadable by parents */
+  })
+}
 
 const emptyForm: LogForm = {
   childId: '',
@@ -64,6 +87,64 @@ export default function AdminDailyLogs() {
   const [errors, setErrors] = useState<LogErrors>({})
   const [confirmDelete, setConfirmDelete] = useState<DailyLog | null>(null)
 
+  /** Files on the report being written, in the order they were added. */
+  const [attachments, setAttachments] = useState<LogAttachment[]>([])
+  /** True while a file is still uploading, so the report cannot post without it. */
+  const [uploading, setUploading] = useState(false)
+  /** Uploaded while this form has been open: deleted again if she cancels. */
+  const staged = useRef<Set<string>>(new Set())
+  /** Already saved on the report and taken off it: deleted once the change is saved. */
+  const removed = useRef<string[]>([])
+  /**
+   * Which draft is on screen, bumped every time the form opens, posts or is
+   * cancelled. A phone photo can still be uploading when she closes the form;
+   * an upload that finishes for a draft that is gone is deleted rather than
+   * landing on the next report she opens.
+   */
+  const [draftId, setDraftId] = useState(0)
+  const liveDraft = useRef(0)
+
+  const startDraft = () => {
+    liveDraft.current += 1
+    setDraftId(liveDraft.current)
+    staged.current = new Set()
+    removed.current = []
+    setUploading(false)
+  }
+
+  const closeForm = () => {
+    staged.current.forEach(discardFile)
+    startDraft()
+    setOpen(false)
+  }
+
+  const onAttachmentUploaded = (meta: UploadedFileMeta) => {
+    if (draftId !== liveDraft.current) {
+      discardFile(meta.storagePath)
+      return
+    }
+    staged.current.add(meta.storagePath)
+    setAttachments((list) => [...list, { storagePath: meta.storagePath, fileName: meta.fileName, size: meta.size }])
+  }
+
+  const onAttachmentBusy = (busy: boolean) => {
+    if (draftId === liveDraft.current) setUploading(busy)
+  }
+
+  const onAttachmentError = (message: string) => {
+    pushToast({ tone: 'error', title: 'That file was not uploaded', description: message })
+  }
+
+  const removeAttachment = (attachment: LogAttachment) => {
+    setAttachments((list) => list.filter((a) => a.storagePath !== attachment.storagePath))
+    if (staged.current.has(attachment.storagePath)) {
+      staged.current.delete(attachment.storagePath)
+      discardFile(attachment.storagePath)
+    } else {
+      removed.current.push(attachment.storagePath)
+    }
+  }
+
   const logs = useMemo(() => {
     const q = query.trim().toLowerCase()
     return dailyLogs
@@ -78,14 +159,18 @@ export default function AdminDailyLogs() {
   }, [dailyLogs, childFilter, dateFilter, query])
 
   const openNew = () => {
+    startDraft()
     setEditingId(null)
     setForm({ ...emptyForm, childId: active[0]?.id ?? '' })
+    setAttachments([])
     setErrors({})
     setOpen(true)
   }
 
   const openEdit = (log: DailyLog) => {
+    startDraft()
     setEditingId(log.id)
+    setAttachments(log.attachments)
     setForm({
       childId: log.childId,
       date: log.date,
@@ -117,6 +202,8 @@ export default function AdminDailyLogs() {
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    // Posting mid-upload would save the report without the file and leave it behind.
+    if (uploading) return
     if (!validate()) return
     const payload = {
       childId: form.childId,
@@ -130,6 +217,7 @@ export default function AdminDailyLogs() {
         .map((a) => a.trim())
         .filter(Boolean),
       notes: form.notes.trim(),
+      attachments,
     }
     const childName = children.find((c) => c.id === form.childId)?.name.split(' ')[0] ?? 'Child'
     if (editingId) {
@@ -139,11 +227,24 @@ export default function AdminDailyLogs() {
       addDailyLog(payload)
       pushToast({ title: 'Report posted', description: `${childName}'s report is now visible to their family.` })
     }
+    // The staged files are now on the saved report, so they are kept; the ones
+    // she took off are no longer referenced and go.
+    removed.current.forEach(discardFile)
+    startDraft()
     setOpen(false)
   }
 
   const doDelete = () => {
     if (!confirmDelete) return
+    confirmDelete.attachments.forEach((a) => {
+      void removeDocumentFile(a.storagePath).catch((error: unknown) => {
+        pushToast({
+          tone: 'error',
+          title: 'The report went, a file stayed',
+          description: error instanceof Error ? error.message : `${a.fileName} could not be removed.`,
+        })
+      })
+    })
     deleteDailyLog(confirmDelete.id)
     setConfirmDelete(null)
     pushToast({ tone: 'info', title: 'Report deleted' })
@@ -278,7 +379,7 @@ export default function AdminDailyLogs() {
 
       <Modal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={closeForm}
         wide
         title={editingId ? 'Edit daily report' : 'New daily report'}
         description="Parents see this in their portal the moment you save it."
@@ -330,11 +431,52 @@ export default function AdminDailyLogs() {
             <Textarea rows={3} value={form.notes} onChange={set('notes')} placeholder="Asked to help set the table today — so proud of that job." />
           </Field>
 
+          {/* A div, not <Field>: Field is a <label>, and a tap on a label fires its first button — here, a remove. */}
+          <div>
+            <p className="mb-1.5 text-sm font-semibold text-slate-700">Photos &amp; files (optional)</p>
+            {attachments.length > 0 && (
+              <ul className="mb-3 space-y-2">
+                {attachments.map((a) => (
+                  <li key={a.storagePath} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                      <Paperclip size={16} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-800">{a.fileName}</p>
+                      <p className="text-xs text-slate-500">{bytes(a.size)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(a)}
+                      className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-rose-600"
+                      aria-label={`Remove ${a.fileName}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <FileUploader
+              // Keyed to the draft so each report starts with an empty upload queue.
+              key={draftId}
+              prefix="admin"
+              accept={ATTACHMENT_ACCEPT}
+              label="Add photos or a PDF for the family"
+              onUploaded={onAttachmentUploaded}
+              onError={onAttachmentError}
+              onBusyChange={onAttachmentBusy}
+            />
+            <p className="mt-1 text-xs text-slate-500">The family sees these with the report in their portal.</p>
+          </div>
+
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+            <Button type="button" variant="ghost" onClick={closeForm}>
               Cancel
             </Button>
-            <Button type="submit">{editingId ? 'Save changes' : 'Post report'}</Button>
+            <Button type="submit" disabled={uploading}>
+              {uploading ? 'Waiting for the upload…' : editingId ? 'Save changes' : 'Post report'}
+            </Button>
           </div>
         </form>
       </Modal>

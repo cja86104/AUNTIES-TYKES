@@ -1,11 +1,14 @@
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Utensils, Moon, UserRound, Smile, Sparkles, NotebookPen } from 'lucide-react'
+import { Utensils, Moon, UserRound, Smile, Sparkles, NotebookPen, Paperclip, ImageOff } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Card, Badge, Avatar } from './ui'
-import { fmtDay } from '../lib/helpers'
-import type { Child, DailyLog } from '../types'
+import { bytes, fmtDay } from '../lib/helpers'
+import { downloadDocument, isInlineImage, viewDocumentUrl } from '../lib/storage'
+import { useStore } from '../store/useStore'
+import type { Child, DailyLog, LogAttachment } from '../types'
 
 interface RowProps {
   icon: LucideIcon
@@ -24,6 +27,103 @@ const Row = ({ icon: Icon, label, children }: RowProps) => (
     </div>
   </div>
 )
+
+/**
+ * One attached photo. The bucket is private, so the image source is a signed
+ * URL fetched when the card mounts; tapping it opens the full-size photo.
+ */
+function AttachmentPhoto({ attachment }: { attachment: LogAttachment }) {
+  const { t } = useTranslation()
+  const [url, setUrl] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setUrl(null)
+    setFailed(false)
+    viewDocumentUrl(attachment.storagePath)
+      .then((signed) => {
+        if (!cancelled) setUrl(signed)
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [attachment.storagePath])
+
+  return (
+    <figure className="w-40 shrink-0">
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block h-28 w-full overflow-hidden rounded-xl bg-slate-100"
+          aria-label={t('dailyLogCard.openPhoto', { name: attachment.fileName })}
+        >
+          <img
+            src={url}
+            alt={attachment.fileName}
+            className="h-full w-full object-cover transition duration-500 hover:scale-105"
+            loading="lazy"
+          />
+        </a>
+      ) : (
+        <div className="flex h-28 w-full items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+          {failed ? <ImageOff size={20} aria-label={t('dailyLogCard.photoUnavailable')} /> : null}
+        </div>
+      )}
+      <figcaption className="mt-1.5 truncate text-xs text-slate-500">{attachment.fileName}</figcaption>
+    </figure>
+  )
+}
+
+/** Photos and files attached to the note home. Renders nothing when there are none. */
+function LogAttachments({ attachments }: { attachments: LogAttachment[] }) {
+  const { t } = useTranslation()
+  const pushToast = useStore((s) => s.pushToast)
+  if (attachments.length === 0) return null
+
+  const photos = attachments.filter((a) => isInlineImage(a.fileName))
+  const files = attachments.filter((a) => !isInlineImage(a.fileName))
+
+  const onDownload = (a: LogAttachment) => {
+    void downloadDocument(a.storagePath, a.fileName).catch(() => {
+      pushToast({ tone: 'error', title: t('dailyLogCard.fileError') })
+    })
+  }
+
+  return (
+    <div className="space-y-3 border-t border-slate-100 px-5 py-4">
+      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{t('dailyLogCard.attachments')}</p>
+      {photos.length > 0 && (
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          {photos.map((a) => (
+            <AttachmentPhoto key={a.storagePath} attachment={a} />
+          ))}
+        </div>
+      )}
+      {files.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {files.map((a) => (
+            <button
+              key={a.storagePath}
+              type="button"
+              onClick={() => onDownload(a)}
+              className="inline-flex min-h-[2.75rem] max-w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:border-[#3F8570] hover:text-[#3F8570] sm:min-h-0"
+            >
+              <Paperclip size={14} className="shrink-0" />
+              <span className="truncate">{a.fileName}</span>
+              <span className="shrink-0 text-xs font-normal text-slate-400">· {bytes(a.size)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export interface DailyLogCardProps {
   log: DailyLog
@@ -66,6 +166,8 @@ export default function DailyLogCard({ log, child, index = 0, actions }: DailyLo
             <Row icon={NotebookPen} label={t('dailyLogCard.noteFrom', { author: log.author || t('dailyLogCard.defaultAuthor') })}>{log.notes || '—'}</Row>
           </div>
         </div>
+
+        <LogAttachments attachments={log.attachments} />
 
         {log.photos.length > 0 && (
           <div className="flex gap-3 overflow-x-auto border-t border-slate-100 px-5 py-4">

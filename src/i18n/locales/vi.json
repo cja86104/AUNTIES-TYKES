@@ -325,7 +325,11 @@
     "activities": "Hoạt động",
     "noteFrom": "Ghi chú từ {{author}}",
     "defaultAuthor": "Auntie Melissa",
-    "photoAlt": "Ảnh báo cáo hằng ngày"
+    "photoAlt": "Ảnh báo cáo hằng ngày",
+    "attachments": "Ảnh & tệp",
+    "openPhoto": "Mở {{name}} ở kích thước đầy đủ",
+    "photoUnavailable": "Không thể tải ảnh này",
+    "fileError": "Không thể mở tệp. Hãy kiểm tra kết nối mạng và thử lại."
   },
   "calendar": {
     "title": "Lịch gia đình",

@@ -325,7 +325,11 @@
     "activities": "Activities",
     "noteFrom": "Note from {{author}}",
     "defaultAuthor": "Auntie Melissa",
-    "photoAlt": "Daily report photo"
+    "photoAlt": "Daily report photo",
+    "attachments": "Photos & files",
+    "openPhoto": "Open {{name}} full size",
+    "photoUnavailable": "This photo could not be loaded",
+    "fileError": "That file did not open. Check your connection and try again."
   },
   "calendar": {
     "title": "Family Calendar",

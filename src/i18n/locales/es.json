@@ -325,7 +325,11 @@
     "activities": "Actividades",
     "noteFrom": "Nota de {{author}}",
     "defaultAuthor": "Auntie Melissa",
-    "photoAlt": "Foto del reporte diario"
+    "photoAlt": "Foto del reporte diario",
+    "attachments": "Fotos y archivos",
+    "openPhoto": "Abrir {{name}} en tamaño completo",
+    "photoUnavailable": "No se pudo cargar esta foto",
+    "fileError": "El archivo no se abrió. Verifica tu conexión e inténtalo de nuevo."
   },
   "calendar": {
     "title": "Calendario familiar",

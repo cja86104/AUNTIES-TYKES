@@ -529,7 +529,9 @@ export default function AdminMessages() {
               placeholder={'Our photographer arrives at **9:30 AM** next Thursday.\n\n- Clothes without logos if you can\n- Order forms go home Tuesday'}
             />
           </Field>
-          <Field label="Attachment (optional)">
+          {/* A div, not <Field>: Field is a <label>, and a tap on a label fires its first button — here, Remove. */}
+          <div>
+            <p className="mb-1.5 text-sm font-semibold text-slate-700">Attachment (optional)</p>
             {attachment ? (
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
@@ -540,6 +542,7 @@ export default function AdminMessages() {
                   <p className="text-xs text-slate-500">{bytes(attachment.size)}</p>
                 </div>
                 <button
+                  type="button"
                   onClick={removeAttachment}
                   className="inline-flex min-h-[2.75rem] min-w-[2.75rem] items-center justify-center sm:min-h-0 sm:min-w-0 rounded-full p-1 text-slate-400 hover:bg-slate-100"
                   aria-label="Remove attachment"
@@ -559,7 +562,7 @@ export default function AdminMessages() {
                 onBusyChange={onAttachmentBusy}
               />
             )}
-          </Field>
+          </div>
           {body.trim() && (
             <div>
               <p className="mb-1.5 text-sm font-semibold text-slate-700">Preview</p>

@@ -121,6 +121,17 @@ export interface LogPhoto {
   caption: string
 }
 
+/**
+ * A photo or PDF attached to a report's note home. The file lives in the
+ * private `documents` bucket; parents reach it through a short-lived signed
+ * URL, gated by the daily_log_attachment_read storage policy (migration 0016).
+ */
+export interface LogAttachment {
+  storagePath: string
+  fileName: string
+  size: number
+}
+
 export interface DailyLog {
   id: string
   childId: string
@@ -132,12 +143,13 @@ export interface DailyLog {
   activities: string[]
   notes: string
   photos: LogPhoto[]
+  attachments: LogAttachment[]
   author: string
 }
 
 /** Fields the daily-log composer supplies; the store fills in the rest. */
-export type NewDailyLog = Omit<DailyLog, 'id' | 'author' | 'photos'> &
-  Partial<Pick<DailyLog, 'photos' | 'author'>>
+export type NewDailyLog = Omit<DailyLog, 'id' | 'author' | 'photos' | 'attachments'> &
+  Partial<Pick<DailyLog, 'photos' | 'attachments' | 'author'>>
 
 /* -------------------------------- invoices -------------------------------- */
 
