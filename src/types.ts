@@ -175,10 +175,12 @@ export interface DailyLog {
   /** Null when there was no incident that day. */
   incident: Incident | null
   author: string
+  /** When the report was first posted (created_at). Drives the "new" marker. */
+  postedAt: string
 }
 
 /** Fields the daily-log composer supplies; the store fills in the rest. */
-export type NewDailyLog = Omit<DailyLog, 'id' | 'author' | 'photos' | 'attachments' | 'incident'> &
+export type NewDailyLog = Omit<DailyLog, 'id' | 'author' | 'photos' | 'attachments' | 'incident' | 'postedAt'> &
   Partial<Pick<DailyLog, 'photos' | 'attachments' | 'incident' | 'author'>>
 
 /* -------------------------------- invoices -------------------------------- */

@@ -12,6 +12,7 @@ import {
   LogIn,
   LogOut,
   Clock,
+  AlertTriangle,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
@@ -26,6 +27,8 @@ import {
   statusTone,
 } from '../../components/ui'
 import DailyLogCard from '../../components/DailyLogCard'
+import IncidentAckStrip from '../../components/IncidentAckStrip'
+import { incidentsAwaitingAck } from '../../lib/unread'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { ageLabel, fmtDate, fmtTime, money, todayISO } from '../../lib/helpers'
@@ -35,6 +38,7 @@ export default function ParentDashboard() {
   const { user, activeKids, kids, outstanding, nextInvoice, announcements } = useFamilyScope()
   const attendance = useStore((s) => s.attendance)
   const dailyLogs = useStore((s) => s.dailyLogs)
+  const incidentAcks = useStore((s) => s.incidentAcks)
   // Real readiness, not a timer: the store flips `ready` once bootstrap has
   // restored the session and hydrated the cache from Supabase.
   const isLoading = !useStore((s) => s.ready)
@@ -54,6 +58,13 @@ export default function ParentDashboard() {
 
   const latestAnnouncement = announcements[0]
 
+  /** Incident reports this parent still has to confirm they read, newest first. */
+  const awaitingAck = incidentsAwaitingAck(
+    dailyLogs.filter((l) => kidIds.includes(l.childId)),
+    incidentAcks,
+    user?.id,
+  ).sort((a, b) => (a.date < b.date ? 1 : -1))
+
   return (
     <PageTransition>
       <div className="mb-8">
@@ -71,6 +82,27 @@ export default function ParentDashboard() {
             : t('dashboard.subtitleNone')}
         </p>
       </div>
+
+      {awaitingAck.length > 0 && (
+        <Card className="mb-6 border-rose-200 bg-rose-50/70 p-5" role="alert">
+          <p className="flex items-center gap-2 font-display text-base font-bold text-rose-800">
+            <AlertTriangle size={18} /> {t('dashboard.incidentAlertTitle', { count: awaitingAck.length })}
+          </p>
+          <p className="mt-1 text-sm text-rose-900/80">{t('dashboard.incidentAlertBody')}</p>
+          <ul className="mt-3 space-y-2">
+            {awaitingAck.map((log) => (
+              <li key={log.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/80 px-3 py-2">
+                <span className="text-sm font-semibold text-slate-800">
+                  {kids.find((k) => k.id === log.childId)?.name ?? ''} · {fmtDate(log.date, 'EEE, MMM d')}
+                </span>
+                <Button as={Link} to={`/parent/daily-reports/${log.childId}`} size="sm" variant="accent">
+                  {t('dashboard.incidentAlertCta')} <ArrowRight size={14} />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {/*
         Mobile shows these top to bottom in source order: Quick actions,
@@ -196,7 +228,11 @@ export default function ParentDashboard() {
             </Button>
           </div>
           {latestLog ? (
-            <DailyLogCard log={latestLog} child={kids.find((k) => k.id === latestLog.childId)} />
+            <DailyLogCard
+              log={latestLog}
+              child={kids.find((k) => k.id === latestLog.childId)}
+              incidentFooter={<IncidentAckStrip log={latestLog} />}
+            />
           ) : (
             <EmptyState
               icon={NotebookPen}

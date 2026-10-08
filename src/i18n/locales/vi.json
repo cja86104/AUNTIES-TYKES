@@ -35,6 +35,10 @@
     "Preschool": "Mẫu giáo"
   },
   "dashboard": {
+    "incidentAlertTitle_one": "Có một báo cáo sự cố cần bạn xem",
+    "incidentAlertTitle_other": "Có {{count}} báo cáo sự cố cần bạn xem",
+    "incidentAlertBody": "Vui lòng đọc và xác nhận bạn đã xem.",
+    "incidentAlertCta": "Đọc & xác nhận",
     "greeting": "Chào {{name}} 👋",
     "subtitleOne": "Đây là tình hình hôm nay của {{name}}.",
     "subtitleMany": "Đây là tình hình hôm nay của các con.",

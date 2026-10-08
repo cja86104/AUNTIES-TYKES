@@ -441,7 +441,15 @@ export const useStore = create<StoreState>()((set, get) => {
       commit(
         (s) => ({
           dailyLogs: [
-            { author: s.user?.name ?? s.settings.businessName, photos: [], attachments: [], incident: null, ...log, id: uid('dl') },
+            {
+              author: s.user?.name ?? s.settings.businessName,
+              photos: [],
+              attachments: [],
+              incident: null,
+              ...log,
+              id: uid('dl'),
+              postedAt: nowISO(),
+            },
             ...s.dailyLogs,
           ],
         }),

@@ -131,6 +131,7 @@ export function toDailyLog(row: DailyLogRow): DailyLog {
     attachments: row.attachments,
     incident: row.incident,
     author: row.author,
+    postedAt: row.created_at,
   }
 }
 

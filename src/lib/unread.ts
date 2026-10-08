@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import type { SectionName } from './database.types'
-import type { Announcement, DocumentRecord, Thread } from '../types'
+import type { Announcement, DailyLog, DocumentRecord, IncidentAck, Thread } from '../types'
 
 /** Never opened means everything in it is new. */
 function newerThan(at: string | undefined, seenAt: string | undefined): boolean {
@@ -90,6 +90,27 @@ export function newAnnouncements(
   return announcements.filter((a) => newerThan(a.date, seenAt))
 }
 
+export function newDailyLogs(logs: DailyLog[], seenAt: string | undefined): DailyLog[] {
+  return logs.filter((l) => newerThan(l.postedAt, seenAt))
+}
+
+/**
+ * Reports whose current incident this parent has not acknowledged. Not "new
+ * since you looked": opening Daily reports does not clear these — only
+ * acknowledging does, the same way an enrollment waits for an answer.
+ */
+export function incidentsAwaitingAck(
+  logs: DailyLog[],
+  acks: IncidentAck[],
+  profileId: string | undefined,
+): DailyLog[] {
+  return logs.filter((l) => {
+    const incident = l.incident
+    if (!incident) return false
+    return !acks.some((a) => a.logId === l.id && a.profileId === profileId && a.version === incident.recordedAt)
+  })
+}
+
 /* -------------------------------- nav badges ------------------------------ */
 
 export interface UnreadCounts {
@@ -103,6 +124,12 @@ export interface UnreadCounts {
    * Always 0 for a parent, who cannot see submissions at all.
    */
   enrollments: number
+  /**
+   * Parent only: reports posted since they last opened Daily reports, plus
+   * any incident still waiting for their acknowledgement, counted once per
+   * report. Always 0 for the owner, who writes the reports.
+   */
+  dailyReports: number
 }
 
 /**
@@ -119,8 +146,11 @@ export function useUnreadCounts(): UnreadCounts {
   const announcements = useStore((s) => s.announcements)
   const sectionViews = useStore((s) => s.sectionViews)
   const enrollments = useStore((s) => s.enrollments)
+  const dailyLogs = useStore((s) => s.dailyLogs)
+  const children = useStore((s) => s.children)
+  const incidentAcks = useStore((s) => s.incidentAcks)
 
-  if (!user) return { documents: 0, messages: 0, enrollments: 0 }
+  if (!user) return { documents: 0, messages: 0, enrollments: 0, dailyReports: 0 }
 
   const docsSeen = sectionViews.documents
   const msgsSeen = sectionViews.messages
@@ -130,6 +160,7 @@ export function useUnreadCounts(): UnreadCounts {
       documents: newDocuments(documents, docsSeen, user.name).length,
       messages: newThreads(threads, msgsSeen, 'parent').length,
       enrollments: enrollments.filter((e) => e.status === 'pending').length,
+      dailyReports: 0,
     }
   }
 
@@ -137,10 +168,17 @@ export function useUnreadCounts(): UnreadCounts {
   const mine = documents.filter((d) => d.visibleToParents || d.uploadedBy === user.name)
   const ours = threads.filter((t) => t.familyId === familyId)
   const forUs = announcements.filter((a) => a.audience === 'all' || a.audience === familyId)
+  const kidIds = new Set(children.filter((c) => c.familyId === familyId).map((c) => c.id))
+  const ourLogs = dailyLogs.filter((l) => kidIds.has(l.childId))
+  const reportIds = new Set([
+    ...newDailyLogs(ourLogs, sectionViews.daily_reports).map((l) => l.id),
+    ...incidentsAwaitingAck(ourLogs, incidentAcks, user.id).map((l) => l.id),
+  ])
 
   return {
     documents: newDocuments(mine, docsSeen, user.name).length,
     messages: newThreads(ours, msgsSeen, 'admin').length + newAnnouncements(forUs, msgsSeen).length,
     enrollments: 0,
+    dailyReports: reportIds.size,
   }
 }

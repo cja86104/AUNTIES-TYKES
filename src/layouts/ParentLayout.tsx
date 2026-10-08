@@ -31,7 +31,7 @@ interface NavItem {
 const nav: NavItem[] = [
   { to: '/parent/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
   { to: '/parent/children', labelKey: 'nav.myChildren', icon: UserRound },
-  { to: '/parent/daily-reports', labelKey: 'nav.dailyReports', icon: NotebookPen },
+  { to: '/parent/daily-reports', labelKey: 'nav.dailyReports', icon: NotebookPen, badge: 'dailyReports' },
   { to: '/parent/attendance', labelKey: 'nav.attendance', icon: ClipboardCheck },
   { to: '/parent/calendar', labelKey: 'nav.calendar', icon: CalendarDays },
   { to: '/parent/billing', labelKey: 'nav.billing', icon: Wallet },

@@ -166,9 +166,11 @@ export interface DailyLogCardProps {
    * acknowledge button in the portal, who has acknowledged it in the console.
    */
   incidentFooter?: ReactNode
+  /** Shows a "New" pill: posted since the reader last opened Daily reports. */
+  isNew?: boolean
 }
 
-export default function DailyLogCard({ log, child, index = 0, actions, incidentFooter }: DailyLogCardProps) {
+export default function DailyLogCard({ log, child, index = 0, actions, incidentFooter, isNew = false }: DailyLogCardProps) {
   const { t } = useTranslation()
   return (
     <motion.div
@@ -186,6 +188,7 @@ export default function DailyLogCard({ log, child, index = 0, actions, incidentF
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isNew && <Badge tone="violet">{t('common.new')}</Badge>}
             {log.incident && (
               <Badge tone="rose">
                 <AlertTriangle size={12} /> {t('dailyLogCard.incidentBadge')}

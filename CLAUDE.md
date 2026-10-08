@@ -74,6 +74,18 @@ schema/domain mismatch at build time rather than at runtime against live data.
   service-role key, verifies the caller's token and checks `role = 'admin'`.
   That key must never be `VITE_`-prefixed or Vite inlines it into the bundle.
 
+## Product rules from the owner — apply to every feature
+
+- **Anything new gets a notification.** If a feature puts something new in
+  front of a parent or the owner, it ships with a way to notice it: a nav
+  badge (`src/lib/unread.ts`), a "New" pill, and a dashboard alert when it
+  needs action. Never ship a new thing that only appears silently.
+- **Reports show only what was filled in.** No blank or "—" rows for
+  sections that were left empty.
+- **Ro keeps up.** Ro already writes daily reports; any new part of a
+  feature Ro covers must be reachable through Ro's tools too
+  (`api/_lib/ai/tools/`).
+
 ## Brand
 
 - Primary `#4F77D9` · Sunny `#F5B942` · Sage `#5DC4A6` · Ink `#2b2f3a` · Canvas `#FBFAF7`

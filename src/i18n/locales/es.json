@@ -35,6 +35,10 @@
     "Preschool": "Preescolar"
   },
   "dashboard": {
+    "incidentAlertTitle_one": "Un reporte de incidente necesita tu atención",
+    "incidentAlertTitle_other": "{{count}} reportes de incidente necesitan tu atención",
+    "incidentAlertBody": "Por favor léelo y confirma que lo viste.",
+    "incidentAlertCta": "Leer y confirmar",
     "greeting": "Hola {{name}} 👋",
     "subtitleOne": "Así va el día de {{name}}.",
     "subtitleMany": "Así va el día de todos.",
