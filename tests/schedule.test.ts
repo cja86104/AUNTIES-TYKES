@@ -8,8 +8,9 @@
  */
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import type { ChildDay, ResolverChange, ResolverChild, ResolverEvent } from '../src/lib/schedule.ts'
+import type { ChildDay, ResolverChange, ResolverChild, ResolverEvent, RosterChild, RosterRecord } from '../src/lib/schedule.ts'
 import {
+  buildDayRoster,
   dayProblem,
   formatBlock,
   formatWeeklySchedule,
@@ -579,5 +580,105 @@ void describe('summarizeSchedule', () => {
       legacyPlan: 'Part-time (M/W/F)',
     })
     assert.deepStrictEqual(summarizeSchedule({ schedule: null, plan: '' }, 'en-US'), { kind: 'not_set', legacyPlan: '' })
+  })
+})
+
+void describe('buildDayRoster', () => {
+  // TUE: Ava 7–9 am + 3–6 pm (split), Ben 9 am–3 pm, Cal off Tuesdays,
+  // Dee no schedule, Eve waitlisted, Fay off Tuesdays but dropped in.
+  const kid = (id: string, name: string, extra: Partial<RosterChild> = {}): RosterChild => ({
+    id,
+    name,
+    status: 'active',
+    startDate: '',
+    schedule: { tue: [] },
+    ...extra,
+  })
+  const kids: RosterChild[] = [
+    kid('ben', 'Ben', { schedule: { tue: [{ start: '09:00', end: '15:00' }] } }),
+    kid('ava', 'Ava', { schedule: { tue: [{ start: '07:00', end: '09:00' }, { start: '15:00', end: '18:00' }] } }),
+    kid('cal', 'Cal'),
+    kid('dee', 'Dee', { schedule: undefined }),
+    kid('eve', 'Eve', { status: 'waitlist', schedule: { tue: [{ start: '09:00', end: '12:00' }] } }),
+    kid('fay', 'Fay'),
+  ]
+  const rec = (childId: string, status: RosterRecord['status'], checkIn: string | null, checkOut: string | null): RosterRecord => ({
+    childId,
+    date: TUE,
+    status,
+    checkIn,
+    checkOut,
+  })
+
+  void it('puts scheduled children in time order, the unknown and the off-today in their own groups', () => {
+    const roster = buildDayRoster(kids, [], [], [], TUE)
+    assert.deepStrictEqual(roster.main.map((r) => r.child.id), ['ava', 'ben'])
+    assert.deepStrictEqual(roster.unscheduled.map((r) => r.child.id), ['dee'])
+    assert.deepStrictEqual(roster.notToday.map((r) => r.child.id), ['cal', 'fay'])
+    assert.deepStrictEqual(roster.counts, { here: 0, gone: 0, absent: 0, due: 2, returning: 0 })
+  })
+
+  void it('leaves waitlisted children out entirely', () => {
+    const roster = buildDayRoster(kids, [], [], [], TUE)
+    const all = [...roster.main, ...roster.unscheduled, ...roster.notToday].map((r) => r.child.id)
+    assert.equal(all.includes('eve'), false)
+  })
+
+  void it('always lists a child with a record that day, even when not scheduled (drop-in)', () => {
+    const roster = buildDayRoster(kids, [rec('fay', 'present', '10:00:00', null), rec('dee', 'present', '08:00', null)], [], [], TUE)
+    assert.deepStrictEqual(roster.main.map((r) => r.child.id), ['ava', 'ben', 'dee', 'fay'])
+    assert.deepStrictEqual(roster.unscheduled, [])
+    assert.deepStrictEqual(roster.notToday.map((r) => r.child.id), ['cal'])
+    assert.equal(roster.counts.here, 2)
+  })
+
+  void it('knows a split-day child checked out at 9 is coming back at 3', () => {
+    const roster = buildDayRoster(kids, [rec('ava', 'checked-out', '07:02:00', '09:01:00')], [], [], TUE)
+    const ava = roster.main.find((r) => r.child.id === 'ava')
+    assert.equal(ava?.phase, 'returning')
+    assert.equal(ava?.returnsAt, '15:00')
+    assert.deepStrictEqual(roster.counts, { here: 0, gone: 0, absent: 0, due: 2, returning: 1 })
+  })
+
+  void it('counts a child checked out after their last block as gone', () => {
+    const roster = buildDayRoster(
+      kids,
+      [rec('ava', 'checked-out', '15:00', '18:05'), rec('ben', 'absent', null, null)],
+      [],
+      [],
+      TUE,
+    )
+    assert.equal(roster.main.find((r) => r.child.id === 'ava')?.phase, 'gone')
+    assert.deepStrictEqual(roster.counts, { here: 0, gone: 1, absent: 1, due: 0, returning: 0 })
+  })
+
+  void it('closes the day: nobody expected, closure reported, records still listed', () => {
+    const events = [event({ kind: 'closure', title: 'Columbus Day', startsOn: TUE })]
+    const closed = buildDayRoster(kids, [], [], events, TUE)
+    assert.deepStrictEqual(closed.closure, { title: 'Columbus Day' })
+    assert.deepStrictEqual(closed.main, [])
+    assert.equal(closed.counts.due, 0)
+    const withRecord = buildDayRoster(kids, [rec('ben', 'present', '09:00', null)], [], events, TUE)
+    assert.deepStrictEqual(withRecord.main.map((r) => r.child.id), ['ben'])
+  })
+
+  void it('reports the earliest early close and applies it to the blocks', () => {
+    const events = [
+      event({ kind: 'early_close', title: 'Staff training', startsOn: TUE, closesAt: '13:00:00' }),
+      event({ kind: 'early_close', title: 'Later', startsOn: TUE, closesAt: '14:00' }),
+    ]
+    const roster = buildDayRoster(kids, [], [], events, TUE)
+    assert.deepStrictEqual(roster.earlyClose, { title: 'Staff training', closesAt: '13:00' })
+    assert.deepStrictEqual(roster.main.find((r) => r.child.id === 'ava')?.day.blocks, [{ start: '07:00', end: '09:00' }])
+  })
+
+  void it('follows one-off changes: off for the day, or in on a day off', () => {
+    const changes: ResolverChange[] = [
+      { childId: 'ben', date: TUE, blocks: [], note: 'trip' },
+      { childId: 'cal', date: TUE, blocks: [{ start: '08:00', end: '12:00' }], note: '' },
+    ]
+    const roster = buildDayRoster(kids, [], changes, [], TUE)
+    assert.deepStrictEqual(roster.main.map((r) => r.child.id), ['ava', 'cal'])
+    assert.deepStrictEqual(roster.notToday.map((r) => r.child.id), ['ben', 'fay'])
   })
 })

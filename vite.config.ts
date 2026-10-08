@@ -17,6 +17,7 @@ export default defineConfig({
           'vendor-motion': ['framer-motion'],
           'vendor-markdown': ['react-markdown'],
           'vendor-forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
+          'vendor-supabase': ['@supabase/supabase-js'],
         },
       },
     },

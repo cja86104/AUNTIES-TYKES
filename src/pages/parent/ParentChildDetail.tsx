@@ -17,12 +17,19 @@ import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 import { PortalSchedule } from '../../components/ScheduleSummary'
+import { formatDayBlocks } from '../../lib/schedule'
+import { useSectionSeen } from '../../lib/unread'
+import { visitsOn } from '../../lib/visits'
 
 export default function ParentChildDetail() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const { kids } = useFamilyScope()
   const attendance = useStore((s) => s.attendance)
+  const scheduleChanges = useStore((s) => s.scheduleChanges)
+  const attendanceVisits = useStore((s) => s.attendanceVisits)
+  // Opening a child's page clears the "schedule changes" badge, like the calendar.
+  const seen = useSectionSeen('schedule_changes')
   const dailyLogs = useStore((s) => s.dailyLogs)
   const settings = useStore((s) => s.settings)
 
@@ -48,6 +55,9 @@ export default function ParentChildDetail() {
 
   const today = todayISO()
   const todayRecord = attendance.find((a) => a.childId === child.id && a.date === today)
+  const upcomingChanges = scheduleChanges
+    .filter((c) => c.childId === child.id && c.date >= today)
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
   const recentAttendance = attendance
     .filter((a) => a.childId === child.id)
     .sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -158,6 +168,26 @@ export default function ParentChildDetail() {
             </p>
           </Card>
 
+          {upcomingChanges.length > 0 && (
+            <Card className="p-5">
+              <h2 className="font-display text-lg font-bold text-slate-900">{t('schedule.upcomingTitle')}</h2>
+              <ul className="mt-3 divide-y divide-slate-100">
+                {upcomingChanges.map((change) => (
+                  <li key={change.id} className="py-2.5 first:pt-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-800">{fmtDate(change.date, 'EEE, MMM d')}</span>
+                      {seen.isNew(change.updatedAt) && <Badge tone="green">{t('common.new')}</Badge>}
+                    </div>
+                    <p className="mt-0.5 text-sm text-[#1F4A3D]">
+                      {change.blocks.length > 0 ? formatDayBlocks(change.blocks, i18n.language) : t('schedule.notComing')}
+                    </p>
+                    {change.note && <p className="mt-0.5 text-sm text-slate-600">{change.note}</p>}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
           <Card className="overflow-hidden">
             <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
               <h2 className="font-display text-lg font-bold text-slate-900">{t('childDetail.recentDays')}</h2>
@@ -174,8 +204,17 @@ export default function ParentChildDetail() {
                 {recentAttendance.map((a) => (
                   <li key={a.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                     <span className="text-slate-700">{fmtDate(a.date, 'EEE, MMM d')}</span>
-                    <span className="text-xs text-slate-500">
-                      {a.checkIn ? `${fmtTime(a.checkIn)} – ${a.checkOut ? fmtTime(a.checkOut) : t('childDetail.stillHere')}` : '—'}
+                    <span className="text-right text-xs text-slate-500">
+                      {(() => {
+                        // Every visit, so a split day reads "7:05 AM – 9:02 AM, 3:01 PM – still here".
+                        const visits = visitsOn(attendanceVisits, a.childId, a.date)
+                        if (visits.length > 0) {
+                          return visits
+                            .map((v) => `${fmtTime(v.checkIn)} – ${v.checkOut ? fmtTime(v.checkOut) : t('childDetail.stillHere')}`)
+                            .join(', ')
+                        }
+                        return a.checkIn ? `${fmtTime(a.checkIn)} – ${a.checkOut ? fmtTime(a.checkOut) : t('childDetail.stillHere')}` : '—'
+                      })()}
                     </span>
                     <Badge tone={statusTone(a.status)}>{t(`status.${a.status}`)}</Badge>
                   </li>

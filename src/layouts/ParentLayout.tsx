@@ -33,7 +33,7 @@ const nav: NavItem[] = [
   { to: '/parent/children', labelKey: 'nav.myChildren', icon: UserRound },
   { to: '/parent/daily-reports', labelKey: 'nav.dailyReports', icon: NotebookPen, badge: 'dailyReports' },
   { to: '/parent/attendance', labelKey: 'nav.attendance', icon: ClipboardCheck },
-  { to: '/parent/calendar', labelKey: 'nav.calendar', icon: CalendarDays },
+  { to: '/parent/calendar', labelKey: 'nav.calendar', icon: CalendarDays, badge: 'calendar' },
   { to: '/parent/billing', labelKey: 'nav.billing', icon: Wallet },
   { to: '/parent/documents', labelKey: 'nav.documents', icon: FolderOpen, badge: 'documents' },
   { to: '/parent/messages', labelKey: 'nav.messages', icon: MessageSquare, badge: 'messages' },

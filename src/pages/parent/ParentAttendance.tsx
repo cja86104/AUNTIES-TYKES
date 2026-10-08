@@ -18,6 +18,8 @@ import {
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { fmtDate, fmtTime } from '../../lib/helpers'
+import { visitMinutes, visitsOn } from '../../lib/visits'
+import type { AttendanceRecord } from '../../types'
 
 /** Minutes between an HH:mm check-in and check-out, or null when incomplete. */
 function minutesBetween(inTime: string | null, outTime: string | null): number | null {
@@ -39,6 +41,7 @@ export default function ParentAttendance() {
   const { t } = useTranslation()
   const { kids } = useFamilyScope()
   const attendance = useStore((s) => s.attendance)
+  const attendanceVisits = useStore((s) => s.attendanceVisits)
   const pushToast = useStore((s) => s.pushToast)
 
   const [childFilter, setChildFilter] = useState('all')
@@ -59,9 +62,21 @@ export default function ParentAttendance() {
     [attendance, kidIds, childFilter, fromDate, toDate],
   )
 
+  /** Each visit that day, earliest first. A split day has two or more. */
+  const visitsFor = (r: AttendanceRecord) => visitsOn(attendanceVisits, r.childId, r.date)
+  /**
+   * Time actually spent here: the sum of completed visits, so the gap in a
+   * split day is not counted. Falls back to the day's own times for a record
+   * with no visits on file.
+   */
+  const minutesFor = (r: AttendanceRecord): number | null => {
+    const visits = visitsFor(r)
+    return visits.length > 0 ? visitMinutes(visits) : minutesBetween(r.checkIn, r.checkOut)
+  }
+
   const presentDays = rows.filter((r) => r.status !== 'absent' && r.status !== 'expected').length
   const absentDays = rows.filter((r) => r.status === 'absent').length
-  const totalMinutes = rows.reduce((s, r) => s + (minutesBetween(r.checkIn, r.checkOut) ?? 0), 0)
+  const totalMinutes = rows.reduce((s, r) => s + (minutesFor(r) ?? 0), 0)
   const avgMinutes = presentDays > 0 ? Math.round(totalMinutes / presentDays) : 0
 
   const tabs = useMemo(
@@ -82,7 +97,7 @@ export default function ParentAttendance() {
       const lines = rows.map(
         (r) =>
           `"${childName(r.childId)}",${r.date},${r.checkIn ?? ''},${r.checkOut ?? ''},"${hoursLabel(
-            minutesBetween(r.checkIn, r.checkOut),
+            minutesFor(r),
           )}",${r.status}`,
       )
       const blob = new Blob([[header, ...lines].join('\n')], { type: 'text/csv;charset=utf-8' })
@@ -197,6 +212,7 @@ export default function ParentAttendance() {
               <tbody className="divide-y divide-slate-100">
                 {rows.map((r, i) => {
                   const kid = kids.find((k) => k.id === r.childId)
+                  const visits = visitsFor(r)
                   return (
                     <motion.tr
                       key={r.id}
@@ -212,11 +228,18 @@ export default function ParentAttendance() {
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-slate-600">{fmtDate(r.date, 'EEE, MMM d')}</td>
-                      <td className="px-5 py-3.5 text-slate-600">{r.checkIn ? fmtTime(r.checkIn) : '—'}</td>
-                      <td className="px-5 py-3.5 text-slate-600">{r.checkOut ? fmtTime(r.checkOut) : '—'}</td>
-                      <td className="px-5 py-3.5 font-semibold text-slate-800">
-                        {hoursLabel(minutesBetween(r.checkIn, r.checkOut))}
+                      {/* One line per visit, so a split day shows both drop-offs and both pickups. */}
+                      <td className="px-5 py-3.5 text-slate-600">
+                        {visits.length > 0
+                          ? visits.map((v) => <span key={v.id} className="block">{fmtTime(v.checkIn)}</span>)
+                          : r.checkIn ? fmtTime(r.checkIn) : '—'}
                       </td>
+                      <td className="px-5 py-3.5 text-slate-600">
+                        {visits.length > 0
+                          ? visits.map((v) => <span key={v.id} className="block">{v.checkOut ? fmtTime(v.checkOut) : '—'}</span>)
+                          : r.checkOut ? fmtTime(r.checkOut) : '—'}
+                      </td>
+                      <td className="px-5 py-3.5 font-semibold text-slate-800">{hoursLabel(minutesFor(r))}</td>
                       <td className="px-5 py-3.5">
                         <Badge tone={statusTone(r.status)}>{t(`status.${r.status}`)}</Badge>
                         {r.note && <p className="mt-0.5 text-xs italic text-slate-400">{r.note}</p>}

@@ -27,7 +27,10 @@
     "unpaid": "Chưa thanh toán",
     "overdue": "Quá hạn",
     "active": "Đang học",
-    "waitlist": "Danh sách chờ"
+    "waitlist": "Danh sách chờ",
+    "notScheduled": "Hôm nay không có lịch",
+    "closedToday": "Hôm nay đóng cửa",
+    "backAt": "Quay lại lúc {{time}}"
   },
   "ageGroup": {
     "Infant": "Trẻ sơ sinh",
@@ -39,6 +42,10 @@
     "incidentAlertTitle_other": "Có {{count}} báo cáo sự cố cần bạn xem",
     "incidentAlertBody": "Vui lòng đọc và xác nhận bạn đã xem.",
     "incidentAlertCta": "Đọc & xác nhận",
+    "scheduleAlertTitle_one": "Có một thay đổi lịch cho gia đình bạn",
+    "scheduleAlertTitle_other": "Có {{count}} thay đổi lịch cho gia đình bạn",
+    "scheduleAlertBody": "Auntie Melissa đã đổi giờ cho những ngày này.",
+    "scheduleAlertCta": "Xem lịch",
     "greeting": "Chào {{name}} 👋",
     "subtitleOne": "Đây là tình hình hôm nay của {{name}}.",
     "subtitleMany": "Đây là tình hình hôm nay của các con.",
@@ -56,6 +63,7 @@
     "statAnnouncementsSubLatest": "Mới nhất {{date}}",
     "statAnnouncementsSubNone": "Chưa có thông báo",
     "todayGlance": "Tổng quan hôm nay",
+    "todayTimes": "Hôm nay: {{times}}",
     "attendanceHistory": "Lịch sử điểm danh",
     "noChildrenTitle": "Chưa có trẻ nào được ghi danh",
     "noChildrenDesc": "Khi việc ghi danh bắt đầu, thông tin điểm danh sẽ hiện ở đây mỗi sáng.",
@@ -361,11 +369,14 @@
       "activity": "Hoạt động",
       "reminder": "Lời nhắc",
       "schedule_exception": "Thay đổi lịch",
+      "schedule_change": "Lịch đặc biệt",
       "birthday": "Sinh nhật"
     }
   },
   "schedule": {
     "notSet": "Chưa có lịch",
-    "noDays": "Không có ngày nào trong lịch"
+    "noDays": "Không có ngày nào trong lịch",
+    "notComing": "Không đến ngày này",
+    "upcomingTitle": "Thay đổi lịch sắp tới"
   }
 }

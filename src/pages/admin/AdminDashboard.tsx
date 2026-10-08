@@ -27,12 +27,13 @@ import {
   Avatar,
   EmptyState,
   SkeletonCard,
-  statusTone,
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { buildCalendar } from '../../lib/calendar'
+import { buildDayRoster } from '../../lib/schedule'
+import { ConsoleRosterBadge, consoleDayText } from '../../components/ScheduleSummary'
 import type { CalendarEntryKind } from '../../lib/calendar'
-import { money, todayISO, fmtTime, fmtDate, invoiceBalance, invoiceStatus, sum, ageLabel } from '../../lib/helpers'
+import { money, todayISO, fmtTime, fmtDate, invoiceBalance, invoiceStatus, sum } from '../../lib/helpers'
 import type { Child } from '../../types'
 
 /** Short labels for the dashboard's calendar strip. */
@@ -42,6 +43,7 @@ const CALENDAR_KIND_LABEL: Record<CalendarEntryKind, string> = {
   activity: 'Activity',
   reminder: 'Reminder',
   schedule_exception: 'Schedule change',
+  schedule_change: 'Special schedule',
   birthday: 'Birthday',
   payment_due: 'Payment due',
 }
@@ -62,6 +64,7 @@ export default function AdminDashboard() {
   const leads = useStore((s) => s.leads)
   const inquiriesSeen = useStore((s) => s.sectionViews.inquiries)
   const calendarEvents = useStore((s) => s.calendarEvents)
+  const scheduleChanges = useStore((s) => s.scheduleChanges)
   const checkIn = useStore((s) => s.checkIn)
   const checkOut = useStore((s) => s.checkOut)
   const markAbsent = useStore((s) => s.markAbsent)
@@ -69,21 +72,14 @@ export default function AdminDashboard() {
 
   const today = todayISO()
 
-  const active = useMemo(() => children.filter((c) => c.status === 'active'), [children])
-  const todayRecords = useMemo(() => attendance.filter((a) => a.date === today), [attendance, today])
-
-  const rows = useMemo(
-    () =>
-      active.map((c) => ({
-        child: c,
-        record: todayRecords.find((a) => a.childId === c.id) || null,
-      })),
-    [active, todayRecords],
+  // Who is expected comes from the real schedules, the same grouping the
+  // attendance page and Ro use (src/lib/schedule.ts).
+  const roster = useMemo(
+    () => buildDayRoster(children, attendance, scheduleChanges, calendarEvents, today),
+    [children, attendance, scheduleChanges, calendarEvents, today],
   )
-
-  const presentCount = rows.filter((r) => r.record?.status === 'present').length
-  const outCount = rows.filter((r) => r.record?.status === 'checked-out').length
-  const absentCount = rows.filter((r) => r.record?.status === 'absent').length
+  const rows = roster.main
+  const offList = roster.unscheduled.length + roster.notToday.length
 
   const outstanding = useMemo(() => sum(invoices, (i) => invoiceBalance(i)), [invoices])
   const overdue = useMemo(() => invoices.filter((i) => invoiceStatus(i) === 'overdue'), [invoices])
@@ -110,8 +106,7 @@ export default function AdminDashboard() {
     pushToast({ title: `${child.name.split(' ')[0]} checked out`, description: 'Have a good evening!' })
   }
   const doAbsent = (child: Child) => {
-    markAbsent(child.id)
-    pushToast({ tone: 'info', title: `${child.name.split(' ')[0]} marked absent` })
+    if (markAbsent(child.id)) pushToast({ tone: 'info', title: `${child.name.split(' ')[0]} marked absent` })
   }
 
   const recentThreads = useMemo(
@@ -141,9 +136,11 @@ export default function AdminDashboard() {
             Good day, {user?.name.split(' ')[0] ?? 'there'}
           </span>
         }
-        description={`${fmtDate(today, 'EEEE, MMMM d')} · ${presentCount} here now, ${absentCount} out, ${
-          rows.length - presentCount - outCount - absentCount
-        } still expected.`}
+        description={
+          roster.closure
+            ? `${fmtDate(today, 'EEEE, MMMM d')} · Closed today (${roster.closure.title}).`
+            : `${fmtDate(today, 'EEEE, MMMM d')} · ${roster.counts.here} here now, ${roster.counts.absent} out, ${roster.counts.due} still expected.`
+        }
         actions={
           <>
             <Button as={Link} to="/admin/attendance" variant="outline">
@@ -205,11 +202,20 @@ export default function AdminDashboard() {
 
           {rows.length === 0 ? (
             <div className="p-5">
-              <EmptyState icon={UserRound} title="No active children" description="Enroll a child to start tracking attendance." />
+              {offList > 0 ? (
+                <EmptyState
+                  icon={UserRound}
+                  title={roster.closure ? `Closed today — ${roster.closure.title}` : 'Nobody is scheduled today'}
+                  description="Anyone who comes in anyway can be checked in from Attendance."
+                />
+              ) : (
+                <EmptyState icon={UserRound} title="No active children" description="Enroll a child to start tracking attendance." />
+              )}
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
-              {rows.map(({ child, record }) => {
+              {rows.map((row) => {
+                const { child, record } = row
                 const status = record?.status || 'expected'
                 return (
                   <li key={child.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
@@ -223,14 +229,12 @@ export default function AdminDashboard() {
                           {child.name}
                         </Link>
                         <p className="truncate text-xs text-slate-500">
-                          {child.ageGroup} · {ageLabel(child.dob)} ·{' '}
+                          {child.ageGroup} · {consoleDayText(row)} ·{' '}
                           {record?.checkIn ? `in ${fmtTime(record.checkIn)}` : 'not in yet'}
                           {record?.checkOut ? ` · out ${fmtTime(record.checkOut)}` : ''}
                         </p>
                       </div>
-                      <Badge tone={statusTone(status)} className="shrink-0">
-                        {status}
-                      </Badge>
+                      <ConsoleRosterBadge row={row} group="main" />
                     </div>
                     <div className="flex shrink-0 gap-1.5">
                       <Button size="sm" variant="outline" onClick={() => doCheckIn(child)} disabled={status === 'present'}>
@@ -244,7 +248,13 @@ export default function AdminDashboard() {
                       >
                         <LogOut size={14} /> Out
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => doAbsent(child)} disabled={status === 'absent'}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Mark ${child.name.split(' ')[0]} absent`}
+                        onClick={() => doAbsent(child)}
+                        disabled={status === 'absent' || Boolean(record?.checkIn)}
+                      >
                         <UserX size={14} />
                       </Button>
                     </div>
@@ -252,6 +262,22 @@ export default function AdminDashboard() {
                 )
               })}
             </ul>
+          )}
+          {offList > 0 && (
+            <Link
+              to="/admin/attendance"
+              className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-brand"
+            >
+              <span>
+                {[
+                  roster.unscheduled.length > 0 ? `${roster.unscheduled.length} with no schedule set` : '',
+                  roster.notToday.length > 0 ? `${roster.notToday.length} not scheduled today` : '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+              <ArrowRight size={14} />
+            </Link>
           )}
         </Card>
 

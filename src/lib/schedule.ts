@@ -224,6 +224,11 @@ export function dayProblem(blocks: readonly ScheduleBlock[]): DayProblem | null 
   return null
 }
 
+/** A copy of one day's blocks in time order, carrying only start and end. */
+export function sortedBlocks(blocks: readonly ScheduleBlock[]): ScheduleBlock[] {
+  return [...blocks].sort(byStart).map((block) => ({ start: block.start, end: block.end }))
+}
+
 /** Every day with a problem, keyed by day. Empty when the whole week can be saved. */
 export function scheduleProblems(schedule: WeeklySchedule): Partial<Record<Weekday, DayProblem>> {
   const problems: Partial<Record<Weekday, DayProblem>> = {}
@@ -333,6 +338,16 @@ export function formatBlock(block: ScheduleBlock, locale: string): string {
   return `${clock.format(sampleDate('mon', start))}–${clock.format(sampleDate('mon', end))}`
 }
 
+/** One time of day: "3 pm", "7:30 am" in English; the locale's clock elsewhere ("15:00"). */
+export function formatClock(hhmm: string, locale: string): string {
+  const time = toHHmm(hhmm)
+  if (isEnglish(locale)) {
+    const clock = englishClock(time)
+    return `${clock.face} ${clock.period}`
+  }
+  return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).format(sampleDate('mon', time))
+}
+
 /** A day's blocks in time order: "7–9 am, 3–6 pm". Empty string for a day off. */
 export function formatDayBlocks(blocks: readonly ScheduleBlock[], locale: string): string {
   return [...blocks]
@@ -398,4 +413,134 @@ export function summarizeSchedule(
   }
   const text = formatWeeklySchedule(child.schedule, locale)
   return text === '' ? { kind: 'no_days' } : { kind: 'set', text }
+}
+
+/* ------------------------------- day roster ------------------------------- */
+// "Who should be here on this date", grouped the same way everywhere: the
+// attendance page, both dashboards and Ro all build their lists from this.
+
+/** The child fields the roster reads. A domain `Child` satisfies this. */
+export interface RosterChild extends ResolverChild {
+  name: string
+}
+
+/** The attendance fields the roster reads. A domain `AttendanceRecord` satisfies this. */
+export interface RosterRecord {
+  childId: string
+  date: string
+  status: 'present' | 'absent' | 'expected' | 'checked-out'
+  checkIn: string | null
+  checkOut: string | null
+}
+
+/**
+ * Where a child in the main list stands right now:
+ *   due       — expected, not arrived yet
+ *   here      — checked in
+ *   returning — checked out between two blocks of a split day; back at `returnsAt`
+ *   gone      — checked out for the day
+ *   absent    — marked absent
+ */
+export type RosterPhase = 'due' | 'here' | 'returning' | 'gone' | 'absent'
+
+export interface RosterRow<C extends RosterChild, R extends RosterRecord> {
+  child: C
+  record: R | null
+  day: ChildDay
+  phase: RosterPhase
+  /** HH:mm the next block starts, for a child who is `returning`. */
+  returnsAt?: string
+}
+
+export interface DayRoster<C extends RosterChild, R extends RosterRecord> {
+  /** The closure covering the date, if the daycare is closed. */
+  closure: { title: string } | null
+  /** The earliest early close that day, if any. */
+  earlyClose: { title: string; closesAt: string } | null
+  /**
+   * Scheduled that day, plus anyone with an attendance record that day (a
+   * drop-in, a swap), sorted by first start time, then name.
+   */
+  main: RosterRow<C, R>[]
+  /** No weekly schedule ever entered, and no record: schedule UNKNOWN. Never counted. */
+  unscheduled: RosterRow<C, R>[]
+  /** Not scheduled that day (day off, one-off change, exception, closed), and no record. */
+  notToday: RosterRow<C, R>[]
+  counts: {
+    here: number
+    /** Checked out and not coming back today. */
+    gone: number
+    absent: number
+    /** Still to arrive, including `returning`. */
+    due: number
+    returning: number
+  }
+}
+
+function phaseOf(day: ChildDay, record: RosterRecord | null): { phase: RosterPhase; returnsAt?: string } {
+  if (record === null || record.status === 'expected') return { phase: 'due' }
+  if (record.status === 'present') return { phase: 'here' }
+  if (record.status === 'absent') return { phase: 'absent' }
+  // Checked out: coming back if a later block of today's schedule has not started.
+  const leftAt = record.checkOut === null ? null : toHHmm(record.checkOut)
+  const next = leftAt === null ? undefined : day.blocks.find((block) => block.start > leftAt)
+  return next ? { phase: 'returning', returnsAt: next.start } : { phase: 'gone' }
+}
+
+/**
+ * Groups the ACTIVE children for one date. `records`, `changes` and `events`
+ * may hold rows for other dates and children; only the relevant ones are used.
+ * A child with an attendance record that day is always in `main`, whatever
+ * their schedule says, so a drop-in is never hidden.
+ */
+export function buildDayRoster<C extends RosterChild, R extends RosterRecord>(
+  children: readonly C[],
+  records: readonly R[],
+  changes: readonly ResolverChange[],
+  events: readonly ResolverEvent[],
+  date: string,
+): DayRoster<C, R> {
+  const todays = events.filter((event) => covers(event, date))
+  const closure = todays.find((event) => event.kind === 'closure')
+  const earlyCloses = todays
+    .filter((event) => event.kind === 'early_close' && typeof event.closesAt === 'string' && event.closesAt !== '')
+    .map((event) => ({ title: event.title, closesAt: toHHmm(event.closesAt ?? '') }))
+    .sort((a, b) => (a.closesAt < b.closesAt ? -1 : 1))
+
+  const roster: DayRoster<C, R> = {
+    closure: closure ? { title: closure.title } : null,
+    earlyClose: earlyCloses[0] ?? null,
+    main: [],
+    unscheduled: [],
+    notToday: [],
+    counts: { here: 0, gone: 0, absent: 0, due: 0, returning: 0 },
+  }
+
+  for (const child of children) {
+    if (child.status !== 'active') continue
+    const day = resolveChildDay(child, date, changes, events)
+    const record = records.find((entry) => entry.childId === child.id && entry.date === date) ?? null
+    const { phase, returnsAt } = phaseOf(day, record)
+    const row: RosterRow<C, R> = returnsAt === undefined ? { child, record, day, phase } : { child, record, day, phase, returnsAt }
+
+    if (record !== null || day.state === 'expected') {
+      roster.main.push(row)
+      if (phase === 'returning') roster.counts.returning += 1
+      if (phase === 'due' || phase === 'returning') roster.counts.due += 1
+      else roster.counts[phase] += 1
+    } else if (day.state === 'unscheduled') {
+      roster.unscheduled.push(row)
+    } else {
+      roster.notToday.push(row)
+    }
+  }
+
+  const firstStart = (row: RosterRow<C, R>): string => row.day.blocks[0]?.start ?? '99:99'
+  const byStartThenName = (a: RosterRow<C, R>, b: RosterRow<C, R>): number =>
+    firstStart(a) === firstStart(b) ? a.child.name.localeCompare(b.child.name) : firstStart(a) < firstStart(b) ? -1 : 1
+  const byName = (a: RosterRow<C, R>, b: RosterRow<C, R>): number => a.child.name.localeCompare(b.child.name)
+  roster.main.sort(byStartThenName)
+  roster.unscheduled.sort(byName)
+  roster.notToday.sort(byName)
+  return roster
 }

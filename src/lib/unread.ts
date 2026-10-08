@@ -13,7 +13,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import type { SectionName } from './database.types'
-import type { Announcement, DailyLog, DocumentAck, DocumentRecord, IncidentAck, Lead, Thread } from '../types'
+import { todayISO } from './helpers'
+import type {
+  Announcement,
+  DailyLog,
+  DocumentAck,
+  DocumentRecord,
+  IncidentAck,
+  Lead,
+  ScheduleChange,
+  Thread,
+} from '../types'
 
 /** Never opened means everything in it is new. */
 function newerThan(at: string | undefined, seenAt: string | undefined): boolean {
@@ -126,6 +136,20 @@ export function newLeads(leads: Lead[], seenAt: string | undefined): Lead[] {
   return leads.filter((l) => newerThan(l.createdAt, seenAt))
 }
 
+/**
+ * Parent side: one-off changes to their children's schedules, made or edited
+ * since they last looked. Only changes to today or later count; a change to a
+ * day that has passed is not news. Opening the calendar or a child's page
+ * clears these.
+ */
+export function newScheduleChanges(
+  changes: ScheduleChange[],
+  seenAt: string | undefined,
+  today: string,
+): ScheduleChange[] {
+  return changes.filter((c) => c.date >= today && newerThan(c.updatedAt, seenAt))
+}
+
 /* -------------------------------- nav badges ------------------------------ */
 
 export interface UnreadCounts {
@@ -152,6 +176,11 @@ export interface UnreadCounts {
   dailyReports: number
   /** Owner only: contact-form inquiries since she last opened the inbox. Always 0 for a parent. */
   inquiries: number
+  /**
+   * Parent only: upcoming one-off schedule changes for their children made or
+   * edited since they last looked. Always 0 for the owner, who makes them.
+   */
+  calendar: number
 }
 
 /**
@@ -173,8 +202,9 @@ export function useUnreadCounts(): UnreadCounts {
   const incidentAcks = useStore((s) => s.incidentAcks)
   const documentAcks = useStore((s) => s.acknowledgements)
   const leads = useStore((s) => s.leads)
+  const scheduleChanges = useStore((s) => s.scheduleChanges)
 
-  if (!user) return { documents: 0, messages: 0, enrollments: 0, dailyReports: 0, inquiries: 0 }
+  if (!user) return { documents: 0, messages: 0, enrollments: 0, dailyReports: 0, inquiries: 0, calendar: 0 }
 
   const docsSeen = sectionViews.documents
   const msgsSeen = sectionViews.messages
@@ -186,6 +216,7 @@ export function useUnreadCounts(): UnreadCounts {
       enrollments: enrollments.filter((e) => e.status === 'pending').length,
       dailyReports: newIncidentAcks(incidentAcks, sectionViews.daily_reports).length,
       inquiries: newLeads(leads, sectionViews.inquiries).length,
+      calendar: 0,
     }
   }
 
@@ -206,5 +237,10 @@ export function useUnreadCounts(): UnreadCounts {
     enrollments: 0,
     dailyReports: reportIds.size,
     inquiries: 0,
+    calendar: newScheduleChanges(
+      scheduleChanges.filter((c) => kidIds.has(c.childId)),
+      sectionViews.schedule_changes,
+      todayISO(),
+    ).length,
   }
 }

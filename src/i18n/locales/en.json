@@ -27,7 +27,10 @@
     "unpaid": "Open",
     "overdue": "Overdue",
     "active": "Active",
-    "waitlist": "Waitlist"
+    "waitlist": "Waitlist",
+    "notScheduled": "Not scheduled today",
+    "closedToday": "Closed today",
+    "backAt": "Back at {{time}}"
   },
   "ageGroup": {
     "Infant": "Infant",
@@ -39,6 +42,10 @@
     "incidentAlertTitle_other": "{{count}} incident reports need your attention",
     "incidentAlertBody": "Please read it and confirm you have seen it.",
     "incidentAlertCta": "Read & confirm",
+    "scheduleAlertTitle_one": "A schedule change for your family",
+    "scheduleAlertTitle_other": "{{count}} schedule changes for your family",
+    "scheduleAlertBody": "Auntie Melissa set different times for these days.",
+    "scheduleAlertCta": "See calendar",
     "greeting": "Hi {{name}} 👋",
     "subtitleOne": "Here's how {{name}}'s day is going.",
     "subtitleMany": "Here's how everyone's day is going.",
@@ -56,6 +63,7 @@
     "statAnnouncementsSubLatest": "Latest {{date}}",
     "statAnnouncementsSubNone": "Nothing posted yet",
     "todayGlance": "Today at a glance",
+    "todayTimes": "Today: {{times}}",
     "attendanceHistory": "Attendance history",
     "noChildrenTitle": "No enrolled children yet",
     "noChildrenDesc": "Once enrollment starts, check-ins show up here each morning.",
@@ -361,11 +369,14 @@
       "activity": "Activity",
       "reminder": "Reminder",
       "schedule_exception": "Schedule change",
+      "schedule_change": "Special schedule",
       "birthday": "Birthday"
     }
   },
   "schedule": {
     "notSet": "Schedule not set yet",
-    "noDays": "No days scheduled"
+    "noDays": "No days scheduled",
+    "notComing": "Not coming that day",
+    "upcomingTitle": "Schedule changes coming up"
   }
 }

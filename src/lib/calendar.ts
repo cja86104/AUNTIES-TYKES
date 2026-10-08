@@ -1,19 +1,20 @@
 /**
  * Assembles the Family Calendar.
  *
- * Three streams are merged into one ordered list:
+ * Four streams are merged into one ordered list:
  *   1. events the owner authored (`calendar_events`)
- *   2. birthdays, derived from `Child.dob`
- *   3. payment due dates, derived from unpaid `Invoice.dueDate`
+ *   2. one-off schedule changes (`child_schedule_changes`), when passed in
+ *   3. birthdays, derived from `Child.dob`
+ *   4. payment due dates, derived from unpaid `Invoice.dueDate`
  *
- * Only the first is stored. Deriving the other two means birthdays never need
+ * Only the first two are stored. Deriving the other two means birthdays never need
  * re-entering each year and never drift when a date of birth is corrected,
  * and a due date cannot disagree with the invoice it came from.
  */
-import type { CalendarEvent, CalendarEventKind, Child, Invoice } from '../types'
+import type { CalendarEvent, CalendarEventKind, Child, Invoice, ScheduleBlock, ScheduleChange } from '../types'
 import { invoiceBalance } from './helpers'
 
-export type CalendarEntryKind = CalendarEventKind | 'birthday' | 'payment_due'
+export type CalendarEntryKind = CalendarEventKind | 'schedule_change' | 'birthday' | 'payment_due'
 
 export interface CalendarEntry {
   id: string
@@ -26,8 +27,12 @@ export interface CalendarEntry {
   endsOn?: string
   /** 24h HH:mm, only on `early_close`. */
   closesAt?: string
-  /** Set on schedule exceptions and birthdays. */
+  /** Set on schedule exceptions, schedule changes and birthdays. */
   childId?: string
+  /** Only on `schedule_change`: that day's times. Empty = not coming. */
+  blocks?: ScheduleBlock[]
+  /** Only on `schedule_change`: when it was last set, for the "New" marker. */
+  changedAt?: string
   /** Derived entries are read-only — there is no row behind them to edit. */
   derived: boolean
   visibleToParents: boolean
@@ -71,10 +76,12 @@ export interface BuildCalendarOptions {
   parentView?: boolean
   /** Narrow to one family's children. Used by the parent portal. */
   familyChildIds?: string[]
+  /** One-off schedule changes to include. Omit to leave them off. */
+  scheduleChanges?: ScheduleChange[]
 }
 
 export function buildCalendar(options: BuildCalendarOptions): CalendarEntry[] {
-  const { events, children, invoices, from, to, parentView = false, familyChildIds } = options
+  const { events, children, invoices, from, to, parentView = false, familyChildIds, scheduleChanges = [] } = options
   const entries: CalendarEntry[] = []
 
   for (const event of events) {
@@ -94,6 +101,27 @@ export function buildCalendar(options: BuildCalendarOptions): CalendarEntry[] {
       childId: event.childId,
       derived: false,
       visibleToParents: event.visibleToParents,
+    })
+  }
+
+  // Edited on the child's page, not here, so they arrive marked derived. Titled
+  // with the child's name; the screen words the times in its own language.
+  for (const change of scheduleChanges) {
+    if (!inRange(change.date, from, to)) continue
+    if (familyChildIds && !familyChildIds.includes(change.childId)) continue
+    const child = children.find((c) => c.id === change.childId)
+    if (!child) continue
+    entries.push({
+      id: `change:${change.id}`,
+      kind: 'schedule_change',
+      title: child.name,
+      note: change.note,
+      date: change.date,
+      childId: change.childId,
+      blocks: change.blocks,
+      changedAt: change.updatedAt,
+      derived: true,
+      visibleToParents: true,
     })
   }
 

@@ -27,7 +27,10 @@
     "unpaid": "Pendiente",
     "overdue": "Vencido",
     "active": "Activo",
-    "waitlist": "Lista de espera"
+    "waitlist": "Lista de espera",
+    "notScheduled": "Sin horario hoy",
+    "closedToday": "Cerrado hoy",
+    "backAt": "Regresa a las {{time}}"
   },
   "ageGroup": {
     "Infant": "Bebé",
@@ -39,6 +42,10 @@
     "incidentAlertTitle_other": "{{count}} reportes de incidente necesitan tu atención",
     "incidentAlertBody": "Por favor léelo y confirma que lo viste.",
     "incidentAlertCta": "Leer y confirmar",
+    "scheduleAlertTitle_one": "Hay un cambio de horario para tu familia",
+    "scheduleAlertTitle_other": "Hay {{count}} cambios de horario para tu familia",
+    "scheduleAlertBody": "Auntie Melissa fijó un horario distinto para estos días.",
+    "scheduleAlertCta": "Ver calendario",
     "greeting": "Hola {{name}} 👋",
     "subtitleOne": "Así va el día de {{name}}.",
     "subtitleMany": "Así va el día de todos.",
@@ -56,6 +63,7 @@
     "statAnnouncementsSubLatest": "Último {{date}}",
     "statAnnouncementsSubNone": "Sin avisos por ahora",
     "todayGlance": "Hoy de un vistazo",
+    "todayTimes": "Hoy: {{times}}",
     "attendanceHistory": "Historial de asistencia",
     "noChildrenTitle": "Aún no hay niños inscritos",
     "noChildrenDesc": "Cuando comience la inscripción, las entradas y salidas aparecerán aquí cada mañana.",
@@ -361,11 +369,14 @@
       "activity": "Actividad",
       "reminder": "Recordatorio",
       "schedule_exception": "Cambio de horario",
+      "schedule_change": "Horario especial",
       "birthday": "Cumpleaños"
     }
   },
   "schedule": {
     "notSet": "Horario aún sin definir",
-    "noDays": "Sin días programados"
+    "noDays": "Sin días programados",
+    "notComing": "No asiste ese día",
+    "upcomingTitle": "Próximos cambios de horario"
   }
 }

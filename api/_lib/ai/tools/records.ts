@@ -88,7 +88,10 @@ const attendanceSet: ToolSpec = {
     'with roster_list or family_get first. This does not take effect on its own: ' +
     'it shows the owner what would change and waits for her tap. Checking out a ' +
     'child who was never checked in is not possible — say so rather than ' +
-    'checking them in first.',
+    'checking them in first. A child can come and go more than once a day (in ' +
+    '7–9 am, back at 3): checking in again after a check-out records a new visit ' +
+    'and keeps the earlier one. Marking absent is refused once a child has any ' +
+    'check-in time that day, because recorded times are never erased — tell her so.',
   parameters: schema(
     {
       childId: { type: 'string', description: 'From roster_list or attendance_today' },
@@ -123,6 +126,33 @@ const attendanceSet: ToolSpec = {
       .maybeSingle()
     if (existing.error !== null) return dbFailure('that attendance record', existing.error)
 
+    const visits = await ctx.caller.db
+      .from('attendance_visits')
+      .select('check_in, check_out')
+      .eq('child_id', childId)
+      .eq('date', date)
+      .order('check_in', { ascending: true })
+    if (visits.error !== null) return dbFailure('the visits that day', visits.error)
+    const open = visits.data.find((visit) => visit.check_out === null)
+
+    if (action === 'in' && open !== undefined) {
+      return {
+        ok: true,
+        data: { changed: false, reason: `they are already checked in, since ${open.check_in.slice(0, 5)}`, childName: child.name, date },
+      }
+    }
+    if (action === 'absent' && (visits.data.length > 0 || (existing.data !== null && existing.data.check_in !== null))) {
+      return {
+        ok: true,
+        data: {
+          changed: false,
+          reason: 'they already have check-in times that day, and recorded times are never erased',
+          childName: child.name,
+          date,
+        },
+      }
+    }
+
     if (action === 'out' && existing.data === null) {
       // Mirrors the console: checkOut only maps over an existing record. Reported
       // rather than quietly turning into a check-in, which would invent a arrival
@@ -144,10 +174,15 @@ const attendanceSet: ToolSpec = {
       }
     }
 
+    // Every visit so far, so she sees a split day for what it is.
     const was =
-      existing.data === null
-        ? 'nothing recorded'
-        : `${existing.data.status}${existing.data.check_in === null ? '' : ` since ${existing.data.check_in}`}`
+      visits.data.length > 0
+        ? visits.data
+            .map((visit) => `in ${visit.check_in.slice(0, 5)}${visit.check_out === null ? ' (still here)' : `, out ${visit.check_out.slice(0, 5)}`}`)
+            .join('; ')
+        : existing.data === null
+          ? 'nothing recorded'
+          : `${existing.data.status}${existing.data.check_in === null ? '' : ` since ${existing.data.check_in}`}`
 
     const payload = { childId, childName: child.name, action, date, note }
     const key = `attendance.set:${JSON.stringify(payload)}`
@@ -170,7 +205,13 @@ const attendanceSet: ToolSpec = {
     if (!logged.ok) return { ok: false, error: logged.error }
 
     const becomes =
-      action === 'in' ? 'Checked in' : action === 'out' ? 'Checked out' : 'Absent for the day'
+      action === 'in'
+        ? visits.data.length > 0
+          ? 'Checked back in (earlier times kept)'
+          : 'Checked in'
+        : action === 'out'
+          ? 'Checked out'
+          : 'Absent for the day'
     const detail: { label: string; value: string }[] = [
       { label: 'Child', value: `${child.name}${child.familyName.length > 0 ? ` (${child.familyName})` : ''}` },
       { label: 'Day', value: date === ctx.today ? `Today, ${prettyDate(date)}` : prettyDate(date) },
@@ -458,6 +499,11 @@ export function mergeIncident(
 /** The time of day a check-in or check-out is stamped with, `HH:mm`. */
 export function stampTime(): string {
   return timeInZone()
+}
+
+/** A fresh visit id, matching `uid('vis')` in the console. */
+export function visitId(): string {
+  return uid('vis')
 }
 
 /** A fresh attendance row id, matching `uid('att')` in the console. */

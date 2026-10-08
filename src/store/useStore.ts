@@ -11,7 +11,8 @@ import {
   subscribeToChanges,
 } from '../lib/persist'
 import type { SectionName } from '../lib/database.types'
-import { sanitizeWeeklySchedule } from '../lib/schedule'
+import { sanitizeWeeklySchedule, sortedBlocks } from '../lib/schedule'
+import { openVisit, visitsOn } from '../lib/visits'
 import type {
   Announcement,
   ApprovalResult,
@@ -22,6 +23,7 @@ import type {
   PortalCredentials,
   User,
   AttendanceRecord,
+  AttendanceVisit,
   CalendarEvent,
   Child,
   DailyLog,
@@ -38,6 +40,8 @@ import type {
   NewDocument,
   NewInvoice,
   NewLead,
+  ScheduleBlock,
+  ScheduleChange,
   NewPayment,
   NewThread,
   NewThreadMessage,
@@ -82,6 +86,11 @@ interface DataSlice {
   families: Family[]
   children: Child[]
   attendance: AttendanceRecord[]
+  /**
+   * One row per arrival and departure. `attendance` is the day summary built
+   * from these: first arrival, latest departure, status.
+   */
+  attendanceVisits: AttendanceVisit[]
   dailyLogs: DailyLog[]
   invoices: Invoice[]
   documents: DocumentRecord[]
@@ -92,6 +101,11 @@ interface DataSlice {
   waitlist: WaitlistProspect[]
   /** Owner-authored calendar entries. Birthdays and due dates are derived. */
   calendarEvents: CalendarEvent[]
+  /**
+   * One-off changes to a child's schedule on one date, overriding the weekly
+   * pattern. A parent only ever holds their own children's (RLS).
+   */
+  scheduleChanges: ScheduleChange[]
   /** Documents parents have acknowledged. A parent only ever sees their own. */
   acknowledgements: DocumentAck[]
   /** Parent acknowledgements of incident reports. A parent only ever sees their own. */
@@ -129,9 +143,15 @@ export interface StoreState extends DataSlice {
    */
   bootstrap: () => Promise<void>
 
+  /** Opens a new visit. A no-op while a visit is already open: they are already here. */
   checkIn: (childId: string) => void
+  /** Closes the open visit. Earlier visits that day are left exactly as they were. */
   checkOut: (childId: string) => void
-  markAbsent: (childId: string, note?: string) => void
+  /**
+   * Marks today absent. REFUSED, with a toast, once the child has any check-in
+   * time today: recorded times are never erased. Returns whether it was applied.
+   */
+  markAbsent: (childId: string, note?: string) => boolean
 
   addDailyLog: (log: NewDailyLog) => void
   updateDailyLog: (id: string, patch: Partial<DailyLog>) => void
@@ -194,6 +214,15 @@ export interface StoreState extends DataSlice {
   updateCalendarEvent: (id: string, patch: Partial<CalendarEvent>) => void
   deleteCalendarEvent: (id: string) => void
 
+  /**
+   * Sets one child's times for one date, replacing any change already on that
+   * date. Empty `blocks` = not coming. Restamps `updatedAt`, so an edited change
+   * shows as new to the family again.
+   */
+  saveScheduleChange: (change: { childId: string; date: string; blocks: ScheduleBlock[]; note: string }) => void
+  /** Takes a one-off change away; the child is back on their weekly pattern that date. */
+  removeScheduleChange: (id: string) => void
+
   updateSettings: (patch: Partial<Settings>) => void
   updateRates: (patch: Partial<Rates>) => void
   updatePolicies: (patch: Partial<Policies>) => void
@@ -221,6 +250,7 @@ const emptyData: DataSlice = {
   families: [],
   children: [],
   attendance: [],
+  attendanceVisits: [],
   dailyLogs: [],
   invoices: [],
   documents: [],
@@ -230,6 +260,7 @@ const emptyData: DataSlice = {
   leads: [],
   waitlist: [],
   calendarEvents: [],
+  scheduleChanges: [],
   acknowledgements: [],
   incidentAcks: [],
   sectionViews: {},
@@ -273,6 +304,7 @@ export const useStore = create<StoreState>()((set, get) => {
       families: data.families,
       children: data.children,
       attendance: data.attendance,
+      attendanceVisits: data.attendanceVisits,
       dailyLogs: data.dailyLogs,
       invoices: data.invoices,
       documents: data.documents,
@@ -282,6 +314,7 @@ export const useStore = create<StoreState>()((set, get) => {
       leads: data.leads,
       waitlist: data.waitlist,
       calendarEvents: data.calendarEvents,
+      scheduleChanges: data.scheduleChanges,
       acknowledgements: data.acknowledgements,
       incidentAcks: data.incidentAcks,
       sectionViews: data.sectionViews,
@@ -382,61 +415,87 @@ export const useStore = create<StoreState>()((set, get) => {
     },
 
     /* ----------------------------- attendance ----------------------------- */
-    checkIn: (childId) =>
-      commit((s) => {
-        const date = todayISO()
-        const time = nowTime()
-        const exists = s.attendance.find((a) => a.childId === childId && a.date === date)
-        if (exists) {
+    checkIn: (childId) => {
+      const date = todayISO()
+      if (openVisit(get().attendanceVisits, childId, date)) return
+      const visit: AttendanceVisit = { id: uid('vis'), childId, date, checkIn: nowTime(), checkOut: null }
+      commit(
+        (s) => {
+          const exists = s.attendance.find((a) => a.childId === childId && a.date === date)
           return {
-            attendance: s.attendance.map((a) =>
-              a.id === exists.id ? { ...a, checkIn: time, checkOut: null, status: 'present' as const } : a,
-            ),
+            attendanceVisits: [...s.attendanceVisits, visit],
+            attendance: exists
+              ? s.attendance.map((a) =>
+                  a.id === exists.id
+                    ? // The day keeps its FIRST arrival; coming back sets status, not the time.
+                      { ...a, checkIn: a.checkIn ?? visit.checkIn, checkOut: null, status: 'present' as const }
+                    : a,
+                )
+              : [
+                  { id: uid('att'), childId, date, checkIn: visit.checkIn, checkOut: null, status: 'present' as const, note: '' },
+                  ...s.attendance,
+                ],
           }
-        }
-        return {
-          attendance: [
-            { id: uid('att'), childId, date, checkIn: time, checkOut: null, status: 'present' as const, note: '' },
-            ...s.attendance,
-          ],
-        }
-      },
-      (s) => syncAttendance(s, childId),
-      ),
+        },
+        async (s) => {
+          await syncAttendance(s, childId)
+          await persist.attendanceVisit(visit)
+        },
+      )
+    },
 
-    checkOut: (childId) =>
-      commit((s) => {
-        const date = todayISO()
-        const time = nowTime()
-        return {
+    checkOut: (childId) => {
+      const date = todayISO()
+      const time = nowTime()
+      const open = openVisit(get().attendanceVisits, childId, date)
+      const closed: AttendanceVisit | undefined = open ? { ...open, checkOut: time } : undefined
+      commit(
+        (s) => ({
+          attendanceVisits: closed ? s.attendanceVisits.map((v) => (v.id === closed.id ? closed : v)) : s.attendanceVisits,
           attendance: s.attendance.map((a) =>
             a.childId === childId && a.date === date ? { ...a, checkOut: time, status: 'checked-out' as const } : a,
           ),
-        }
-      },
-      (s) => syncAttendance(s, childId),
-      ),
+        }),
+        async (s) => {
+          await syncAttendance(s, childId)
+          if (closed) await persist.attendanceVisit(closed)
+        },
+      )
+    },
 
-    markAbsent: (childId, note = 'Marked absent') =>
-      commit((s) => {
-        const date = todayISO()
-        const exists = s.attendance.find((a) => a.childId === childId && a.date === date)
-        if (exists) {
-          return {
-            attendance: s.attendance.map((a) =>
-              a.id === exists.id ? { ...a, status: 'absent' as const, checkIn: null, checkOut: null, note } : a,
-            ),
+    markAbsent: (childId, note = 'Marked absent') => {
+      const date = todayISO()
+      const state = get()
+      const record = state.attendance.find((a) => a.childId === childId && a.date === date)
+      if (visitsOn(state.attendanceVisits, childId, date).length > 0 || (record?.checkIn ?? null) !== null) {
+        state.pushToast({
+          tone: 'error',
+          title: 'Not marked absent',
+          description: 'They already have check-in times today, and recorded times are never erased.',
+        })
+        return false
+      }
+      commit(
+        (s) => {
+          const exists = s.attendance.find((a) => a.childId === childId && a.date === date)
+          if (exists) {
+            return {
+              attendance: s.attendance.map((a) =>
+                a.id === exists.id ? { ...a, status: 'absent' as const, checkIn: null, checkOut: null, note } : a,
+              ),
+            }
           }
-        }
-        return {
-          attendance: [
-            { id: uid('att'), childId, date, checkIn: null, checkOut: null, status: 'absent' as const, note },
-            ...s.attendance,
-          ],
-        }
-      },
-      (s) => syncAttendance(s, childId),
-      ),
+          return {
+            attendance: [
+              { id: uid('att'), childId, date, checkIn: null, checkOut: null, status: 'absent' as const, note },
+              ...s.attendance,
+            ],
+          }
+        },
+        (s) => syncAttendance(s, childId),
+      )
+      return true
+    },
 
     /* ------------------------------ daily logs ---------------------------- */
     addDailyLog: (log) =>
@@ -879,6 +938,29 @@ export const useStore = create<StoreState>()((set, get) => {
       commit(
         (s) => ({ calendarEvents: s.calendarEvents.filter((e) => e.id !== id) }),
         () => persist.deleteCalendarEvent(id),
+      ),
+
+    /* --------------------------- schedule changes -------------------------- */
+    saveScheduleChange: ({ childId, date, blocks, note }) => {
+      const stamp = nowISO()
+      commit(
+        (s) => {
+          const existing = s.scheduleChanges.find((c) => c.childId === childId && c.date === date)
+          const saved: ScheduleChange = existing
+            ? { ...existing, blocks: sortedBlocks(blocks), note, updatedAt: stamp }
+            : { id: uid('csc'), childId, date, blocks: sortedBlocks(blocks), note, createdAt: stamp, updatedAt: stamp }
+          return { scheduleChanges: [...s.scheduleChanges.filter((c) => c !== existing), saved] }
+        },
+        (s) => {
+          const saved = s.scheduleChanges.find((c) => c.childId === childId && c.date === date)
+          return saved ? persist.scheduleChange(saved, authorId(s)) : Promise.resolve()
+        },
+      )
+    },
+    removeScheduleChange: (id) =>
+      commit(
+        (s) => ({ scheduleChanges: s.scheduleChanges.filter((c) => c.id !== id) }),
+        () => persist.deleteScheduleChange(id),
       ),
 
     /* ------------------------------ settings ------------------------------ */

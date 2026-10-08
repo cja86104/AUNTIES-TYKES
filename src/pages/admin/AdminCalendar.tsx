@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { addDays, format } from 'date-fns'
 import { CalendarDays, Plus, Pencil, Trash2, Lock, Users } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
@@ -18,6 +19,7 @@ import {
 import type { Tone } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { buildCalendar } from '../../lib/calendar'
+import { formatDayBlocks } from '../../lib/schedule'
 import type { CalendarEntry, CalendarEntryKind } from '../../lib/calendar'
 import { fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 import type { CalendarEvent, CalendarEventKind } from '../../types'
@@ -28,6 +30,7 @@ const KIND_META: Record<CalendarEntryKind, { label: string; tone: Tone }> = {
   activity: { label: 'Activity', tone: 'blue' },
   reminder: { label: 'Reminder', tone: 'neutral' },
   schedule_exception: { label: 'Schedule change', tone: 'amber' },
+  schedule_change: { label: 'Special schedule', tone: 'violet' },
   birthday: { label: 'Birthday', tone: 'green' },
   payment_due: { label: 'Payment due', tone: 'amber' },
 }
@@ -69,6 +72,7 @@ export default function AdminCalendar() {
   const calendarEvents = useStore((s) => s.calendarEvents)
   const children = useStore((s) => s.children)
   const invoices = useStore((s) => s.invoices)
+  const scheduleChanges = useStore((s) => s.scheduleChanges)
   const addCalendarEvent = useStore((s) => s.addCalendarEvent)
   const updateCalendarEvent = useStore((s) => s.updateCalendarEvent)
   const deleteCalendarEvent = useStore((s) => s.deleteCalendarEvent)
@@ -91,8 +95,9 @@ export default function AdminCalendar() {
   )
 
   const entries = useMemo(
-    () => buildCalendar({ events: calendarEvents, children, invoices, from: range.from, to: range.to }),
-    [calendarEvents, children, invoices, range],
+    () =>
+      buildCalendar({ events: calendarEvents, children, invoices, from: range.from, to: range.to, scheduleChanges }),
+    [calendarEvents, children, invoices, range, scheduleChanges],
   )
 
   const byMonth = useMemo(() => {
@@ -238,7 +243,12 @@ export default function AdminCalendar() {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge tone={meta.tone}>{meta.label}</Badge>
-                          {entry.derived && <Badge tone="neutral">Automatic</Badge>}
+                          {entry.derived && entry.kind !== 'schedule_change' && <Badge tone="neutral">Automatic</Badge>}
+                          {entry.kind === 'schedule_change' && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                              <Users size={12} /> Family can see this
+                            </span>
+                          )}
                           {!entry.derived &&
                             (entry.visibleToParents ? (
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
@@ -259,6 +269,14 @@ export default function AdminCalendar() {
                         )}
                         {entry.kind === 'schedule_exception' && (
                           <p className="text-xs text-slate-500">{childName(entry.childId)}</p>
+                        )}
+                        {entry.kind === 'schedule_change' && (
+                          <p className="text-xs text-slate-500">
+                            {entry.blocks && entry.blocks.length > 0 ? formatDayBlocks(entry.blocks, 'en-US') : 'Not coming'} ·{' '}
+                            <Link to={`/admin/children/${entry.childId ?? ''}`} className="font-semibold text-brand hover:underline">
+                              Change on {childName(entry.childId).split(' ')[0]}&apos;s page
+                            </Link>
+                          </p>
                         )}
                         {entry.note && <p className="mt-1 text-sm text-slate-600">{entry.note}</p>}
                       </div>

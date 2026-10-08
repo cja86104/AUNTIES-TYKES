@@ -34,7 +34,7 @@ import { familyWithEmail, readEnrollmentSnapshot } from './tools/enrollments.js'
 import { createParentAccount } from '../parentLogin.js'
 import { money } from './projection.js'
 import { readInt, readString, type ToolContext } from './tools/kit.js'
-import { attendanceId, mergeIncident, readIncidentArgs, stampTime } from './tools/records.js'
+import { attendanceId, mergeIncident, readIncidentArgs, stampTime, visitId } from './tools/records.js'
 
 /**
  * How long "undo" stays offered after a send — §8's undo window.
@@ -311,10 +311,12 @@ const sendAnnouncementExecutor: Executor = {
 /**
  * Sets attendance, mirroring `checkIn` / `checkOut` / `markAbsent` in useStore.ts.
  *
- * `attendance` carries `unique (child_id, date)`, so this reads before it writes
- * rather than blind-inserting — the same shape the store's own upsert-by-hand
- * takes. Re-read at execution, not trusted from the proposal: she may have
- * checked the child in from the attendance sheet in the meantime.
+ * Each arrival and departure is its own row in `attendance_visits` (migration
+ * 0020); `attendance` stays the day summary (first arrival, latest departure,
+ * status) and carries `unique (child_id, date)`. Re-read at execution, not
+ * trusted from the proposal: she may have checked the child in from the
+ * attendance sheet in the meantime. Recorded times are never erased: a second
+ * check-in adds a visit, and absent is refused once any time is on file.
  */
 const attendanceExecutor: Executor = {
   tool: 'attendance.set',
@@ -329,54 +331,98 @@ const attendanceExecutor: Executor = {
 
     const existing = await ctx.caller.db
       .from('attendance')
-      .select('id, check_out')
+      .select('id, check_in, check_out, status')
       .eq('child_id', childId)
       .eq('date', date)
       .maybeSingle()
     if (existing.error !== null) {
       return { ok: false, error: `Could not read that attendance record: ${existing.error.message}` }
     }
+    const visits = await ctx.caller.db
+      .from('attendance_visits')
+      .select('id, check_in, check_out')
+      .eq('child_id', childId)
+      .eq('date', date)
+    if (visits.error !== null) {
+      return { ok: false, error: `Could not read the visits that day: ${visits.error.message}` }
+    }
+    const open = visits.data.find((visit) => visit.check_out === null)
 
     const at = stampTime()
     const label = proposal.childLabel.length > 0 ? proposal.childLabel : 'They'
 
     if (action === 'out') {
       if (existing.data === null) return { ok: false, error: 'There is no record for them that day' }
-      if (existing.data.check_out !== null) return { ok: false, error: 'They were already checked out' }
+      if (open === undefined) return { ok: false, error: 'They are not checked in right now' }
+      const closed = await ctx.caller.db.from('attendance_visits').update({ check_out: at }).eq('id', open.id)
+      if (closed.error !== null) return { ok: false, error: `Could not check them out: ${closed.error.message}` }
       const done = await ctx.caller.db
         .from('attendance')
         .update({ check_out: at, status: 'checked-out' })
         .eq('id', existing.data.id)
       if (done.error !== null) return { ok: false, error: `Could not check them out: ${done.error.message}` }
-      return { ok: true, summary: `${label} checked out at ${at}.`, targets: [existing.data.id] }
+      return { ok: true, summary: `${label} checked out at ${at}.`, targets: [existing.data.id, open.id] }
     }
 
-    const patch =
-      action === 'absent'
-        ? { status: 'absent' as const, check_in: null, check_out: null, note }
-        : { status: 'present' as const, check_in: at, check_out: null }
-
-    if (existing.data !== null) {
-      const done = await ctx.caller.db.from('attendance').update(patch).eq('id', existing.data.id)
-      if (done.error !== null) return { ok: false, error: `Could not update that record: ${done.error.message}` }
-      return {
-        ok: true,
-        summary: action === 'absent' ? `${label} marked absent.` : `${label} checked in at ${at}.`,
-        targets: [existing.data.id],
+    if (action === 'absent') {
+      if (visits.data.length > 0 || (existing.data !== null && existing.data.check_in !== null)) {
+        return {
+          ok: false,
+          error: 'They already have check-in times that day, and recorded times are never erased',
+        }
       }
+      if (existing.data !== null) {
+        const done = await ctx.caller.db
+          .from('attendance')
+          .update({ status: 'absent', check_in: null, check_out: null, note })
+          .eq('id', existing.data.id)
+        if (done.error !== null) return { ok: false, error: `Could not update that record: ${done.error.message}` }
+        return { ok: true, summary: `${label} marked absent.`, targets: [existing.data.id] }
+      }
+      const id = attendanceId()
+      const created = await ctx.caller.db
+        .from('attendance')
+        .insert({ id, child_id: childId, date, status: 'absent', check_in: null, check_out: null, note })
+      if (created.error !== null) return { ok: false, error: `Could not record that: ${created.error.message}` }
+      return { ok: true, summary: `${label} marked absent.`, targets: [id] }
     }
 
-    const id = attendanceId()
-    const created = await ctx.caller.db
-      .from('attendance')
-      .insert({ id, child_id: childId, date, note: action === 'absent' ? note : '', ...patch })
-    if (created.error !== null) {
-      return { ok: false, error: `Could not record that: ${created.error.message}` }
+    // Check in: a new visit, earlier ones untouched. The visit goes in first so
+    // the database's one-open-visit rule refuses a double check-in outright.
+    if (open !== undefined) return { ok: false, error: 'They are already checked in' }
+    const newVisit = visitId()
+    const opened = await ctx.caller.db
+      .from('attendance_visits')
+      .insert({ id: newVisit, child_id: childId, date, check_in: at, check_out: null })
+    if (opened.error !== null) return { ok: false, error: `Could not check them in: ${opened.error.message}` }
+
+    const day =
+      existing.data !== null
+        ? await ctx.caller.db
+            .from('attendance')
+            // The day keeps its FIRST arrival; coming back sets status, not the time.
+            .update({ status: 'present', check_in: existing.data.check_in ?? at, check_out: null })
+            .eq('id', existing.data.id)
+        : await ctx.caller.db
+            .from('attendance')
+            .insert({ id: attendanceId(), child_id: childId, date, status: 'present', check_in: at, check_out: null, note: '' })
+    if (day.error !== null) {
+      // Take the visit back out so the two tables never disagree.
+      const undone = await ctx.caller.db.from('attendance_visits').delete().eq('id', newVisit)
+      return {
+        ok: false,
+        error:
+          `Could not check them in: ${day.error.message}` +
+          (undone.error === null ? '' : ` (and the half-made visit could not be removed: ${undone.error.message})`),
+      }
     }
     return {
       ok: true,
-      summary: action === 'absent' ? `${label} marked absent.` : `${label} checked in at ${at}.`,
-      targets: [id],
+      summary:
+        visits.data.length > 0
+          ? `${label} checked back in at ${at}. Earlier times today are kept.`
+          : `${label} checked in at ${at}.`,
+      targets: existing.data !== null ? [existing.data.id, newVisit] : [newVisit],
     }
   },
 }

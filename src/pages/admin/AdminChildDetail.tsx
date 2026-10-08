@@ -19,9 +19,11 @@ import { Card, Button, Badge, Avatar, EmptyState, PageHeader, statusTone, Modal 
 import ChildForm, { childToForm, formToChild, validateChildForm } from '../../components/ChildForm'
 import type { ChildFormValue } from '../../components/ChildForm'
 import DailyLogCard from '../../components/DailyLogCard'
+import ScheduleChangesPanel from '../../components/ScheduleChangesPanel'
 import { useStore } from '../../store/useStore'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 import { consoleScheduleText, scheduleNotSet } from '../../components/ScheduleSummary'
+import { visitsOn } from '../../lib/visits'
 
 export default function AdminChildDetail() {
   const { id } = useParams()
@@ -29,6 +31,7 @@ export default function AdminChildDetail() {
   const families = useStore((s) => s.families)
   const attendance = useStore((s) => s.attendance)
   const dailyLogs = useStore((s) => s.dailyLogs)
+  const attendanceVisits = useStore((s) => s.attendanceVisits)
   const checkIn = useStore((s) => s.checkIn)
   const checkOut = useStore((s) => s.checkOut)
   const markAbsent = useStore((s) => s.markAbsent)
@@ -121,7 +124,7 @@ export default function AdminChildDetail() {
             <Button variant="outline" onClick={() => { checkOut(child.id); pushToast({ title: `${first} checked out` }) }} disabled={status !== 'present'}>
               <LogOut size={16} /> Check out
             </Button>
-            <Button variant="ghost" onClick={() => { markAbsent(child.id); pushToast({ tone: 'info', title: `${first} marked absent` }) }} disabled={status === 'absent'}>
+            <Button variant="ghost" onClick={() => { if (markAbsent(child.id)) pushToast({ tone: 'info', title: `${first} marked absent` }) }} disabled={status === 'absent' || Boolean(todayRecord?.checkIn)}>
               <UserX size={16} /> Absent
             </Button>
           </>
@@ -168,6 +171,8 @@ export default function AdminChildDetail() {
             </div>
           </Card>
 
+          <ScheduleChangesPanel child={child} />
+
           <Card className="overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <h2 className="font-display text-lg font-bold text-slate-900">Recent attendance</h2>
@@ -190,17 +195,29 @@ export default function AdminChildDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {records.map((r) => (
-                      <tr key={r.id} className="border-t border-slate-100">
+                    {records.map((r) => {
+                      // One line per visit, so a split day shows both arrivals and both pickups.
+                      const visits = visitsOn(attendanceVisits, r.childId, r.date)
+                      return (
+                      <tr key={r.id} className="border-t border-slate-100 align-top">
                         <td className="px-5 py-3 font-semibold text-slate-800">{fmtDate(r.date)}</td>
-                        <td className="px-5 py-3 text-slate-600">{r.checkIn ? fmtTime(r.checkIn) : '—'}</td>
-                        <td className="px-5 py-3 text-slate-600">{r.checkOut ? fmtTime(r.checkOut) : '—'}</td>
+                        <td className="px-5 py-3 text-slate-600">
+                          {visits.length > 0
+                            ? visits.map((v) => <span key={v.id} className="block">{fmtTime(v.checkIn)}</span>)
+                            : r.checkIn ? fmtTime(r.checkIn) : '—'}
+                        </td>
+                        <td className="px-5 py-3 text-slate-600">
+                          {visits.length > 0
+                            ? visits.map((v) => <span key={v.id} className="block">{v.checkOut ? fmtTime(v.checkOut) : '—'}</span>)
+                            : r.checkOut ? fmtTime(r.checkOut) : '—'}
+                        </td>
                         <td className="px-5 py-3">
                           <Badge tone={statusTone(r.status)}>{r.status}</Badge>
                         </td>
                         <td className="px-5 py-3 text-slate-500">{r.note || '—'}</td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

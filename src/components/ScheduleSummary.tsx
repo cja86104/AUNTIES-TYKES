@@ -1,7 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import { Badge } from './ui'
-import { summarizeSchedule } from '../lib/schedule'
-import type { WeeklySchedule } from '../types'
+import { Badge, statusTone } from './ui'
+import { fmtTime } from '../lib/helpers'
+import { formatDayBlocks, summarizeSchedule } from '../lib/schedule'
+import type { RosterRow } from '../lib/schedule'
+import type { AttendanceRecord, Child, WeeklySchedule } from '../types'
+
+/** A roster row as the console holds it. */
+export type ConsoleRosterRow = RosterRow<Child, AttendanceRecord>
 
 /** The fields a schedule summary reads. A `Child` satisfies this. */
 interface HasSchedule {
@@ -75,5 +80,39 @@ export function PortalSchedule({ child }: { child: HasSchedule }) {
       {summary.legacyPlan !== '' && <span>{summary.legacyPlan}</span>}
       <Badge tone="amber">{t('schedule.notSet')}</Badge>
     </span>
+  )
+}
+
+/**
+ * What a child's day looks like on the roster, in one short line: today's
+ * times, or why they are not expected. "7–9 am, 3–6 pm" / "Off today: trip".
+ */
+export function consoleDayText(row: ConsoleRosterRow): string {
+  const { day } = row
+  if (day.state === 'expected') return formatDayBlocks(day.blocks, CONSOLE_LOCALE)
+  if (day.state === 'unscheduled') return consoleScheduleText(row.child)
+  if (day.state === 'closed') return day.reason !== '' ? `Closed: ${day.reason}` : 'Closed'
+  if (day.source === 'exception') return day.reason !== '' ? `Not coming: ${day.reason}` : 'Not coming'
+  if (day.source === 'change') return day.reason !== '' ? `Off today: ${day.reason}` : 'Off today'
+  if (day.source === 'not_started') return 'Has not started yet'
+  return 'Not scheduled today'
+}
+
+/**
+ * The status pill for a roster row. Children in the side groups (no schedule,
+ * not today) who have no record get a pill saying so rather than "expected",
+ * which they are not.
+ */
+export function ConsoleRosterBadge({ row, group }: { row: ConsoleRosterRow; group: 'main' | 'unscheduled' | 'notToday' }) {
+  if (group === 'unscheduled') return <Badge tone="amber" className="shrink-0">no schedule</Badge>
+  if (group === 'notToday') return <Badge tone="neutral" className="shrink-0">not today</Badge>
+  if (row.phase === 'returning' && row.returnsAt) {
+    return <Badge tone="amber" className="shrink-0">back at {fmtTime(row.returnsAt)}</Badge>
+  }
+  const status = row.record?.status ?? 'expected'
+  return (
+    <Badge tone={statusTone(status)} className="shrink-0">
+      {status}
+    </Badge>
   )
 }

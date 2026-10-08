@@ -46,6 +46,120 @@ function nextBlock(blocks: readonly ScheduleBlock[]): ScheduleBlock | null {
   return { start: latestEnd, end: addMinutes(latestEnd, 60) }
 }
 
+export interface DayBlocksEditorProps {
+  blocks: ScheduleBlock[]
+  onChange: (blocks: ScheduleBlock[]) => void
+  /** Used in every input's accessible name: "Friday, time 1, from". */
+  dayName: string
+  idPrefix: string
+  /** The add button's text while the day has no times yet. */
+  emptyLabel: string
+  /** Nudges an empty day's add button level with a day name beside it (the grid's desktop row). */
+  alignWithLabel?: boolean
+}
+
+/**
+ * One day's times: up to three From/Until pairs, the problem in plain English,
+ * and an add button. The weekly grid uses one per day; a one-off change uses a
+ * single one, so both are edited with exactly the same control.
+ */
+export function DayBlocksEditor({
+  blocks,
+  onChange,
+  dayName,
+  idPrefix,
+  emptyLabel,
+  alignWithLabel = false,
+}: DayBlocksEditorProps) {
+  const problem = dayProblem(blocks)
+  const offer = nextBlock(blocks)
+  const errorId = `${idPrefix}-error`
+
+  const setTime = (index: number, field: keyof ScheduleBlock, time: string) =>
+    onChange(blocks.map((block, at) => (at === index ? { ...block, [field]: time } : block)))
+
+  return (
+    <>
+      {/* A query container: each block goes side by side only when THIS
+          column has room for two uncut time inputs, however deeply the
+          form nests the grid. */}
+      <div className="mt-2 min-w-0 flex-1 space-y-2 [container-type:inline-size] sm:mt-0">
+        {blocks.map((block, index) => (
+          // Narrow screens stack From over Until at full width, with the
+          // remove control in a header row above them: two time inputs
+          // side by side get cut off ("07:(") once a form nests the grid
+          // inside padded cards. Side by side, × on the right, once the
+          // column is 22rem wide.
+          <div
+            key={index}
+            className="border-l-2 border-brand/30 pl-3 [@container(min-width:22rem)]:flex [@container(min-width:22rem)]:items-end [@container(min-width:22rem)]:gap-2 [@container(min-width:22rem)]:border-0 [@container(min-width:22rem)]:pl-0"
+          >
+            <div className="mb-1 flex items-center justify-between [@container(min-width:22rem)]:hidden">
+              <span className="text-xs font-semibold text-slate-600">Time {index + 1}</span>
+              <button
+                type="button"
+                onClick={() => onChange(blocks.filter((_, at) => at !== index))}
+                className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
+                aria-label={`Remove ${dayName} time ${index + 1}`}
+              >
+                Remove
+              </button>
+            </div>
+            <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 [@container(min-width:22rem)]:grid-cols-2">
+              {(['start', 'end'] as const).map((field) => (
+                <label key={field} className="block min-w-0">
+                  <span className="mb-1 block text-xs font-medium text-slate-500">
+                    {field === 'start' ? 'From' : 'Until'}
+                  </span>
+                  <Input
+                    type="time"
+                    value={block[field]}
+                    invalid={problem !== null}
+                    aria-label={`${dayName}, time ${index + 1}, ${field === 'start' ? 'from' : 'until'}`}
+                    aria-describedby={problem !== null ? errorId : undefined}
+                    onChange={(event) => setTime(index, field, event.target.value)}
+                  />
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => onChange(blocks.filter((_, at) => at !== index))}
+              className="mb-1 hidden shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 [@container(min-width:22rem)]:block"
+              aria-label={`Remove ${dayName} time ${index + 1}`}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ))}
+
+        {problem !== null && (
+          <p id={errorId} className="text-xs font-medium text-rose-600">
+            {PROBLEM_TEXT[problem]}
+          </p>
+        )}
+
+        <button
+          type="button"
+          disabled={offer === null}
+          onClick={() => {
+            if (offer !== null) onChange([...blocks, offer])
+          }}
+          className={cx(
+            'inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition',
+            // Lines the button up with the day name when it is the only thing on the row.
+            blocks.length === 0 && alignWithLabel && 'sm:mt-1',
+            offer === null ? 'cursor-not-allowed text-slate-300' : 'text-brand hover:bg-brand-tint',
+          )}
+        >
+          <Plus size={15} />
+          {blocks.length === 0 ? emptyLabel : 'Add another time'}
+        </button>
+      </div>
+    </>
+  )
+}
+
 export interface ScheduleGridProps {
   value: WeeklySchedule
   onChange: (value: WeeklySchedule) => void
@@ -73,12 +187,6 @@ export default function ScheduleGrid({
 }: ScheduleGridProps) {
   const setDay = (weekday: Weekday, blocks: ScheduleBlock[]) => onChange({ ...value, [weekday]: blocks })
 
-  const setTime = (weekday: Weekday, index: number, field: keyof ScheduleBlock, time: string) =>
-    setDay(
-      weekday,
-      (value[weekday] ?? []).map((block, at) => (at === index ? { ...block, [field]: time } : block)),
-    )
-
   return (
     // min-w-0: a fieldset defaults to min-width: min-content, which lets the
     // time inputs push it wider than a phone screen.
@@ -89,10 +197,7 @@ export default function ScheduleGrid({
       <ul className="divide-y divide-slate-100">
         {WEEKDAYS.map((weekday) => {
           const blocks = value[weekday] ?? []
-          const problem = dayProblem(blocks)
-          const offer = nextBlock(blocks)
           const name = DAY_NAMES[weekday]
-          const errorId = `${idPrefix}-${weekday}-error`
 
           return (
             <li key={weekday} className="py-3 first:pt-1 last:pb-1 sm:flex sm:items-start sm:gap-4">
@@ -101,82 +206,14 @@ export default function ScheduleGrid({
                 {blocks.length === 0 && <span className="text-xs text-slate-400 sm:block">Not in</span>}
               </div>
 
-              {/* A query container: each block goes side by side only when THIS
-                  column has room for two uncut time inputs, however deeply the
-                  form nests the grid. */}
-              <div className="mt-2 min-w-0 flex-1 space-y-2 [container-type:inline-size] sm:mt-0">
-                {blocks.map((block, index) => (
-                  // Narrow screens stack From over Until at full width, with the
-                  // remove control in a header row above them: two time inputs
-                  // side by side get cut off ("07:(") once a form nests the grid
-                  // inside padded cards. Side by side, × on the right, once the
-                  // column is 22rem wide.
-                  <div
-                    key={index}
-                    className="border-l-2 border-brand/30 pl-3 [@container(min-width:22rem)]:flex [@container(min-width:22rem)]:items-end [@container(min-width:22rem)]:gap-2 [@container(min-width:22rem)]:border-0 [@container(min-width:22rem)]:pl-0"
-                  >
-                    <div className="mb-1 flex items-center justify-between [@container(min-width:22rem)]:hidden">
-                      <span className="text-xs font-semibold text-slate-600">Time {index + 1}</span>
-                      <button
-                        type="button"
-                        onClick={() => setDay(weekday, blocks.filter((_, at) => at !== index))}
-                        className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600"
-                        aria-label={`Remove ${name} time ${index + 1}`}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 [@container(min-width:22rem)]:grid-cols-2">
-                      {(['start', 'end'] as const).map((field) => (
-                        <label key={field} className="block min-w-0">
-                          <span className="mb-1 block text-xs font-medium text-slate-500">
-                            {field === 'start' ? 'From' : 'Until'}
-                          </span>
-                          <Input
-                            type="time"
-                            value={block[field]}
-                            invalid={problem !== null}
-                            aria-label={`${name}, time ${index + 1}, ${field === 'start' ? 'from' : 'until'}`}
-                            aria-describedby={problem !== null ? errorId : undefined}
-                            onChange={(event) => setTime(weekday, index, field, event.target.value)}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setDay(weekday, blocks.filter((_, at) => at !== index))}
-                      className="mb-1 hidden shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 [@container(min-width:22rem)]:block"
-                      aria-label={`Remove ${name} time ${index + 1}`}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
-
-                {problem !== null && (
-                  <p id={errorId} className="text-xs font-medium text-rose-600">
-                    {PROBLEM_TEXT[problem]}
-                  </p>
-                )}
-
-                <button
-                  type="button"
-                  disabled={offer === null}
-                  onClick={() => {
-                    if (offer !== null) setDay(weekday, [...blocks, offer])
-                  }}
-                  className={cx(
-                    'inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-semibold transition',
-                    // Lines the button up with the day name when it is the only thing on the row.
-                    blocks.length === 0 && 'sm:mt-1',
-                    offer === null ? 'cursor-not-allowed text-slate-300' : 'text-brand hover:bg-brand-tint',
-                  )}
-                >
-                  <Plus size={15} />
-                  {blocks.length === 0 ? `Add ${name}` : 'Add another time'}
-                </button>
-              </div>
+              <DayBlocksEditor
+                blocks={blocks}
+                onChange={(next) => setDay(weekday, next)}
+                dayName={name}
+                idPrefix={`${idPrefix}-${weekday}`}
+                emptyLabel={`Add ${name}`}
+                alignWithLabel
+              />
             </li>
           )
         })}

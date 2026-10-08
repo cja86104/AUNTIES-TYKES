@@ -8,6 +8,8 @@ import type { Tone } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { buildCalendar } from '../../lib/calendar'
+import { formatDayBlocks } from '../../lib/schedule'
+import { useSectionSeen } from '../../lib/unread'
 import type { CalendarEntry, CalendarEntryKind } from '../../lib/calendar'
 import { fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 
@@ -18,13 +20,17 @@ const TONES: Partial<Record<CalendarEntryKind, Tone>> = {
   activity: 'blue',
   reminder: 'neutral',
   schedule_exception: 'amber',
+  schedule_change: 'violet',
   birthday: 'green',
 }
 
 export default function ParentCalendar() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const calendarEvents = useStore((s) => s.calendarEvents)
+  const scheduleChanges = useStore((s) => s.scheduleChanges)
   const { kids } = useFamilyScope()
+  // Opening the calendar clears the "schedule changes" badge.
+  const seen = useSectionSeen('schedule_changes')
 
   const entries = useMemo(
     () =>
@@ -38,8 +44,9 @@ export default function ParentCalendar() {
         to: format(addDays(new Date(), 365), 'yyyy-MM-dd'),
         parentView: true,
         familyChildIds: kids.map((c) => c.id),
+        scheduleChanges,
       }),
-    [calendarEvents, kids],
+    [calendarEvents, kids, scheduleChanges],
   )
 
   const byMonth = useMemo(() => {
@@ -84,8 +91,21 @@ export default function ParentCalendar() {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <Badge tone={TONES[entry.kind] ?? 'neutral'}>{t(`calendar.kind.${entry.kind}`)}</Badge>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <Badge tone={TONES[entry.kind] ?? 'neutral'}>{t(`calendar.kind.${entry.kind}`)}</Badge>
+                          {entry.kind === 'schedule_change' && seen.isNew(entry.changedAt) && (
+                            <Badge tone="green">{t('common.new')}</Badge>
+                          )}
+                        </div>
                         <p className="mt-1.5 font-semibold text-slate-900">{entry.title}</p>
+                        {entry.kind === 'schedule_change' && (
+                          <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm font-semibold text-[#1F4A3D]">
+                            <Clock size={13} />
+                            {entry.blocks && entry.blocks.length > 0
+                              ? formatDayBlocks(entry.blocks, i18n.language)
+                              : t('schedule.notComing')}
+                          </p>
+                        )}
                         {entry.endsOn && (
                           <p className="text-xs text-slate-500">
                             {t('calendar.through', { date: fmtDate(entry.endsOn) })}

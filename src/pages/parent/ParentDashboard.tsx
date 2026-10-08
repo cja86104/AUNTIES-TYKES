@@ -28,17 +28,21 @@ import {
 } from '../../components/ui'
 import DailyLogCard from '../../components/DailyLogCard'
 import IncidentAckStrip from '../../components/IncidentAckStrip'
-import { incidentsAwaitingAck } from '../../lib/unread'
+import { incidentsAwaitingAck, newScheduleChanges } from '../../lib/unread'
+import { buildDayRoster, formatClock, formatDayBlocks } from '../../lib/schedule'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { ageLabel, fmtDate, fmtTime, money, todayISO } from '../../lib/helpers'
 
 export default function ParentDashboard() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { user, activeKids, kids, outstanding, nextInvoice, announcements } = useFamilyScope()
   const attendance = useStore((s) => s.attendance)
   const dailyLogs = useStore((s) => s.dailyLogs)
   const incidentAcks = useStore((s) => s.incidentAcks)
+  const scheduleChanges = useStore((s) => s.scheduleChanges)
+  const calendarEvents = useStore((s) => s.calendarEvents)
+  const sectionViews = useStore((s) => s.sectionViews)
   // Real readiness, not a timer: the store flips `ready` once bootstrap has
   // restored the session and hydrated the cache from Supabase.
   const isLoading = !useStore((s) => s.ready)
@@ -47,10 +51,12 @@ export default function ParentDashboard() {
   const today = todayISO()
   const kidIds = kids.map((k) => k.id)
 
-  const todayRows = activeKids.map((child) => ({
-    child,
-    record: attendance.find((a) => a.childId === child.id && a.date === today),
-  }))
+  // Today from each child's real schedule, the same grouping the owner's
+  // console and Ro use (src/lib/schedule.ts), so "expected" means expected.
+  const roster = buildDayRoster(activeKids, attendance, scheduleChanges, calendarEvents, today)
+  const todayRows = [...roster.main, ...roster.unscheduled, ...roster.notToday].sort(
+    (a, b) => activeKids.indexOf(a.child) - activeKids.indexOf(b.child),
+  )
 
   const latestLog = dailyLogs
     .filter((l) => kidIds.includes(l.childId))
@@ -64,6 +70,16 @@ export default function ParentDashboard() {
     incidentAcks,
     user?.id,
   ).sort((a, b) => (a.date < b.date ? 1 : -1))
+
+  /**
+   * Upcoming one-off schedule changes this family has not seen yet, soonest
+   * first. Opening the calendar or the child's page clears them.
+   */
+  const changedDays = newScheduleChanges(
+    scheduleChanges.filter((c) => kidIds.includes(c.childId)),
+    sectionViews.schedule_changes,
+    today,
+  ).sort((a, b) => (a.date < b.date ? -1 : 1))
 
   return (
     <PageTransition>
@@ -101,6 +117,33 @@ export default function ParentDashboard() {
               </li>
             ))}
           </ul>
+        </Card>
+      )}
+
+      {changedDays.length > 0 && (
+        <Card className="mb-6 border-violet-200 bg-violet-50/70 p-5" role="status">
+          <p className="flex items-center gap-2 font-display text-base font-bold text-violet-900">
+            <CalendarClock size={18} /> {t('dashboard.scheduleAlertTitle', { count: changedDays.length })}
+          </p>
+          <p className="mt-1 text-sm text-violet-900/80">{t('dashboard.scheduleAlertBody')}</p>
+          <ul className="mt-3 space-y-2">
+            {changedDays.map((change) => (
+              <li key={change.id} className="rounded-xl bg-white/80 px-3 py-2 text-sm">
+                <span className="font-semibold text-slate-800">
+                  {kids.find((k) => k.id === change.childId)?.name ?? ''} · {fmtDate(change.date, 'EEE, MMM d')}
+                </span>
+                <span className="text-slate-600">
+                  {' '}
+                  · {change.blocks.length > 0 ? formatDayBlocks(change.blocks, i18n.language) : t('schedule.notComing')}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3">
+            <Button as={Link} to="/parent/calendar" size="sm" variant="outline">
+              {t('dashboard.scheduleAlertCta')} <ArrowRight size={14} />
+            </Button>
+          </div>
         </Card>
       )}
 
@@ -176,7 +219,8 @@ export default function ParentDashboard() {
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
-              {todayRows.map(({ child, record }, i) => {
+              {todayRows.map((row, i) => {
+                const { child, record, day } = row
                 const status = record?.status ?? 'expected'
                 return (
                   <motion.li
@@ -200,6 +244,11 @@ export default function ParentDashboard() {
                       <p className="truncate text-xs text-slate-500">
                         {t('dashboard.childMeta', { ageGroup: t(`ageGroup.${child.ageGroup}`), age: ageLabel(child.dob), teacher: child.teacher })}
                       </p>
+                      {day.state === 'expected' && (
+                        <p className="text-xs font-medium text-[#1F4A3D]">
+                          {t('dashboard.todayTimes', { times: formatDayBlocks(day.blocks, i18n.language) })}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 text-xs text-slate-600">
                       <span className="flex items-center gap-1.5">
@@ -211,7 +260,17 @@ export default function ParentDashboard() {
                         {record?.checkOut ? fmtTime(record.checkOut) : '—'}
                       </span>
                     </div>
-                    <Badge tone={statusTone(status)}>{t(`status.${status}`)}</Badge>
+                    {record === null && day.state === 'closed' ? (
+                      <Badge tone="neutral">{t('status.closedToday')}</Badge>
+                    ) : record === null && day.state === 'unscheduled' ? (
+                      <Badge tone="amber">{t('schedule.notSet')}</Badge>
+                    ) : record === null && day.state === 'not_expected' ? (
+                      <Badge tone="neutral">{t('status.notScheduled')}</Badge>
+                    ) : row.phase === 'returning' && row.returnsAt ? (
+                      <Badge tone="amber">{t('status.backAt', { time: formatClock(row.returnsAt, i18n.language) })}</Badge>
+                    ) : (
+                      <Badge tone={statusTone(status)}>{t(`status.${status}`)}</Badge>
+                    )}
                   </motion.li>
                 )
               })}

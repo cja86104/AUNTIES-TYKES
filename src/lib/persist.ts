@@ -13,6 +13,7 @@ import { supabase } from './supabase'
 import {
   fromAnnouncement,
   fromAttendance,
+  fromAttendanceVisit,
   fromCalendarEvent,
   fromChild,
   fromDailyLog,
@@ -21,6 +22,7 @@ import {
   fromInvoice,
   fromLead,
   fromPayment,
+  fromScheduleChange,
   fromSettings,
   fromThread,
   fromThreadMessage,
@@ -32,17 +34,20 @@ import {
   toFamily,
   toInvoice,
   toLead,
+  toScheduleChange,
   toSessionUser,
   toSettings,
   toThread,
   toWaitlistProspect,
   toAttendance,
+  toAttendanceVisit,
   toDailyLog,
   toIncidentAck,
 } from './db'
 import type {
   Announcement,
   AttendanceRecord,
+  AttendanceVisit,
   CalendarEvent,
   Child,
   DailyLog,
@@ -55,6 +60,7 @@ import type {
   Language,
   Lead,
   Payment,
+  ScheduleChange,
   SessionUser,
   Settings,
   Thread,
@@ -70,6 +76,8 @@ export interface HydratedData {
   families: Family[]
   children: Child[]
   attendance: AttendanceRecord[]
+  /** One row per arrival/departure (migration 0020). A parent only receives their own children's (RLS). */
+  attendanceVisits: AttendanceVisit[]
   dailyLogs: DailyLog[]
   invoices: Invoice[]
   documents: DocumentRecord[]
@@ -79,6 +87,8 @@ export interface HydratedData {
   leads: Lead[]
   waitlist: WaitlistProspect[]
   calendarEvents: CalendarEvent[]
+  /** One-off schedule changes. A parent only ever receives their own children's (RLS). */
+  scheduleChanges: ScheduleChange[]
   acknowledgements: DocumentAck[]
   incidentAcks: IncidentAck[]
   /** Last time this person opened each section. Missing = never opened. */
@@ -155,6 +165,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     families,
     children,
     attendance,
+    attendanceVisits,
     dailyLogs,
     invoices,
     payments,
@@ -168,6 +179,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     leads,
     waitlist,
     calendarEvents,
+    scheduleChanges,
     sectionViews,
     settings,
   ] = await Promise.all([
@@ -175,6 +187,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     run(supabase.from('families').select('*')),
     run(supabase.from('children').select('*')),
     run(supabase.from('attendance').select('*')),
+    run(supabase.from('attendance_visits').select('*')),
     run(supabase.from('daily_logs').select('*')),
     run(supabase.from('invoices').select('*')),
     run(supabase.from('payments').select('*')),
@@ -191,6 +204,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     run(supabase.from('leads').select('*')),
     run(supabase.from('waitlist_prospects').select('*')),
     run(supabase.from('calendar_events').select('*')),
+    run(supabase.from('child_schedule_changes').select('*').order('date', { ascending: true })),
     run(supabase.from('section_views').select('*')),
     supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
   ])
@@ -203,6 +217,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     families: families.map(toFamily),
     children: children.map(toChild),
     attendance: attendance.map(toAttendance),
+    attendanceVisits: attendanceVisits.map(toAttendanceVisit),
     dailyLogs: dailyLogs.map(toDailyLog),
     invoices: invoices.map((i) => toInvoice(i, paymentsByInvoice.get(i.id) ?? [])),
     documents: documents.map(toDocument),
@@ -212,6 +227,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     leads: leads.map(toLead),
     waitlist: waitlist.map(toWaitlistProspect),
     calendarEvents: calendarEvents.map(toCalendarEvent),
+    scheduleChanges: scheduleChanges.map(toScheduleChange),
     acknowledgements: acks.map((a) => ({
       documentId: a.document_id,
       profileId: a.profile_id,
@@ -314,6 +330,10 @@ export const persist = {
   attendance: (record: AttendanceRecord) =>
     run(supabase.from('attendance').upsert(fromAttendance(record), { onConflict: 'child_id,date' }).select()),
 
+  /** One arrival/departure. Upserted by id: closing a visit rewrites its own row only. */
+  attendanceVisit: (visit: AttendanceVisit) =>
+    run(supabase.from('attendance_visits').upsert(fromAttendanceVisit(visit)).select()),
+
   dailyLog: (log: DailyLog, authorId: string | null) =>
     run(supabase.from('daily_logs').upsert(fromDailyLog(log, authorId)).select()),
 
@@ -393,6 +413,21 @@ export const persist = {
 
   deleteCalendarEvent: (id: string) =>
     run(supabase.from('calendar_events').delete().eq('id', id).select()),
+
+  /**
+   * One child, one date: `child_id, date` is unique, so saving a change for a
+   * date that already has one replaces it rather than adding a second.
+   */
+  scheduleChange: (change: ScheduleChange, createdBy: string | null) =>
+    run(
+      supabase
+        .from('child_schedule_changes')
+        .upsert(fromScheduleChange(change, createdBy), { onConflict: 'child_id,date' })
+        .select(),
+    ),
+
+  deleteScheduleChange: (id: string) =>
+    run(supabase.from('child_schedule_changes').delete().eq('id', id).select()),
 
   settings: (settings: Settings) => run(supabase.from('settings').upsert(fromSettings(settings)).select()),
 

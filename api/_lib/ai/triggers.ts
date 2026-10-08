@@ -21,6 +21,7 @@
  */
 
 import { daysSince, timeInZone } from './clock.js'
+import { resolveChildDay, toHHmm } from '../../../src/lib/schedule.js'
 import { invoiceState, money } from './projection.js'
 import type { ToolContext } from './tools/kit.js'
 
@@ -163,12 +164,58 @@ async function dailyLogMissing(ctx: ToolContext): Promise<Trigger[] | string> {
   if (logs.error !== null) return logs.error.message
   const logged = new Set(logs.data.map((row) => row.child_id))
 
-  const missing = childIds.filter((id) => !logged.has(id))
-  if (missing.length === 0) return []
+  const unlogged = childIds.filter((id) => !logged.has(id))
+  if (unlogged.length === 0) return []
 
-  const children = await ctx.caller.db.from('children').select('id, name').in('id', missing)
+  const children = await ctx.caller.db
+    .from('children')
+    .select('id, name, status, start_date, schedule')
+    .in('id', unlogged)
   if (children.error !== null) return children.error.message
   const names = new Map(children.data.map((row) => [row.id, row.name]))
+
+  // A split day (in 7–9 am, back at 3) is checked out between visits. The day
+  // is not over, so the report is not missing yet: skip anyone whose schedule
+  // today, from the same resolver as the console, still has a block to come.
+  const changes = await ctx.caller.db
+    .from('child_schedule_changes')
+    .select('child_id, date, blocks, note')
+    .eq('date', ctx.today)
+    .in('child_id', unlogged)
+  if (changes.error !== null) return changes.error.message
+  const events = await ctx.caller.db
+    .from('calendar_events')
+    .select('kind, title, starts_on, ends_on, closes_at, child_id')
+    .lte('starts_on', ctx.today)
+  if (events.error !== null) return events.error.message
+  const changeRows = changes.data.map((row) => ({ childId: row.child_id, date: row.date, blocks: row.blocks, note: row.note }))
+  const eventRows = events.data.map((row) => ({
+    kind: row.kind,
+    title: row.title,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on,
+    closesAt: row.closes_at,
+    childId: row.child_id,
+  }))
+  const checkedOutAt = new Map(attendance.data.map((row) => [row.child_id, row.check_out]))
+  const comingBack = new Set(
+    children.data
+      .filter((row) => {
+        const leftAt = checkedOutAt.get(row.id)
+        if (leftAt === null || leftAt === undefined) return false
+        const day = resolveChildDay(
+          { id: row.id, status: row.status, startDate: row.start_date ?? '', schedule: row.schedule },
+          ctx.today,
+          changeRows,
+          eventRows,
+        )
+        return day.blocks.some((block) => block.start > toHHmm(leftAt))
+      })
+      .map((row) => row.id),
+  )
+
+  const missing = unlogged.filter((id) => !comingBack.has(id))
+  if (missing.length === 0) return []
 
   return missing.map((childId) => {
     const name = names.get(childId) ?? 'A child'
