@@ -44,4 +44,17 @@ export default tseslint.config(
       },
     },
   },
+  {
+    // Unit tests run on Node's built-in test runner (`npm test`), with Node
+    // types from their own tsconfig, kept out of the browser app's `src`.
+    files: ['tests/**/*.ts'],
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: {
+        projectService: false,
+        project: './tsconfig.test.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
 )

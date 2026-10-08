@@ -35,12 +35,42 @@ export function fmtTime(hhmm: string | null | undefined): string {
   return format(new Date(2020, 0, 1, h || 0, m || 0), 'h:mm a')
 }
 
-export function nowTime(): string {
-  return format(new Date(), 'HH:mm')
+/**
+ * Aunties Tykes operates in Camp Hill, PA. "Today" and "now" are the daycare's,
+ * not whatever zone the viewing device is set to, so the console, the parent
+ * portal and Ro (api/_lib/ai/clock.ts uses the same zone) always agree on what
+ * day it is and stamp check-ins with the daycare's wall-clock time.
+ */
+export const DAYCARE_TIME_ZONE = 'America/New_York'
+
+const DAYCARE_DATE = new Intl.DateTimeFormat('en-US', {
+  timeZone: DAYCARE_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+const DAYCARE_TIME = new Intl.DateTimeFormat('en-US', {
+  timeZone: DAYCARE_TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+function zonePart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
+  return parts.find((part) => part.type === type)?.value ?? ''
 }
 
+/** The current wall-clock time at the daycare, 24h `HH:mm`. */
+export function nowTime(): string {
+  const parts = DAYCARE_TIME.formatToParts(new Date())
+  return `${zonePart(parts, 'hour')}:${zonePart(parts, 'minute')}`
+}
+
+/** Today at the daycare, `yyyy-MM-dd`. */
 export function todayISO(): string {
-  return format(new Date(), 'yyyy-MM-dd')
+  const parts = DAYCARE_DATE.formatToParts(new Date())
+  return `${zonePart(parts, 'year')}-${zonePart(parts, 'month')}-${zonePart(parts, 'day')}`
 }
 
 /**

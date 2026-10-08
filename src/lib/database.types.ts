@@ -9,7 +9,16 @@
  * camelCase domain types in src/types.ts stay unchanged; src/lib/db.ts maps
  * between the two.
  */
-import type { Contact, EnrollmentChildDraft, Incident, LineItem, LogAttachment, LogPhoto } from '../types'
+import type {
+  Contact,
+  EnrollmentChildDraft,
+  Incident,
+  LineItem,
+  LogAttachment,
+  LogPhoto,
+  ScheduleBlock,
+  WeeklySchedule,
+} from '../types'
 
 export type UserRoleDb = 'admin' | 'parent'
 export type LanguageDb = 'en' | 'vi' | 'es'
@@ -19,7 +28,7 @@ export type AttendanceStatusDb = 'present' | 'absent' | 'expected' | 'checked-ou
 export type DocumentCategoryDb = 'Handbooks' | 'Policies' | 'Forms' | 'Menus' | 'Calendars'
 export type EnrollmentStatusDb = 'pending' | 'approved' | 'declined'
 /** Sections that carry a "new since you last looked" marker. */
-export type SectionName = 'documents' | 'messages' | 'daily_reports' | 'inquiries'
+export type SectionName = 'documents' | 'messages' | 'daily_reports' | 'inquiries' | 'schedule_changes'
 export type CalendarEventKindDb =
   | 'closure'
   | 'early_close'
@@ -66,6 +75,8 @@ export type ChildRow = {
   age_group: AgeGroupDb
   status: ChildStatusDb
   plan: string
+  /** Migration 0020. NULL = never set; `{}` = set with no scheduled days. */
+  schedule: WeeklySchedule | null
   start_date: string | null
   teacher: string
   allergies: string[]
@@ -83,6 +94,30 @@ export type AttendanceRow = {
   check_out: string | null
   status: AttendanceStatusDb
   note: string
+  created_at: string
+}
+
+/** Migration 0020. One child, one date, overriding the weekly pattern. */
+export type ChildScheduleChangeRow = {
+  id: string
+  child_id: string
+  date: string
+  /** Empty = not coming that day. */
+  blocks: ScheduleBlock[]
+  note: string
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
+/** Migration 0020. One arrival/departure; `attendance` stays the day summary. */
+export type AttendanceVisitRow = {
+  id: string
+  child_id: string
+  date: string
+  check_in: string
+  /** NULL while the visit is still open. */
+  check_out: string | null
   created_at: string
 }
 
@@ -365,6 +400,8 @@ export type Database = {
       profiles: Table<ProfileRow, 'id' | 'email'>
       children: Table<ChildRow, 'family_id' | 'name' | 'dob' | 'age_group'>
       attendance: Table<AttendanceRow, 'child_id' | 'date'>
+      attendance_visits: Table<AttendanceVisitRow, 'id' | 'child_id' | 'date' | 'check_in'>
+      child_schedule_changes: Table<ChildScheduleChangeRow, 'id' | 'child_id' | 'date'>
       daily_logs: Table<DailyLogRow, 'child_id' | 'date'>
       invoices: Table<InvoiceRow, 'family_id' | 'period' | 'due_date'>
       payments: Table<PaymentRow, 'invoice_id' | 'amount'>
@@ -390,6 +427,9 @@ export type Database = {
       current_family_id: { Args: Record<string, never>; Returns: string }
       /** Migration 0015. Owner only; issues the next `INV-n`, never reused. */
       next_invoice_id: { Args: Record<string, never>; Returns: string }
+      /** Migration 0020. Pure validators behind the schedule check constraints. */
+      valid_schedule_blocks: { Args: { blocks: ScheduleBlock[] }; Returns: boolean }
+      valid_weekly_schedule: { Args: { schedule: WeeklySchedule }; Returns: boolean }
     }
     Enums: {
       user_role: UserRoleDb

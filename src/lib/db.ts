@@ -13,6 +13,7 @@
 import type {
   Announcement,
   AttendanceRecord,
+  AttendanceVisit,
   CalendarEvent,
   Child,
   DailyLog,
@@ -23,6 +24,7 @@ import type {
   Invoice,
   Lead,
   Payment,
+  ScheduleChange,
   SessionUser,
   Settings,
   Thread,
@@ -32,8 +34,10 @@ import type {
 import type {
   AnnouncementRow,
   AttendanceRow,
+  AttendanceVisitRow,
   CalendarEventRow,
   ChildRow,
+  ChildScheduleChangeRow,
   Database,
   DailyLogRow,
   DocumentRow,
@@ -95,6 +99,7 @@ export function toChild(row: ChildRow): Child {
     ageGroup: row.age_group,
     status: row.status,
     plan: row.plan,
+    schedule: row.schedule ?? undefined,
     startDate: row.start_date ?? '',
     teacher: row.teacher,
     allergies: row.allergies,
@@ -113,6 +118,28 @@ export function toAttendance(row: AttendanceRow): AttendanceRecord {
     checkOut: row.check_out,
     status: row.status,
     note: row.note,
+  }
+}
+
+export function toAttendanceVisit(row: AttendanceVisitRow): AttendanceVisit {
+  return {
+    id: row.id,
+    childId: row.child_id,
+    date: row.date,
+    checkIn: row.check_in,
+    checkOut: row.check_out,
+  }
+}
+
+export function toScheduleChange(row: ChildScheduleChangeRow): ScheduleChange {
+  return {
+    id: row.id,
+    childId: row.child_id,
+    date: row.date,
+    blocks: row.blocks,
+    note: row.note,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   }
 }
 
@@ -329,6 +356,8 @@ export function fromChild(child: Child): Ins<'children'> {
     age_group: child.ageGroup,
     status: child.status,
     plan: child.plan,
+    // Undefined (never set) is written as NULL, keeping it distinct from `{}`.
+    schedule: child.schedule ?? null,
     start_date: child.startDate || null,
     teacher: child.teacher,
     allergies: child.allergies,
@@ -347,6 +376,29 @@ export function fromAttendance(record: AttendanceRecord): Ins<'attendance'> {
     check_out: record.checkOut,
     status: record.status,
     note: record.note,
+  }
+}
+
+export function fromAttendanceVisit(visit: AttendanceVisit): Ins<'attendance_visits'> {
+  return {
+    id: visit.id,
+    child_id: visit.childId,
+    date: visit.date,
+    check_in: visit.checkIn,
+    check_out: visit.checkOut,
+  }
+}
+
+export function fromScheduleChange(change: ScheduleChange, createdBy: string | null): Ins<'child_schedule_changes'> {
+  return {
+    id: change.id,
+    child_id: change.childId,
+    date: change.date,
+    blocks: change.blocks,
+    note: change.note,
+    created_at: change.createdAt,
+    updated_at: change.updatedAt,
+    created_by: createdBy,
   }
 }
 

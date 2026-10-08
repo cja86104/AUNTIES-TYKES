@@ -70,6 +70,23 @@ export interface Family {
 export type AgeGroup = 'Infant' | 'Toddler' | 'Preschool'
 export type ChildStatus = 'active' | 'waitlist'
 
+/** Monday first. Weekend care is real (the owner also runs a camp). */
+export const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
+export type Weekday = (typeof WEEKDAYS)[number]
+
+/**
+ * One stretch of care inside a day, 24h `HH:mm`. `end` is after `start`, so a
+ * block never crosses midnight. Within a day blocks are sorted, do not overlap,
+ * and number at most 3 — the database enforces the same rules (migration 0020).
+ */
+export interface ScheduleBlock {
+  start: string
+  end: string
+}
+
+/** The weekly pattern. A missing or empty day means not in that day. */
+export type WeeklySchedule = Partial<Record<Weekday, ScheduleBlock[]>>
+
 export interface Child {
   id: string
   familyId: string
@@ -78,7 +95,13 @@ export interface Child {
   dob: string
   ageGroup: AgeGroup
   status: ChildStatus
+  /** Legacy free-text plan. Kept for children whose schedule was never set. */
   plan: string
+  /**
+   * The weekly pattern. Undefined = never set (stored as NULL): the schedule is
+   * unknown, which is NOT the same as "not expected". `{}` = set, with no days.
+   */
+  schedule?: WeeklySchedule
   startDate: string
   teacher: string
   allergies: string[]
@@ -86,6 +109,22 @@ export interface Child {
   notes: string
   /** Tailwind gradient stops used by the Avatar component. */
   hue: string
+}
+
+/**
+ * A one-off change to one child's schedule on one date, overriding the weekly
+ * pattern for that date only. Empty `blocks` = not coming that day.
+ */
+export interface ScheduleChange {
+  id: string
+  childId: string
+  /** ISO date, yyyy-MM-dd */
+  date: string
+  blocks: ScheduleBlock[]
+  note: string
+  createdAt: string
+  /** Restamped on every edit; drives the parent's "New" marker. */
+  updatedAt: string
 }
 
 export interface WaitlistProspect {
@@ -111,6 +150,22 @@ export interface AttendanceRecord {
   checkOut: string | null
   status: AttendanceStatus
   note: string
+}
+
+/**
+ * One arrival and departure. A split day (7–9 am, then 3–6 pm) is two visits.
+ * The day's AttendanceRecord stays the summary: first check-in, latest
+ * check-out, status.
+ */
+export interface AttendanceVisit {
+  id: string
+  childId: string
+  /** ISO date, yyyy-MM-dd */
+  date: string
+  /** 24h HH:mm */
+  checkIn: string
+  /** Null while the child is still here on this visit. */
+  checkOut: string | null
 }
 
 /* ------------------------------- daily logs ------------------------------- */
