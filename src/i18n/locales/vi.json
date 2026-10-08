@@ -329,7 +329,20 @@
     "attachments": "Ảnh & tệp",
     "openPhoto": "Mở {{name}} ở kích thước đầy đủ",
     "photoUnavailable": "Không thể tải ảnh này",
-    "fileError": "Không thể mở tệp. Hãy kiểm tra kết nối mạng và thử lại."
+    "fileError": "Không thể mở tệp. Hãy kiểm tra kết nối mạng và thử lại.",
+    "incidentBadge": "Sự cố",
+    "incidentTitle": "Báo cáo sự cố / chấn thương",
+    "incidentTime": "Thời gian",
+    "incidentLocation": "Nơi xảy ra",
+    "incidentWhat": "Chuyện gì đã xảy ra",
+    "incidentInjury": "Chấn thương",
+    "incidentFirstAid": "Sơ cứu đã thực hiện",
+    "incidentWitness": "Người chứng kiến",
+    "incidentNotified": "Đã báo cho phụ huynh",
+    "incidentAckPrompt": "Vui lòng xác nhận bạn đã đọc báo cáo sự cố này.",
+    "incidentAckButton": "Tôi đã đọc",
+    "incidentAcked": "Bạn đã xác nhận đã đọc vào {{date}}.",
+    "incidentAckToast": "Cảm ơn — chúng tôi đã ghi nhận bạn đã đọc."
   },
   "calendar": {
     "title": "Lịch gia đình",

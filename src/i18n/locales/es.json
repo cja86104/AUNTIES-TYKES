@@ -329,7 +329,20 @@
     "attachments": "Fotos y archivos",
     "openPhoto": "Abrir {{name}} en tamaño completo",
     "photoUnavailable": "No se pudo cargar esta foto",
-    "fileError": "El archivo no se abrió. Verifica tu conexión e inténtalo de nuevo."
+    "fileError": "El archivo no se abrió. Verifica tu conexión e inténtalo de nuevo.",
+    "incidentBadge": "Incidente",
+    "incidentTitle": "Reporte de incidente / lesión",
+    "incidentTime": "Hora",
+    "incidentLocation": "Dónde ocurrió",
+    "incidentWhat": "Qué pasó",
+    "incidentInjury": "Lesión",
+    "incidentFirstAid": "Primeros auxilios",
+    "incidentWitness": "Testigo",
+    "incidentNotified": "Aviso a los padres",
+    "incidentAckPrompt": "Por favor confirma que leíste este reporte de incidente.",
+    "incidentAckButton": "Lo he leído",
+    "incidentAcked": "Confirmaste que lo leíste el {{date}}.",
+    "incidentAckToast": "Gracias — registramos que lo leíste."
   },
   "calendar": {
     "title": "Calendario familiar",

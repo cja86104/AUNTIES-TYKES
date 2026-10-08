@@ -1,19 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { NotebookPen, CalendarDays, Search, X } from 'lucide-react'
+import { NotebookPen, CalendarDays, Search, X, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import { Badge, Button, EmptyState, Input, PageHeader, Tabs } from '../../components/ui'
 import DailyLogCard from '../../components/DailyLogCard'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
-import { todayISO } from '../../lib/helpers'
+import { fmtDate, todayISO } from '../../lib/helpers'
+import type { DailyLog } from '../../types'
 
 export default function ParentDailyReports() {
   const { t } = useTranslation()
   const { childId } = useParams<{ childId: string }>()
   const { kids } = useFamilyScope()
   const dailyLogs = useStore((s) => s.dailyLogs)
+  const user = useStore((s) => s.user)
+  const incidentAcks = useStore((s) => s.incidentAcks)
+  const acknowledgeIncident = useStore((s) => s.acknowledgeIncident)
+  const pushToast = useStore((s) => s.pushToast)
 
   const [childFilter, setChildFilter] = useState(childId ?? 'all')
   const [dateFilter, setDateFilter] = useState('')
@@ -54,6 +59,36 @@ export default function ParentDailyReports() {
   )
 
   const filtersActive = Boolean(query || dateFilter || childFilter !== 'all')
+
+  /** The acknowledge strip under an incident: a button until they confirm the current version. */
+  const incidentFooter = (log: DailyLog) => {
+    if (!log.incident) return undefined
+    const version = log.incident.recordedAt
+    const ack = incidentAcks.find((a) => a.logId === log.id && a.profileId === user?.id && a.version === version)
+    if (ack) {
+      return (
+        <p className="flex items-center gap-2 text-sm font-semibold text-[#2E8C72]">
+          <CheckCircle2 size={16} /> {t('dailyLogCard.incidentAcked', { date: fmtDate(ack.acknowledgedAt, 'MMM d, yyyy h:mm a') })}
+        </p>
+      )
+    }
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-rose-900">{t('dailyLogCard.incidentAckPrompt')}</p>
+        <Button
+          size="sm"
+          variant="accent"
+          onClick={() => {
+            acknowledgeIncident(log.id)
+            pushToast({ title: t('dailyLogCard.incidentAckToast') })
+          }}
+        >
+          <CheckCircle2 size={15} /> {t('dailyLogCard.incidentAckButton')}
+        </Button>
+      </div>
+    )
+  }
+
   const clearAll = () => {
     setQuery('')
     setDateFilter('')
@@ -127,7 +162,13 @@ export default function ParentDailyReports() {
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
           {logs.map((log, i) => (
-            <DailyLogCard key={log.id} log={log} child={kids.find((k) => k.id === log.childId)} index={i} />
+            <DailyLogCard
+              key={log.id}
+              log={log}
+              child={kids.find((k) => k.id === log.childId)}
+              index={i}
+              incidentFooter={incidentFooter(log)}
+            />
           ))}
         </div>
       )}

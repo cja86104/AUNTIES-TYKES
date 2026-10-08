@@ -17,6 +17,7 @@ import type {
   Child,
   DailyLog,
   DocumentRecord,
+  IncidentAck,
   EnrollmentSubmission,
   Family,
   Invoice,
@@ -36,6 +37,7 @@ import type {
   Database,
   DailyLogRow,
   DocumentRow,
+  IncidentAcknowledgementRow,
   EnrollmentRow,
   FamilyRow,
   InvoiceRow,
@@ -127,7 +129,17 @@ export function toDailyLog(row: DailyLogRow): DailyLog {
     notes: row.notes,
     photos: row.photos,
     attachments: row.attachments,
+    incident: row.incident,
     author: row.author,
+  }
+}
+
+export function toIncidentAck(row: IncidentAcknowledgementRow): IncidentAck {
+  return {
+    logId: row.log_id,
+    profileId: row.profile_id,
+    version: row.incident_version,
+    acknowledgedAt: row.acknowledged_at,
   }
 }
 
@@ -350,6 +362,7 @@ export function fromDailyLog(log: DailyLog, authorId: string | null): Ins<'daily
     notes: log.notes,
     photos: log.photos,
     attachments: log.attachments,
+    incident: log.incident,
     author: log.author,
     author_id: authorId,
   }

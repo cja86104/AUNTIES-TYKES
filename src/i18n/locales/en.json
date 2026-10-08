@@ -329,7 +329,20 @@
     "attachments": "Photos & files",
     "openPhoto": "Open {{name}} full size",
     "photoUnavailable": "This photo could not be loaded",
-    "fileError": "That file did not open. Check your connection and try again."
+    "fileError": "That file did not open. Check your connection and try again.",
+    "incidentBadge": "Incident",
+    "incidentTitle": "Incident / injury report",
+    "incidentTime": "Time",
+    "incidentLocation": "Where it happened",
+    "incidentWhat": "What happened",
+    "incidentInjury": "Injury",
+    "incidentFirstAid": "First aid given",
+    "incidentWitness": "Witnessed by",
+    "incidentNotified": "Parent notified",
+    "incidentAckPrompt": "Please confirm you have read this incident report.",
+    "incidentAckButton": "I've read this",
+    "incidentAcked": "You confirmed you read this on {{date}}.",
+    "incidentAckToast": "Thank you — we've recorded that you read it."
   },
   "calendar": {
     "title": "Family Calendar",

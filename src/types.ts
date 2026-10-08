@@ -132,6 +132,34 @@ export interface LogAttachment {
   size: number
 }
 
+/**
+ * An incident or injury recorded on a daily report. `recordedAt` is restamped
+ * whenever the details change; a parent's acknowledgement is tied to it.
+ */
+export interface Incident {
+  /** "HH:mm" */
+  time: string
+  location: string
+  description: string
+  /** The injury and the body part, or empty when nobody was hurt. */
+  injury: string
+  firstAid: string
+  witnessedBy: string
+  /** How and when the parent was told. */
+  parentNotified: string
+  /** ISO timestamp — the incident's version. */
+  recordedAt: string
+}
+
+/** A parent confirming they read one version of an incident report. */
+export interface IncidentAck {
+  logId: string
+  profileId: string
+  /** The `recordedAt` of the incident they read. */
+  version: string
+  acknowledgedAt: string
+}
+
 export interface DailyLog {
   id: string
   childId: string
@@ -144,12 +172,14 @@ export interface DailyLog {
   notes: string
   photos: LogPhoto[]
   attachments: LogAttachment[]
+  /** Null when there was no incident that day. */
+  incident: Incident | null
   author: string
 }
 
 /** Fields the daily-log composer supplies; the store fills in the rest. */
-export type NewDailyLog = Omit<DailyLog, 'id' | 'author' | 'photos' | 'attachments'> &
-  Partial<Pick<DailyLog, 'photos' | 'attachments' | 'author'>>
+export type NewDailyLog = Omit<DailyLog, 'id' | 'author' | 'photos' | 'attachments' | 'incident'> &
+  Partial<Pick<DailyLog, 'photos' | 'attachments' | 'incident' | 'author'>>
 
 /* -------------------------------- invoices -------------------------------- */
 

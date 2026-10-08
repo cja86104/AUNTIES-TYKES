@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Utensils, Moon, UserRound, Smile, Sparkles, NotebookPen, Paperclip, ImageOff } from 'lucide-react'
+import { Utensils, Moon, UserRound, Smile, Sparkles, NotebookPen, Paperclip, ImageOff, AlertTriangle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Card, Badge, Avatar } from './ui'
-import { bytes, fmtDay } from '../lib/helpers'
+import { bytes, fmtDay, fmtTime } from '../lib/helpers'
 import { downloadDocument, isInlineImage, viewDocumentUrl } from '../lib/storage'
 import { useStore } from '../store/useStore'
-import type { Child, DailyLog, LogAttachment } from '../types'
+import type { Child, DailyLog, Incident, LogAttachment } from '../types'
 
 interface RowProps {
   icon: LucideIcon
@@ -125,14 +125,50 @@ function LogAttachments({ attachments }: { attachments: LogAttachment[] }) {
   )
 }
 
+/** One labelled line of the incident report. */
+const IncidentRow = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className="min-w-0">
+    <p className="text-xs font-bold uppercase tracking-wider text-rose-700/80">{label}</p>
+    <p className="mt-0.5 whitespace-pre-line text-sm leading-relaxed text-slate-800">{children}</p>
+  </div>
+)
+
+function IncidentPanel({ incident, footer }: { incident: Incident; footer?: ReactNode }) {
+  const { t } = useTranslation()
+  return (
+    <div className="border-t border-rose-100 bg-rose-50/60 px-5 py-4">
+      <p className="mb-3 flex items-center gap-2 font-display text-sm font-bold text-rose-800">
+        <AlertTriangle size={16} /> {t('dailyLogCard.incidentTitle')}
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <IncidentRow label={t('dailyLogCard.incidentTime')}>{fmtTime(incident.time)}</IncidentRow>
+        <IncidentRow label={t('dailyLogCard.incidentLocation')}>{incident.location}</IncidentRow>
+        <div className="sm:col-span-2">
+          <IncidentRow label={t('dailyLogCard.incidentWhat')}>{incident.description}</IncidentRow>
+        </div>
+        <IncidentRow label={t('dailyLogCard.incidentInjury')}>{incident.injury || '—'}</IncidentRow>
+        <IncidentRow label={t('dailyLogCard.incidentFirstAid')}>{incident.firstAid || '—'}</IncidentRow>
+        <IncidentRow label={t('dailyLogCard.incidentWitness')}>{incident.witnessedBy || '—'}</IncidentRow>
+        <IncidentRow label={t('dailyLogCard.incidentNotified')}>{incident.parentNotified}</IncidentRow>
+      </div>
+      {footer && <div className="mt-4 border-t border-rose-100 pt-3">{footer}</div>}
+    </div>
+  )
+}
+
 export interface DailyLogCardProps {
   log: DailyLog
   child?: Child | undefined
   index?: number
   actions?: ReactNode
+  /**
+   * Shown under the incident report, when there is one: the parent's
+   * acknowledge button in the portal, who has acknowledged it in the console.
+   */
+  incidentFooter?: ReactNode
 }
 
-export default function DailyLogCard({ log, child, index = 0, actions }: DailyLogCardProps) {
+export default function DailyLogCard({ log, child, index = 0, actions, incidentFooter }: DailyLogCardProps) {
   const { t } = useTranslation()
   return (
     <motion.div
@@ -150,6 +186,11 @@ export default function DailyLogCard({ log, child, index = 0, actions }: DailyLo
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {log.incident && (
+              <Badge tone="rose">
+                <AlertTriangle size={12} /> {t('dailyLogCard.incidentBadge')}
+              </Badge>
+            )}
             <Badge tone="amber">
               <Smile size={12} /> {log.mood}
             </Badge>
@@ -166,6 +207,8 @@ export default function DailyLogCard({ log, child, index = 0, actions }: DailyLo
             <Row icon={NotebookPen} label={t('dailyLogCard.noteFrom', { author: log.author || t('dailyLogCard.defaultAuthor') })}>{log.notes || '—'}</Row>
           </div>
         </div>
+
+        {log.incident && <IncidentPanel incident={log.incident} footer={incidentFooter} />}
 
         <LogAttachments attachments={log.attachments} />
 

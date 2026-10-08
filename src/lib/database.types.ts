@@ -9,7 +9,7 @@
  * camelCase domain types in src/types.ts stay unchanged; src/lib/db.ts maps
  * between the two.
  */
-import type { Contact, EnrollmentChildDraft, LineItem, LogAttachment, LogPhoto } from '../types'
+import type { Contact, EnrollmentChildDraft, Incident, LineItem, LogAttachment, LogPhoto } from '../types'
 
 export type UserRoleDb = 'admin' | 'parent'
 export type LanguageDb = 'en' | 'vi' | 'es'
@@ -99,9 +99,19 @@ export type DailyLogRow = {
   photos: LogPhoto[]
   /** Migration 0016. */
   attachments: LogAttachment[]
+  /** Migration 0017. NULL when there was no incident. */
+  incident: Incident | null
   author: string
   author_id: string | null
   created_at: string
+}
+
+/** Migration 0017. Insert-only; one row per parent per incident version. */
+export type IncidentAcknowledgementRow = {
+  log_id: string
+  profile_id: string
+  incident_version: string
+  acknowledged_at: string
 }
 
 export type InvoiceRow = {
@@ -360,6 +370,7 @@ export type Database = {
       payments: Table<PaymentRow, 'invoice_id' | 'amount'>
       documents: Table<DocumentRow, 'title'>
       document_acknowledgements: Table<DocumentAcknowledgementRow, 'document_id' | 'profile_id'>
+      incident_acknowledgements: Table<IncidentAcknowledgementRow, 'log_id' | 'profile_id' | 'incident_version'>
       section_views: Table<SectionViewRow, 'profile_id' | 'section'>
       announcements: Table<AnnouncementRow, 'title'>
       threads: Table<ThreadRow, 'family_id' | 'subject'>

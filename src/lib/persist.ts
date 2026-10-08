@@ -38,6 +38,7 @@ import {
   toWaitlistProspect,
   toAttendance,
   toDailyLog,
+  toIncidentAck,
 } from './db'
 import type {
   Announcement,
@@ -46,6 +47,7 @@ import type {
   Child,
   DailyLog,
   DocumentRecord,
+  IncidentAck,
   EnrollmentSubmission,
   Family,
   Invoice,
@@ -77,6 +79,7 @@ export interface HydratedData {
   waitlist: WaitlistProspect[]
   calendarEvents: CalendarEvent[]
   acknowledgements: string[]
+  incidentAcks: IncidentAck[]
   /** Last time this person opened each section. Missing = never opened. */
   sectionViews: Partial<Record<SectionName, string>>
   settings: Settings | null
@@ -156,6 +159,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     payments,
     documents,
     acks,
+    incidentAcks,
     announcements,
     threads,
     threadMessages,
@@ -175,6 +179,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     run(supabase.from('payments').select('*')),
     run(supabase.from('documents').select('*')),
     run(supabase.from('document_acknowledgements').select('*')),
+    run(supabase.from('incident_acknowledgements').select('*')),
     run(supabase.from('announcements').select('*')),
     // Ordered explicitly: PostgREST returns rows in no guaranteed order, and
     // groupBy below preserves whatever order it gets, so an unordered read
@@ -207,6 +212,7 @@ export async function hydrateAll(): Promise<HydratedData> {
     waitlist: waitlist.map(toWaitlistProspect),
     calendarEvents: calendarEvents.map(toCalendarEvent),
     acknowledgements: acks.map((a) => `${a.profile_id}:${a.document_id}`),
+    incidentAcks: incidentAcks.map(toIncidentAck),
     sectionViews: Object.fromEntries(sectionViews.map((v) => [v.section, v.seen_at])),
     settings: settings.data ? toSettings(settings.data) : null,
   }
@@ -343,6 +349,18 @@ export const persist = {
       supabase
         .from('document_acknowledgements')
         .upsert({ document_id: documentId, profile_id: profileId })
+        .select(),
+    ),
+
+  /** Insert-only on the server; a repeat tap for the same version is a no-op. */
+  incidentAcknowledgement: (ack: IncidentAck) =>
+    run(
+      supabase
+        .from('incident_acknowledgements')
+        .upsert(
+          { log_id: ack.logId, profile_id: ack.profileId, incident_version: ack.version },
+          { onConflict: 'log_id,profile_id,incident_version', ignoreDuplicates: true },
+        )
         .select(),
     ),
 

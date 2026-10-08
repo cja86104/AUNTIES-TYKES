@@ -24,6 +24,7 @@ import type {
   CalendarEvent,
   Child,
   DailyLog,
+  IncidentAck,
   DocumentRecord,
   Family,
   Invoice,
@@ -91,6 +92,8 @@ interface DataSlice {
   calendarEvents: CalendarEvent[]
   /** `${userId}:${documentId}` pairs for documents a parent has acknowledged. */
   acknowledgements: string[]
+  /** Parent acknowledgements of incident reports. A parent only ever sees their own. */
+  incidentAcks: IncidentAck[]
   /**
    * When the signed-in person last opened each section. Anything stamped later
    * than this is new to them. Only ever holds the current user's markers —
@@ -145,6 +148,8 @@ export interface StoreState extends DataSlice {
   deleteDocument: (id: string) => void
   toggleDocVisibility: (id: string) => void
   acknowledgeDocument: (docId: string) => void
+  /** The signed-in parent confirms they read the current version of a report's incident. */
+  acknowledgeIncident: (logId: string) => void
   /**
    * Records that the signed-in person has now looked at a section, so its
    * "new" markers clear. Silent: no toast, and a failure must not interrupt
@@ -224,6 +229,7 @@ const emptyData: DataSlice = {
   waitlist: [],
   calendarEvents: [],
   acknowledgements: [],
+  incidentAcks: [],
   sectionViews: {},
 }
 
@@ -275,6 +281,7 @@ export const useStore = create<StoreState>()((set, get) => {
       waitlist: data.waitlist,
       calendarEvents: data.calendarEvents,
       acknowledgements: data.acknowledgements,
+      incidentAcks: data.incidentAcks,
       sectionViews: data.sectionViews,
       ...(data.settings ? { settings: data.settings } : {}),
     })
@@ -434,7 +441,7 @@ export const useStore = create<StoreState>()((set, get) => {
       commit(
         (s) => ({
           dailyLogs: [
-            { author: s.user?.name ?? s.settings.businessName, photos: [], attachments: [], ...log, id: uid('dl') },
+            { author: s.user?.name ?? s.settings.businessName, photos: [], attachments: [], incident: null, ...log, id: uid('dl') },
             ...s.dailyLogs,
           ],
         }),
@@ -558,6 +565,27 @@ export const useStore = create<StoreState>()((set, get) => {
         (s) => {
           const id = s.user?.id
           return id ? persist.acknowledgement(docId, id) : Promise.resolve()
+        },
+      ),
+
+    acknowledgeIncident: (logId) =>
+      commit(
+        (s) => {
+          const version = s.dailyLogs.find((l) => l.id === logId)?.incident?.recordedAt
+          const profileId = s.user?.id
+          if (!version || !profileId) return {}
+          const already = s.incidentAcks.some(
+            (a) => a.logId === logId && a.profileId === profileId && a.version === version,
+          )
+          if (already) return {}
+          return { incidentAcks: [...s.incidentAcks, { logId, profileId, version, acknowledgedAt: nowISO() }] }
+        },
+        (s) => {
+          const version = s.dailyLogs.find((l) => l.id === logId)?.incident?.recordedAt
+          const ack = s.incidentAcks.find(
+            (a) => a.logId === logId && a.profileId === s.user?.id && a.version === version,
+          )
+          return ack ? persist.incidentAcknowledgement(ack) : Promise.resolve()
         },
       ),
 

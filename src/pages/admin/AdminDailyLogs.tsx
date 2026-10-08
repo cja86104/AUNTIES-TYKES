@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { NotebookPen, Plus, Trash2, Pencil, Search, CalendarDays, X, Paperclip } from 'lucide-react'
+import { NotebookPen, Plus, Trash2, Pencil, Search, CalendarDays, X, Paperclip, AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
   Card,
@@ -17,9 +17,9 @@ import {
 import DailyLogCard from '../../components/DailyLogCard'
 import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
-import { bytes, todayISO, fmtDate } from '../../lib/helpers'
+import { bytes, todayISO, fmtDate, nowISO, nowTime } from '../../lib/helpers'
 import { removeDocumentFile } from '../../lib/storage'
-import type { DailyLog, LogAttachment, UploadedFileMeta } from '../../types'
+import type { DailyLog, Incident, LogAttachment, UploadedFileMeta } from '../../types'
 
 const moodOptions = [
   'Cheerful',
@@ -46,6 +46,40 @@ interface LogForm {
 }
 
 type LogErrors = Partial<Record<keyof LogForm, string>>
+
+/** The incident details she types; `recordedAt` is stamped on save. */
+type IncidentForm = Omit<Incident, 'recordedAt'>
+type IncidentErrors = Partial<Record<keyof IncidentForm, string>>
+
+const INCIDENT_FIELDS = [
+  'time',
+  'location',
+  'description',
+  'injury',
+  'firstAid',
+  'witnessedBy',
+  'parentNotified',
+] as const satisfies readonly (keyof IncidentForm)[]
+
+const emptyIncident = (): IncidentForm => ({
+  time: nowTime(),
+  location: '',
+  description: '',
+  injury: '',
+  firstAid: '',
+  witnessedBy: '',
+  parentNotified: '',
+})
+
+const trimIncident = (i: IncidentForm): IncidentForm => ({
+  time: i.time,
+  location: i.location.trim(),
+  description: i.description.trim(),
+  injury: i.injury.trim(),
+  firstAid: i.firstAid.trim(),
+  witnessedBy: i.witnessedBy.trim(),
+  parentNotified: i.parentNotified.trim(),
+})
 
 /** Photos and PDFs only — what the family sees on the report. */
 const ATTACHMENT_ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.heic'
@@ -74,6 +108,8 @@ export default function AdminDailyLogs() {
   const addDailyLog = useStore((s) => s.addDailyLog)
   const updateDailyLog = useStore((s) => s.updateDailyLog)
   const deleteDailyLog = useStore((s) => s.deleteDailyLog)
+  const users = useStore((s) => s.users)
+  const incidentAcks = useStore((s) => s.incidentAcks)
   const pushToast = useStore((s) => s.pushToast)
 
   const active = useMemo(() => children.filter((c) => c.status === 'active'), [children])
@@ -86,6 +122,16 @@ export default function AdminDailyLogs() {
   const [form, setForm] = useState<LogForm>(emptyForm)
   const [errors, setErrors] = useState<LogErrors>({})
   const [confirmDelete, setConfirmDelete] = useState<DailyLog | null>(null)
+
+  /** The incident on the report being written, or null when there is none. */
+  const [incident, setIncident] = useState<IncidentForm | null>(null)
+  const [incidentErrors, setIncidentErrors] = useState<IncidentErrors>({})
+  /**
+   * The incident as it was when an existing report was opened. Saving it
+   * unchanged keeps its version, so parents who already acknowledged it are
+   * not asked again; any change restamps it.
+   */
+  const [originalIncident, setOriginalIncident] = useState<Incident | null>(null)
 
   /** Files on the report being written, in the order they were added. */
   const [attachments, setAttachments] = useState<LogAttachment[]>([])
@@ -152,7 +198,7 @@ export default function AdminDailyLogs() {
       .filter((l) => (dateFilter ? l.date === dateFilter : true))
       .filter((l) => {
         if (!q) return true
-        const text = `${l.meals} ${l.naps} ${l.potty} ${l.mood} ${l.notes} ${l.activities.join(' ')}`.toLowerCase()
+        const text = `${l.meals} ${l.naps} ${l.potty} ${l.mood} ${l.notes} ${l.activities.join(' ')} ${l.incident?.description ?? ''}`.toLowerCase()
         return text.includes(q)
       })
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
@@ -163,6 +209,9 @@ export default function AdminDailyLogs() {
     setEditingId(null)
     setForm({ ...emptyForm, childId: active[0]?.id ?? '' })
     setAttachments([])
+    setIncident(null)
+    setOriginalIncident(null)
+    setIncidentErrors({})
     setErrors({})
     setOpen(true)
   }
@@ -171,6 +220,9 @@ export default function AdminDailyLogs() {
     startDraft()
     setEditingId(log.id)
     setAttachments(log.attachments)
+    setOriginalIncident(log.incident)
+    setIncident(log.incident ? trimIncident(log.incident) : null)
+    setIncidentErrors({})
     setForm({
       childId: log.childId,
       date: log.date,
@@ -190,6 +242,12 @@ export default function AdminDailyLogs() {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }))
 
+  const setIncidentField =
+    (key: keyof IncidentForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const value = e.target.value
+      setIncident((i) => (i ? { ...i, [key]: value } : i))
+    }
+
   const validate = () => {
     const next: LogErrors = {}
     if (!form.childId) next.childId = 'Pick a child'
@@ -197,7 +255,54 @@ export default function AdminDailyLogs() {
     if (!form.meals.trim()) next.meals = 'What did they eat?'
     if (!form.naps.trim()) next.naps = 'Add nap times (or "no nap")'
     setErrors(next)
-    return Object.keys(next).length === 0
+
+    const nextIncident: IncidentErrors = {}
+    if (incident) {
+      if (!incident.time) nextIncident.time = 'When did it happen?'
+      if (!incident.location.trim()) nextIncident.location = 'Where did it happen?'
+      if (!incident.description.trim()) nextIncident.description = 'Describe what happened'
+      if (!incident.parentNotified.trim()) nextIncident.parentNotified = 'How and when was the parent told?'
+    }
+    setIncidentErrors(nextIncident)
+    return Object.keys(next).length === 0 && Object.keys(nextIncident).length === 0
+  }
+
+  /** The incident to save, keeping its version when nothing in it changed. */
+  const incidentToSave = (): Incident | null => {
+    if (!incident) return null
+    const details = trimIncident(incident)
+    const unchanged =
+      originalIncident !== null && INCIDENT_FIELDS.every((k) => details[k] === originalIncident[k].trim())
+    return { ...details, recordedAt: unchanged && originalIncident ? originalIncident.recordedAt : nowISO() }
+  }
+
+  /** Under an incident in the list: which parents have read the current version. */
+  const incidentFooter = (log: DailyLog) => {
+    if (!log.incident) return undefined
+    const version = log.incident.recordedAt
+    const current = incidentAcks.filter((a) => a.logId === log.id && a.version === version)
+    if (current.length > 0) {
+      return (
+        <ul className="space-y-1">
+          {current.map((a) => (
+            <li key={a.profileId} className="flex items-center gap-2 text-sm font-semibold text-[#2E8C72]">
+              <CheckCircle2 size={15} />
+              Acknowledged by {users.find((u) => u.id === a.profileId)?.name ?? 'a parent'} ·{' '}
+              {fmtDate(a.acknowledgedAt, 'MMM d, h:mm a')}
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    const ackedEarlierVersion = incidentAcks.some((a) => a.logId === log.id)
+    return (
+      <p className="flex items-center gap-2 text-sm text-rose-900">
+        <Clock size={15} />
+        {ackedEarlierVersion
+          ? 'Edited after a parent acknowledged it — waiting for them to confirm the new version.'
+          : 'Waiting for a parent to acknowledge.'}
+      </p>
+    )
   }
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -218,6 +323,7 @@ export default function AdminDailyLogs() {
         .filter(Boolean),
       notes: form.notes.trim(),
       attachments,
+      incident: incidentToSave(),
     }
     const childName = children.find((c) => c.id === form.childId)?.name.split(' ')[0] ?? 'Child'
     if (editingId) {
@@ -354,6 +460,7 @@ export default function AdminDailyLogs() {
               log={log}
               child={children.find((c) => c.id === log.childId)}
               index={i}
+              incidentFooter={incidentFooter(log)}
               actions={
                 <div className="flex gap-1">
                   <button
@@ -469,6 +576,59 @@ export default function AdminDailyLogs() {
             />
             <p className="mt-1 text-xs text-slate-500">The family sees these with the report in their portal.</p>
           </div>
+
+          {incident ? (
+            <div className="space-y-4 rounded-2xl border border-rose-200 bg-rose-50/50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-center gap-2 font-display text-sm font-bold text-rose-800">
+                  <AlertTriangle size={16} /> Incident / injury report
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setIncident(null)
+                    setIncidentErrors({})
+                  }}
+                >
+                  <X size={14} /> Remove incident
+                </Button>
+              </div>
+              <p className="text-xs text-rose-900/80">
+                The family sees this on the report and is asked to confirm they have read it.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Time" error={incidentErrors.time}>
+                  <Input type="time" value={incident.time} onChange={setIncidentField('time')} invalid={Boolean(incidentErrors.time)} />
+                </Field>
+                <Field label="Where it happened" error={incidentErrors.location}>
+                  <Input value={incident.location} onChange={setIncidentField('location')} invalid={Boolean(incidentErrors.location)} placeholder="Backyard, by the slide" />
+                </Field>
+              </div>
+              <Field label="What happened" error={incidentErrors.description}>
+                <Textarea rows={3} value={incident.description} onChange={setIncidentField('description')} invalid={Boolean(incidentErrors.description)} placeholder="Tripped running to the slide and landed on both hands." />
+              </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Injury and body part" hint="Leave blank if nobody was hurt.">
+                  <Input value={incident.injury} onChange={setIncidentField('injury')} placeholder="Small scrape on left palm" />
+                </Field>
+                <Field label="First aid given">
+                  <Input value={incident.firstAid} onChange={setIncidentField('firstAid')} placeholder="Washed, bandage, ice pack for 5 min" />
+                </Field>
+                <Field label="Witnessed by">
+                  <Input value={incident.witnessedBy} onChange={setIncidentField('witnessedBy')} placeholder="Auntie Melissa" />
+                </Field>
+                <Field label="Parent notified" error={incidentErrors.parentNotified} hint="How and when.">
+                  <Input value={incident.parentNotified} onChange={setIncidentField('parentNotified')} invalid={Boolean(incidentErrors.parentNotified)} placeholder="Called Mom at 2:40 PM" />
+                </Field>
+              </div>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" onClick={() => setIncident(emptyIncident())}>
+              <AlertTriangle size={16} /> Record an incident or injury
+            </Button>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" onClick={closeForm}>
