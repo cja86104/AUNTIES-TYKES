@@ -11,6 +11,7 @@ import {
   subscribeToChanges,
 } from '../lib/persist'
 import type { SectionName } from '../lib/database.types'
+import { sanitizeWeeklySchedule } from '../lib/schedule'
 import type {
   Announcement,
   ApprovalResult,
@@ -776,6 +777,9 @@ export const useStore = create<StoreState>()((set, get) => {
           ageGroup: c.ageGroup,
           status: 'active' as const,
           plan: c.plan,
+          // The form was filled in anonymously; a malformed schedule becomes
+          // "not set" for the owner to fill in rather than a guess.
+          schedule: sanitizeWeeklySchedule(c.schedule),
           startDate: c.startDate,
           teacher: 'Auntie Melissa',
           allergies: splitList(c.allergies),

@@ -16,6 +16,7 @@ import DailyLogCard from '../../components/DailyLogCard'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
+import { PortalSchedule } from '../../components/ScheduleSummary'
 
 export default function ParentChildDetail() {
   const { t } = useTranslation()
@@ -79,7 +80,6 @@ export default function ParentChildDetail() {
             </p>
             <div className="mt-3 flex flex-wrap gap-1.5">
               <Badge tone={statusTone(child.status)}>{t(`status.${child.status}`)}</Badge>
-              <Badge tone="neutral">{child.plan}</Badge>
               {todayRecord && <Badge tone={statusTone(todayRecord.status)}>{t('childDetail.todayLabel', { status: t(`status.${todayRecord.status}`) })}</Badge>}
             </div>
           </div>
@@ -108,8 +108,10 @@ export default function ParentChildDetail() {
                 <dd className="font-semibold text-slate-800">{fmtDate(child.startDate)}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-slate-500">{t('childDetail.plan')}</dt>
-                <dd className="font-semibold text-slate-800">{child.plan}</dd>
+                <dt className="shrink-0 text-slate-500">{t('childDetail.schedule')}</dt>
+                <dd className="text-right font-semibold text-slate-800">
+                  <PortalSchedule child={child} />
+                </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">{t('childDetail.groupRatio')}</dt>

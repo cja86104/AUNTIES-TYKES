@@ -27,6 +27,7 @@ import {
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { ageLabel, fmtDate } from '../../lib/helpers'
+import { formatWeeklySchedule, sanitizeWeeklySchedule } from '../../lib/schedule'
 import type { ApprovalResult, EnrollmentStatus, EnrollmentSubmission } from '../../types'
 
 const ENROLL_LINK = '/enroll'
@@ -249,12 +250,22 @@ export default function AdminEnrollments() {
                             <p className="font-display text-sm font-bold text-slate-900">{c.name}</p>
                             <div className="flex gap-1.5">
                               <Badge tone="blue">{c.ageGroup}</Badge>
-                              <Badge tone="neutral">{c.plan}</Badge>
+                              {c.plan && <Badge tone="neutral">{c.plan}</Badge>}
                             </div>
                           </div>
                           <p className="mt-1 text-xs text-slate-500">
                             Born {fmtDate(c.dob)} ({ageLabel(c.dob)}) · wants to start {fmtDate(c.startDate)}
                           </p>
+                          {(() => {
+                            // Shown exactly as approval will save it: the form is anonymous,
+                            // so a malformed schedule is dropped here just as it is there.
+                            const asked = sanitizeWeeklySchedule(c.schedule)
+                            return asked ? (
+                              <p className="mt-1 text-xs text-slate-700">
+                                <span className="font-semibold">Asked for:</span> {formatWeeklySchedule(asked, 'en-US')}
+                              </p>
+                            ) : null
+                          })()}
                           {c.allergies.trim() && (
                             <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-rose-50 p-2 text-xs text-rose-900">
                               <AlertTriangle size={13} className="mt-0.5 shrink-0" />

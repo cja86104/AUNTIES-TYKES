@@ -147,7 +147,7 @@
     "onFile": "On file",
     "dob": "Date of birth",
     "started": "Started with us",
-    "plan": "Enrollment plan",
+    "schedule": "Weekly schedule",
     "groupRatio": "Group ratio",
     "allergies": "Allergies",
     "allergiesNone": "None on file",
@@ -363,5 +363,9 @@
       "schedule_exception": "Schedule change",
       "birthday": "Birthday"
     }
+  },
+  "schedule": {
+    "notSet": "Schedule not set yet",
+    "noDays": "No days scheduled"
   }
 }

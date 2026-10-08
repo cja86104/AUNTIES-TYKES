@@ -21,6 +21,7 @@ import type { ChildFormValue } from '../../components/ChildForm'
 import DailyLogCard from '../../components/DailyLogCard'
 import { useStore } from '../../store/useStore'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
+import { consoleScheduleText, scheduleNotSet } from '../../components/ScheduleSummary'
 
 export default function AdminChildDetail() {
   const { id } = useParams()
@@ -108,7 +109,7 @@ export default function AdminChildDetail() {
 
       <PageHeader
         title={child.name}
-        description={`${child.ageGroup} · ${ageLabel(child.dob)} · ${child.plan} · with ${child.teacher}`}
+        description={`${child.ageGroup} · ${ageLabel(child.dob)} · with ${child.teacher}`}
         actions={
           <>
             <Button variant="outline" onClick={openEdit}>
@@ -141,13 +142,14 @@ export default function AdminChildDetail() {
                       <ShieldAlert size={11} /> Allergy alert
                     </Badge>
                   )}
+                  {scheduleNotSet(child) && <Badge tone="amber">Schedule not set</Badge>}
                 </div>
                 <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                   {[
                     ['Date of birth', fmtDate(child.dob)],
                     ['Age', ageLabel(child.dob)],
                     ['Started', fmtDate(child.startDate)],
-                    ['Schedule', child.plan],
+                    ['Schedule', consoleScheduleText(child)],
                     ['Teacher', child.teacher],
                     [
                       'Today',

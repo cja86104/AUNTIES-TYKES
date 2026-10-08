@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, ArrowRight, CheckCircle2, Plus, Trash2, Phone, Send } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
+import ScheduleGrid, { scheduleIsValid } from '../../components/ScheduleGrid'
 import { Badge, Button, Card, Field, Input, Select, Textarea } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { uid, todayISO, fmtDate } from '../../lib/helpers'
-import type { AgeGroup, Contact, EnrollmentChildDraft } from '../../types'
+import { scheduleForSaving } from '../../lib/schedule'
+import type { AgeGroup, Contact, EnrollmentChildDraft, WeeklySchedule } from '../../types'
 
 const AGE_GROUPS: AgeGroup[] = ['Infant', 'Toddler', 'Preschool']
-const PLANS = ['Full-time', 'Part-time (M/W/F)', 'Part-time (T/Th)', 'Drop-in as needed']
 
 const STEPS = [
   { n: 1, label: 'Your family' },
@@ -22,7 +23,8 @@ const blankChild = (): EnrollmentChildDraft => ({
   name: '',
   dob: '',
   ageGroup: 'Toddler',
-  plan: 'Full-time',
+  plan: '',
+  schedule: {},
   startDate: '',
   allergies: '',
   medications: '',
@@ -57,6 +59,9 @@ export default function Enroll() {
   const setChild = (id: string, key: keyof EnrollmentChildDraft, value: string) =>
     setChildren((cs) => cs.map((c) => (c.id === id ? { ...c, [key]: value } : c)))
 
+  const setChildSchedule = (id: string, schedule: WeeklySchedule) =>
+    setChildren((cs) => cs.map((c) => (c.id === id ? { ...c, schedule } : c)))
+
   const setEmergencyAt = (i: number, key: keyof Contact, value: string) =>
     setEmergency((es) => es.map((e, idx) => (idx === i ? { ...e, [key]: value } : e)))
 
@@ -85,6 +90,7 @@ export default function Enroll() {
       if (c.name.trim().length < 2) e[`child-${i}-name`] = "Enter your child's name"
       if (!c.dob) e[`child-${i}-dob`] = 'Date of birth is required'
       if (!c.startDate) e[`child-${i}-startDate`] = 'When would you like to start?'
+      if (!scheduleIsValid(c.schedule ?? {})) e[`child-${i}-schedule`] = 'Please fix the times marked in red.'
     })
     setErrors(e)
     return Object.keys(e).length === 0
@@ -124,7 +130,7 @@ export default function Enroll() {
       address: address.trim(),
       secondary,
       emergency: emergency.filter((c) => c.name.trim() && c.phone.trim()),
-      children: children.map((c) => ({ ...c, name: c.name.trim() })),
+      children: children.map((c) => ({ ...c, name: c.name.trim(), schedule: scheduleForSaving(c.schedule ?? {}) })),
       notes: notes.trim(),
       // The handbook step was removed from the form; nothing is acknowledged.
       acknowledgedHandbook: false,
@@ -379,15 +385,6 @@ export default function Enroll() {
                               ))}
                             </Select>
                           </Field>
-                          <Field label="Schedule">
-                            <Select value={c.plan} onChange={(e) => setChild(c.id, 'plan', e.target.value)}>
-                              {PLANS.map((pl) => (
-                                <option key={pl} value={pl}>
-                                  {pl}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
                           <Field label="Preferred start date *" error={errors[`child-${i}-startDate`]}>
                             <Input
                               type="date"
@@ -396,6 +393,18 @@ export default function Enroll() {
                               onChange={(e) => setChild(c.id, 'startDate', e.target.value)}
                             />
                           </Field>
+                          <div className="min-w-0 sm:col-span-2">
+                            <ScheduleGrid
+                              idPrefix={`enroll-${c.id}`}
+                              legend="When do you need care?"
+                              hint="Add each day and time, for example 7–9 am and back 3–6 pm. Leave it empty if you are not sure yet."
+                              value={c.schedule ?? {}}
+                              onChange={(schedule) => setChildSchedule(c.id, schedule)}
+                            />
+                            {errors[`child-${i}-schedule`] && (
+                              <p className="mt-1.5 text-xs font-medium text-rose-600">{errors[`child-${i}-schedule`]}</p>
+                            )}
+                          </div>
                           <Field label="Allergies" hint="Separate with commas, or leave blank.">
                             <Input
                               value={c.allergies}
@@ -403,7 +412,7 @@ export default function Enroll() {
                               placeholder="Peanuts, strawberries"
                             />
                           </Field>
-                          <Field label="Medications" hint="Separate with commas." className="sm:col-span-2">
+                          <Field label="Medications" hint="Separate with commas.">
                             <Input
                               value={c.medications}
                               onChange={(e) => setChild(c.id, 'medications', e.target.value)}

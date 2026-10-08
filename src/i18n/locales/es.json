@@ -147,7 +147,7 @@
     "onFile": "Datos registrados",
     "dob": "Fecha de nacimiento",
     "started": "Comenzó con nosotros",
-    "plan": "Plan de inscripción",
+    "schedule": "Horario semanal",
     "groupRatio": "Proporción del grupo",
     "allergies": "Alergias",
     "allergiesNone": "Sin datos registrados",
@@ -363,5 +363,9 @@
       "schedule_exception": "Cambio de horario",
       "birthday": "Cumpleaños"
     }
+  },
+  "schedule": {
+    "notSet": "Horario aún sin definir",
+    "noDays": "Sin días programados"
   }
 }

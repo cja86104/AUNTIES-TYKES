@@ -9,7 +9,19 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import type { ChildDay, ResolverChange, ResolverChild, ResolverEvent } from '../src/lib/schedule.ts'
-import { resolveChildDay, toHHmm, weekdayOf } from '../src/lib/schedule.ts'
+import {
+  dayProblem,
+  formatBlock,
+  formatWeeklySchedule,
+  resolveChildDay,
+  sanitizeWeeklySchedule,
+  scheduleForSaving,
+  scheduleProblems,
+  summarizeSchedule,
+  toHHmm,
+  WEEKDAYS,
+  weekdayOf,
+} from '../src/lib/schedule.ts'
 
 // October 2026: Mon 5, Tue 6, Wed 7, Thu 8, Fri 9, Sat 10, Sun 11.
 const MON = '2026-10-05'
@@ -369,5 +381,203 @@ void describe('resolveChildDay: who is enrolled', () => {
 void describe('resolveChildDay: input guard', () => {
   void it('throws on a date that is not real, rather than reporting an empty day', () => {
     assert.throws(() => resolveChildDay(child(), '2026-02-30', none, noEvents), RangeError)
+  })
+})
+
+// The same accept/reject cases migration 0020's check constraints were run
+// against, so the app and the database agree on what a valid day is.
+void describe('dayProblem', () => {
+  void it('accepts an empty day, a split day and touching blocks', () => {
+    assert.equal(dayProblem([]), null)
+    assert.equal(dayProblem([{ start: '07:00', end: '09:00' }, { start: '15:00', end: '18:00' }]), null)
+    assert.equal(dayProblem([{ start: '09:00', end: '12:00' }, { start: '12:00', end: '15:00' }]), null)
+  })
+
+  void it('accepts blocks typed out of order (they are sorted on save)', () => {
+    assert.equal(dayProblem([{ start: '15:00', end: '18:00' }, { start: '07:00', end: '09:00' }]), null)
+  })
+
+  void it('flags a missing, unpadded or impossible time', () => {
+    assert.equal(dayProblem([{ start: '', end: '09:00' }]), 'missing_time')
+    assert.equal(dayProblem([{ start: '9:00', end: '12:00' }]), 'missing_time')
+    assert.equal(dayProblem([{ start: '24:00', end: '24:30' }]), 'missing_time')
+  })
+
+  void it('flags an end at or before the start, so nothing crosses midnight', () => {
+    assert.equal(dayProblem([{ start: '09:00', end: '09:00' }]), 'end_before_start')
+    assert.equal(dayProblem([{ start: '22:00', end: '02:00' }]), 'end_before_start')
+  })
+
+  void it('flags overlapping blocks', () => {
+    assert.equal(dayProblem([{ start: '08:00', end: '12:00' }, { start: '11:00', end: '15:00' }]), 'overlap')
+  })
+
+  void it('flags a fourth block', () => {
+    const four = ['06', '08', '10', '12'].map((hour) => ({ start: `${hour}:00`, end: `${hour}:30` }))
+    assert.equal(dayProblem(four), 'too_many')
+  })
+})
+
+void describe('scheduleProblems', () => {
+  void it('reports each bad day by name and nothing for good days', () => {
+    assert.deepStrictEqual(
+      scheduleProblems({
+        mon: [{ start: '07:00', end: '09:00' }],
+        sat: [{ start: '13:00', end: '12:00' }],
+        sun: [{ start: '', end: '' }],
+      }),
+      { sat: 'end_before_start', sun: 'missing_time' },
+    )
+  })
+})
+
+void describe('scheduleForSaving', () => {
+  void it('sorts blocks and drops empty days', () => {
+    assert.deepStrictEqual(
+      scheduleForSaving({
+        mon: [{ start: '15:00', end: '18:00' }, { start: '07:00', end: '09:00' }],
+        tue: [],
+        sun: [{ start: '10:00', end: '12:00' }],
+      }),
+      {
+        mon: [{ start: '07:00', end: '09:00' }, { start: '15:00', end: '18:00' }],
+        sun: [{ start: '10:00', end: '12:00' }],
+      },
+    )
+  })
+
+  void it('turns a week with no times into "not set", never {}', () => {
+    assert.equal(scheduleForSaving({}), undefined)
+    assert.equal(scheduleForSaving({ mon: [], sat: [] }), undefined)
+  })
+
+  void it('lists days Monday first, weekend last', () => {
+    assert.deepStrictEqual([...WEEKDAYS], ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'])
+  })
+})
+
+void describe('sanitizeWeeklySchedule (untrusted JSON)', () => {
+  void it('keeps a valid schedule, sorted, with extra block fields stripped', () => {
+    assert.deepStrictEqual(
+      sanitizeWeeklySchedule({
+        sat: [{ start: '09:00', end: '13:00', note: 'camp' }],
+        mon: [{ start: '15:00', end: '18:00' }, { start: '07:00', end: '09:00' }],
+      }),
+      {
+        mon: [{ start: '07:00', end: '09:00' }, { start: '15:00', end: '18:00' }],
+        sat: [{ start: '09:00', end: '13:00' }],
+      },
+    )
+  })
+
+  void it('rejects the whole schedule on anything malformed', () => {
+    assert.equal(sanitizeWeeklySchedule({ funday: [] }), undefined)
+    assert.equal(sanitizeWeeklySchedule({ mon: 'all day' }), undefined)
+    assert.equal(sanitizeWeeklySchedule({ mon: [{ start: 9, end: 12 }] }), undefined)
+    assert.equal(sanitizeWeeklySchedule({ mon: [null] }), undefined)
+    assert.equal(sanitizeWeeklySchedule({ mon: [{ start: '07:00', end: '09:00' }], tue: [{ start: '12:00', end: '08:00' }] }), undefined)
+    assert.equal(sanitizeWeeklySchedule({ mon: [{ start: '08:00', end: '12:00' }, { start: '11:00', end: '15:00' }] }), undefined)
+  })
+
+  void it('treats a missing, empty or non-object value as "not set"', () => {
+    assert.equal(sanitizeWeeklySchedule(undefined), undefined)
+    assert.equal(sanitizeWeeklySchedule(null), undefined)
+    assert.equal(sanitizeWeeklySchedule([]), undefined)
+    assert.equal(sanitizeWeeklySchedule('Full-time'), undefined)
+    assert.equal(sanitizeWeeklySchedule({}), undefined)
+    assert.equal(sanitizeWeeklySchedule({ mon: [] }), undefined)
+  })
+})
+
+const WEEK = {
+  mon: [{ start: '07:00', end: '09:00' }, { start: '15:00', end: '18:00' }],
+  tue: [{ start: '08:00', end: '17:00' }],
+  wed: [{ start: '08:00', end: '17:00' }],
+  thu: [{ start: '08:00', end: '17:00' }],
+  fri: [{ start: '08:00', end: '17:00' }],
+  sat: [{ start: '09:30', end: '12:00' }],
+  sun: [{ start: '11:00', end: '13:00' }],
+}
+
+void describe('formatBlock', () => {
+  void it('writes am/pm once when both ends share it, in English', () => {
+    assert.equal(formatBlock({ start: '07:00', end: '09:00' }, 'en-US'), '7–9 am')
+    assert.equal(formatBlock({ start: '15:00', end: '18:00' }, 'en-US'), '3–6 pm')
+  })
+
+  void it('writes both when the block crosses noon, and shows minutes only when needed', () => {
+    assert.equal(formatBlock({ start: '09:00', end: '15:00' }, 'en-US'), '9 am–3 pm')
+    assert.equal(formatBlock({ start: '07:30', end: '09:00' }, 'en-US'), '7:30–9 am')
+    assert.equal(formatBlock({ start: '11:00', end: '12:00' }, 'en-US'), '11 am–12 pm')
+    assert.equal(formatBlock({ start: '00:00', end: '00:30' }, 'en-US'), '12–12:30 am')
+  })
+
+  void it("uses the locale's own 24-hour clock in Spanish and Vietnamese", () => {
+    assert.equal(formatBlock({ start: '07:00', end: '15:30' }, 'es'), '7:00–15:30')
+    assert.equal(formatBlock({ start: '07:00', end: '15:30' }, 'vi'), '7:00–15:30')
+  })
+
+  void it('accepts HH:mm:ss from the database', () => {
+    assert.equal(formatBlock({ start: '07:00:00', end: '09:00:00' }, 'en-US'), '7–9 am')
+  })
+})
+
+void describe('formatWeeklySchedule', () => {
+  void it('lists the week Monday first, splits days, and groups 3+ identical days', () => {
+    assert.equal(formatWeeklySchedule(WEEK, 'en-US'), 'Mon 7–9 am, 3–6 pm · Tue–Fri 8 am–5 pm · Sat 9:30 am–12 pm · Sun 11 am–1 pm')
+  })
+
+  void it('reads naturally in Spanish and Vietnamese', () => {
+    assert.equal(
+      formatWeeklySchedule(WEEK, 'es'),
+      'lun 7:00–9:00, 15:00–18:00 · mar–vie 8:00–17:00 · sáb 9:30–12:00 · dom 11:00–13:00',
+    )
+    assert.equal(
+      formatWeeklySchedule(WEEK, 'vi'),
+      'Thứ 2 7:00–9:00, 15:00–18:00 · Thứ 3–Thứ 6 8:00–17:00 · Thứ 7 9:30–12:00 · CN 11:00–13:00',
+    )
+  })
+
+  void it('never groups days that differ, and keeps a run of two day by day', () => {
+    const almost = { mon: [{ start: '08:00', end: '17:00' }], tue: [{ start: '08:00', end: '17:00' }], wed: [{ start: '08:00', end: '16:00' }] }
+    assert.equal(formatWeeklySchedule(almost, 'en-US'), 'Mon 8 am–5 pm · Tue 8 am–5 pm · Wed 8 am–4 pm')
+  })
+
+  void it('does not group across a day off', () => {
+    const gap = { mon: [{ start: '08:00', end: '12:00' }], tue: [{ start: '08:00', end: '12:00' }], thu: [{ start: '08:00', end: '12:00' }], fri: [{ start: '08:00', end: '12:00' }] }
+    assert.equal(formatWeeklySchedule(gap, 'en-US'), 'Mon 8 am–12 pm · Tue 8 am–12 pm · Thu 8 am–12 pm · Fri 8 am–12 pm')
+  })
+
+  void it('groups a full weekend camp run', () => {
+    const camp = { fri: [{ start: '09:00', end: '15:00' }], sat: [{ start: '09:00', end: '15:00' }], sun: [{ start: '09:00', end: '15:00' }] }
+    assert.equal(formatWeeklySchedule(camp, 'en-US'), 'Fri–Sun 9 am–3 pm')
+  })
+
+  void it('sorts a day even if its blocks were stored out of order', () => {
+    const unsorted = { mon: [{ start: '15:00', end: '18:00' }, { start: '07:00', end: '09:00' }] }
+    assert.equal(formatWeeklySchedule(unsorted, 'en-US'), 'Mon 7–9 am, 3–6 pm')
+  })
+
+  void it('is empty for a week with no times', () => {
+    assert.equal(formatWeeklySchedule({}, 'en-US'), '')
+    assert.equal(formatWeeklySchedule({ mon: [] }, 'en-US'), '')
+  })
+})
+
+void describe('summarizeSchedule', () => {
+  void it('formats a set schedule', () => {
+    assert.deepStrictEqual(summarizeSchedule({ schedule: { tue: [{ start: '09:00', end: '15:00' }] }, plan: 'Full-time' }, 'en-US'), {
+      kind: 'set',
+      text: 'Tue 9 am–3 pm',
+    })
+  })
+
+  void it('tells a saved-but-empty schedule apart from one never set', () => {
+    assert.deepStrictEqual(summarizeSchedule({ schedule: {}, plan: '' }, 'en-US'), { kind: 'no_days' })
+    assert.deepStrictEqual(summarizeSchedule({ schedule: undefined, plan: ' Part-time (M/W/F) ' }, 'en-US'), {
+      kind: 'not_set',
+      legacyPlan: 'Part-time (M/W/F)',
+    })
+    assert.deepStrictEqual(summarizeSchedule({ schedule: null, plan: '' }, 'en-US'), { kind: 'not_set', legacyPlan: '' })
   })
 })

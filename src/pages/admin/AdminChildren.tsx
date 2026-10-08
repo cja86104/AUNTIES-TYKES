@@ -20,6 +20,7 @@ import ChildForm, { emptyChildForm, formToChild, validateChildForm } from '../..
 import type { ChildFormValue } from '../../components/ChildForm'
 import { useStore } from '../../store/useStore'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
+import { ConsoleSchedule, consoleScheduleText } from '../../components/ScheduleSummary'
 
 export default function AdminChildren() {
   // Real readiness, not a timer: the store flips `ready` once bootstrap has
@@ -74,7 +75,7 @@ export default function AdminChildren() {
       const matchQuery =
         !q ||
         c.name.toLowerCase().includes(q) ||
-        c.plan.toLowerCase().includes(q) ||
+        consoleScheduleText(c).toLowerCase().includes(q) ||
         c.teacher.toLowerCase().includes(q)
       return matchGroup && matchQuery
     })
@@ -170,8 +171,10 @@ export default function AdminChildren() {
 
                   <dl className="mt-5 flex-1 space-y-2 text-sm">
                     <div className="flex justify-between gap-3">
-                      <dt className="text-slate-500">Plan</dt>
-                      <dd className="text-right font-semibold text-slate-800">{c.plan}</dd>
+                      <dt className="shrink-0 text-slate-500">Schedule</dt>
+                      <dd className="text-right font-semibold text-slate-800">
+                        <ConsoleSchedule child={c} />
+                      </dd>
                     </div>
                     <div className="flex justify-between gap-3">
                       <dt className="text-slate-500">Teacher</dt>

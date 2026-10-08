@@ -6,6 +6,7 @@ import PageTransition from '../../components/PageTransition'
 import { Avatar, Badge, Button, Card, EmptyState, PageHeader, statusTone } from '../../components/ui'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { ageLabel, fmtDate } from '../../lib/helpers'
+import { PortalSchedule } from '../../components/ScheduleSummary'
 
 export default function ParentChildren() {
   const { t } = useTranslation()
@@ -48,8 +49,10 @@ export default function ParentChildren() {
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       <Badge tone={statusTone(child.status)}>{t(`status.${child.status}`)}</Badge>
-                      <Badge tone="neutral">{child.plan}</Badge>
                     </div>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                      <PortalSchedule child={child} />
+                    </p>
                   </div>
                 </div>
 

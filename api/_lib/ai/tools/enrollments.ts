@@ -30,6 +30,8 @@
  * literal: the thing approved and the thing run are the same thing.
  */
 
+import { formatWeeklySchedule, sanitizeWeeklySchedule } from '../../../../src/lib/schedule.js'
+import type { WeeklySchedule } from '../../../../src/types.js'
 import { propose } from '../audit.js'
 import { prettyDate } from '../clock.js'
 import { AGE_GROUPS, exactPattern, type AgeGroup } from './families.js'
@@ -62,6 +64,12 @@ export interface SnapshotChild {
   dob: string
   ageGroup: AgeGroup
   plan: string
+  /**
+   * The weekly grid, sanitized. Null when the form had none or it was
+   * malformed: the child arrives as "schedule not set" for her to fill in.
+   * Null rather than undefined so it survives the trip through stored jsonb.
+   */
+  schedule: WeeklySchedule | null
   /** Empty when the form carried none; stored as NULL, as `fromChild` does. */
   startDate: string
   allergies: string[]
@@ -147,6 +155,7 @@ export function readEnrollmentSnapshot(source: Record<string, unknown>): Enrollm
       dob,
       ageGroup,
       plan: text(record, 'plan', 120),
+      schedule: sanitizeWeeklySchedule(record.schedule) ?? null,
       startDate: readDate(record, 'startDate') ?? '',
       allergies: readList(record.allergies),
       medications: readList(record.medications),
@@ -335,6 +344,9 @@ const enrollmentDecide: ToolSpec = {
         if (child.plan.length > 0) parts.push(child.plan)
         if (child.startDate.length > 0) parts.push(`starts ${prettyDate(child.startDate)}`)
         detail.push({ label: child.name, value: parts.join(' · ') })
+        if (child.schedule !== null) {
+          detail.push({ label: `${child.name} — schedule`, value: formatWeeklySchedule(child.schedule, 'en-US') })
+        }
         detail.push({
           label: `${child.name} — allergies`,
           value: child.allergies.length > 0 ? child.allergies.join(', ') : 'None recorded',

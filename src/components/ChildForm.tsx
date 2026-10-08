@@ -1,5 +1,7 @@
 import { Field, Input, Select, Textarea } from './ui'
-import type { AgeGroup, Child, ChildStatus, Family } from '../types'
+import ScheduleGrid, { scheduleIsValid } from './ScheduleGrid'
+import { scheduleForSaving } from '../lib/schedule'
+import type { AgeGroup, Child, ChildStatus, Family, WeeklySchedule } from '../types'
 
 /** Child fields as the admin edits them — lists are comma-separated text here. */
 export interface ChildFormValue {
@@ -8,7 +10,13 @@ export interface ChildFormValue {
   dob: string
   ageGroup: AgeGroup
   status: ChildStatus
+  /**
+   * Legacy free-text plan ("Full-time" etc.). No longer edited: carried through
+   * unchanged so an existing child keeps it, and '' for a new child.
+   */
   plan: string
+  /** The grid as edited. Saved through `scheduleForSaving`; all-empty = not set. */
+  schedule: WeeklySchedule
   startDate: string
   teacher: string
   allergies: string
@@ -17,7 +25,6 @@ export interface ChildFormValue {
 }
 
 const AGE_GROUPS: AgeGroup[] = ['Infant', 'Toddler', 'Preschool']
-const PLANS = ['Full-time', 'Part-time (M/W/F)', 'Part-time (T/Th)', 'Drop-in as needed']
 
 export const emptyChildForm = (familyId = ''): ChildFormValue => ({
   familyId,
@@ -25,7 +32,8 @@ export const emptyChildForm = (familyId = ''): ChildFormValue => ({
   dob: '',
   ageGroup: 'Toddler',
   status: 'active',
-  plan: 'Full-time',
+  plan: '',
+  schedule: {},
   startDate: '',
   teacher: 'Auntie Melissa',
   allergies: '',
@@ -41,6 +49,7 @@ export const childToForm = (c: Child): ChildFormValue => ({
   ageGroup: c.ageGroup,
   status: c.status,
   plan: c.plan,
+  schedule: c.schedule ?? {},
   startDate: c.startDate,
   teacher: c.teacher,
   allergies: c.allergies.join(', '),
@@ -56,6 +65,7 @@ export const formToChild = (v: ChildFormValue): Omit<Child, 'id' | 'hue'> => ({
   ageGroup: v.ageGroup,
   status: v.status,
   plan: v.plan,
+  schedule: scheduleForSaving(v.schedule),
   startDate: v.startDate,
   teacher: v.teacher.trim() || 'Auntie Melissa',
   allergies: v.allergies.split(',').map((s) => s.trim()).filter(Boolean),
@@ -69,6 +79,7 @@ export function validateChildForm(v: ChildFormValue): Record<string, string> {
   if (!v.dob) e.dob = 'Date of birth is required'
   if (!v.familyId) e.familyId = 'Pick a family'
   if (!v.startDate) e.startDate = 'Set a start date'
+  if (!scheduleIsValid(v.schedule)) e.schedule = 'Fix the schedule times marked in red.'
   return e
 }
 
@@ -131,15 +142,6 @@ export default function ChildForm({ value, onChange, errors = {}, families }: Ch
         </Select>
       </Field>
 
-      <Field label="Schedule">
-        <Select value={value.plan} onChange={(e) => set('plan', e.target.value)}>
-          {PLANS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </Select>
-      </Field>
       <Field label="Start date" error={errors.startDate}>
         <Input
           type="date"
@@ -156,12 +158,26 @@ export default function ChildForm({ value, onChange, errors = {}, families }: Ch
         <Input value={value.allergies} onChange={(e) => set('allergies', e.target.value)} placeholder="Peanuts, strawberries" />
       </Field>
 
-      <Field label="Medications" hint="Comma separated." className="sm:col-span-2">
+      <Field label="Medications" hint="Comma separated.">
         <Input value={value.medications} onChange={(e) => set('medications', e.target.value)} placeholder="EpiPen Jr." />
       </Field>
       <Field label="Notes" className="sm:col-span-2">
         <Textarea rows={3} value={value.notes} onChange={(e) => set('notes', e.target.value)} />
       </Field>
+
+      <div className="min-w-0 sm:col-span-2">
+        <ScheduleGrid
+          idPrefix="child-schedule"
+          value={value.schedule}
+          onChange={(schedule) => set('schedule', schedule)}
+          hint={
+            value.plan
+              ? `Leave every day empty if you don't know yet. Previously listed as "${value.plan}".`
+              : "Leave every day empty if you don't know yet."
+          }
+        />
+        {errors.schedule && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.schedule}</p>}
+      </div>
     </div>
   )
 }

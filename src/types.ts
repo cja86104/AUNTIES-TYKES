@@ -70,9 +70,11 @@ export interface Family {
 export type AgeGroup = 'Infant' | 'Toddler' | 'Preschool'
 export type ChildStatus = 'active' | 'waitlist'
 
-/** Monday first. Weekend care is real (the owner also runs a camp). */
-export const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
-export type Weekday = (typeof WEEKDAYS)[number]
+/**
+ * A day of the week. Weekend care is real (the owner also runs a camp). The
+ * Monday-first display order is `WEEKDAYS` in src/lib/schedule.ts.
+ */
+export type Weekday = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
 
 /**
  * One stretch of care inside a day, 24h `HH:mm`. `end` is after `start`, so a
@@ -370,7 +372,14 @@ export interface EnrollmentChildDraft {
   name: string
   dob: string
   ageGroup: AgeGroup
+  /** Legacy dropdown value. Forms submitted before schedules existed carry it; new ones send ''. */
   plan: string
+  /**
+   * The weekly grid as the parent filled it in. Absent on older submissions and
+   * when left empty. Untrusted (an anonymous form wrote it): approval runs it
+   * through `sanitizeWeeklySchedule`.
+   */
+  schedule?: WeeklySchedule
   startDate: string
   /** Free text as the parent typed it; split into a list on approval. */
   allergies: string

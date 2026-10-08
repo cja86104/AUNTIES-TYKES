@@ -963,6 +963,7 @@ const decideEnrollmentExecutor: Executor = {
           age_group: child.ageGroup,
           status: 'active' as const,
           plan: child.plan,
+          schedule: child.schedule,
           start_date: child.startDate.length > 0 ? child.startDate : null,
           teacher: DEFAULT_TEACHER,
           allergies: child.allergies,

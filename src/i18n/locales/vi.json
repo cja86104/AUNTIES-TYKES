@@ -147,7 +147,7 @@
     "onFile": "Thông tin lưu trữ",
     "dob": "Ngày sinh",
     "started": "Bắt đầu với chúng tôi",
-    "plan": "Gói ghi danh",
+    "schedule": "Lịch hằng tuần",
     "groupRatio": "Tỷ lệ nhóm",
     "allergies": "Dị ứng",
     "allergiesNone": "Không có thông tin",
@@ -363,5 +363,9 @@
       "schedule_exception": "Thay đổi lịch",
       "birthday": "Sinh nhật"
     }
+  },
+  "schedule": {
+    "notSet": "Chưa có lịch",
+    "noDays": "Không có ngày nào trong lịch"
   }
 }

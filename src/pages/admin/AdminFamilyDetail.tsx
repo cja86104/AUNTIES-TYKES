@@ -23,6 +23,7 @@ import ParentAccountDialog from '../../components/ParentAccountDialog'
 import type { FamilyFormValue } from '../../components/FamilyForm'
 import { useStore } from '../../store/useStore'
 import { money, fmtDate, ageLabel, invoiceBalance, invoiceStatus, sum } from '../../lib/helpers'
+import { consoleScheduleText } from '../../components/ScheduleSummary'
 
 export default function AdminFamilyDetail() {
   const { id } = useParams()
@@ -150,7 +151,7 @@ export default function AdminFamilyDetail() {
                       <div className="min-w-0">
                         <p className="truncate font-display text-sm font-bold text-slate-900">{k.name}</p>
                         <p className="truncate text-xs text-slate-500">
-                          {k.ageGroup} · {ageLabel(k.dob)} · {k.plan}
+                          {k.ageGroup} · {ageLabel(k.dob)} · {consoleScheduleText(k)}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <Badge tone={statusTone(k.status)}>{k.status}</Badge>

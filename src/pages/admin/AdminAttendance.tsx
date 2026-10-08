@@ -16,6 +16,7 @@ import {
 } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { fmtDate, fmtTime, todayISO, ageLabel } from '../../lib/helpers'
+import { consoleScheduleText } from '../../components/ScheduleSummary'
 
 export default function AdminAttendance() {
   const children = useStore((s) => s.children)
@@ -149,7 +150,7 @@ export default function AdminAttendance() {
                         {child.name}
                       </Link>
                       <p className="truncate text-xs text-slate-500">
-                        {child.ageGroup} · {ageLabel(child.dob)} · {child.plan}
+                        {child.ageGroup} · {ageLabel(child.dob)} · {consoleScheduleText(child)}
                         {/* The labelled In/Out block below is hidden on phones, where a rigid
                             160px column starved this name to zero width, so the times ride
                             along here instead. */}
