@@ -1,10 +1,10 @@
 # AI Admin Assistant — Planning Doc (v4 — decisions locked, nothing blocking Phase 1)
 
-**Status:** Plan only. Nothing in §§3–11 has been built yet — `api/` holds
-exactly one server function today (`create-parent-login.ts`, from the Auth
-migration), nothing AI-related. Unlike earlier drafts, that's no longer
-paired with an open decision or a permission gate — see the changelog below
-and §12. There is nothing left to resolve before Phase 1 starts.
+**Status (updated 2026-10-08):** Built and live in production — Phase 1 is
+done and Phase 2 is well along. §2 is the current state and §3's table is the
+tool-by-tool status; read those first. This header used to say "plan only,
+nothing built", which stopped being true on 2026-09-28. The changelog below is
+the September 27 pass, kept as history.
 
 **Drafted:** September 2026, with Claude (Cowork). **Updated September 27**
 — the three open items in the old §14 are all closed, so this pass locks
@@ -76,7 +76,7 @@ defect as a stale `ARCHITECTURE.md` — and this repo already has one of those.
 **Done since:** Ro is live in production. `api/` now holds six server
 functions: `create-parent-login.ts` from the Auth work, plus `ai/chat`,
 `ai/status`, `ai/transcribe`, `ai/speak` and `ai/confirm`. All of §3's read
-and draft tools work against real data, §5's watchers (seven since 2026-10-01) run on every turn,
+and draft tools work against real data, §5's watchers (nine as of 2026-10-08) run on every turn,
 §9's voice pipeline works in both directions on Chrome, and §11's slide-over
 persists across navigation. Migration `0013_ai_assistant.sql` is applied, so
 §8's audit log and §6/§7's standing rules are real tables.
@@ -94,7 +94,24 @@ function count stops growing here.
 §7's standing-rule check now firing for real at send time, §8's hourly
 ceilings, and a five-minute undo that genuinely removes the rows.
 
-**Not done:** the remaining mutation tools, marked in the table below.
+**Done 2026-10-01 to 2026-10-05:** most of the Money/PII pass — `family.add`,
+`payment.record`, `account.create` (`parent_login_create` in code) and
+`enrollment.decide`, all gated, none with undo.
+
+**Done 2026-10-08: child schedules.** Children now have a real weekly schedule
+(days and drop-off/pickup times, migration 0020), one-off changes for a single
+date, and new weekly schedules that start on a later date (migration 0021),
+replacing the old free-text `plan`. Ro reads them through the same resolver the
+attendance page uses (`src/lib/schedule.ts`, via `api/_lib/ai/schedules.ts`),
+so her headcount and the console's can never disagree. That brought one new
+read (`schedule_for_date`), two new Low tools (`schedule_change_set`,
+`schedule_plan_set`), a ninth watcher (`schedule_plan_starting`), a
+roster-based "today" line in her prompt, and promotion of started plans at the
+start of every chat turn. `attendance.set` now records one visit per
+arrival/departure, so a split day keeps both visits.
+
+**Not done:** the mutation tools still marked Waiting in the table below, and
+the deletions pass.
 
 One thing worth watching, from live use rather than from this plan: the
 Tier-0 model answers correctly but slowly, and TTS takes well over five
@@ -143,15 +160,18 @@ business settings, thread creation, and every deletion. The complete map is
 below, and the audit is the reason it is worth trusting: it was derived from
 `useStore.ts` rather than from memory of what the app does.
 
-### Built and live — 27 tools
+### Built and live — 34 tools (as of 2026-10-08)
 
-**Naming note, 2026-10-01.** Every tool name below is written with dots (`family.find`) because that's how this table has always shown them. The actual `ToolSpec.name` in code is now underscore-separated (`family_find`) for all 27 built tools — see the Tier 2 incident note in §10 for why: Anthropic's tool-name schema rejects dots. Treat every dotted name on this page, built or still-"Waiting", as shorthand for its underscore form in code; a not-yet-built tool should be named with underscores from the start when it's built.
+**Naming note, 2026-10-01.** Every tool name below is written with dots (`family.find`) because that's how this table has always shown them. The actual `ToolSpec.name` in code is now underscore-separated (`family_find`) for every built tool — see the Tier 2 incident note in §10 for why: Anthropic's tool-name schema rejects dots. Treat every dotted name on this page, built or still-"Waiting", as shorthand for its underscore form in code; a not-yet-built tool should be named with underscores from the start when it's built.
 
-**Reads (15).** `family.find` · `family.get` · `roster.list` ·
+**Reads (16).** `family.find` · `family.get` · `roster.list` ·
 `attendance.today` · `attendance.history` · `dailyLog.list` · `invoice.list` ·
 `invoice.get` · `thread.list` · `thread.get` · `document.list` ·
-`enrollment.list` · `calendar.upcoming` · `settings.get` · `rule.list` — all
-on the caller's own JWT, so RLS decides what comes back.
+`enrollment.list` · `calendar.upcoming` · `settings.get` · `rule.list` ·
+`schedule_for_date` — all on the caller's own JWT, so RLS decides what comes
+back. Since 2026-10-08 `attendance.today` and `schedule_for_date` are built on
+the shared schedule resolver: who is expected, still to come, coming back
+later, or has no schedule entered (reported as unknown, never as "off").
 
 **Drafts (1).** `dailyLog.draft` — prepares wording and stops. It is the only
 one left: `message.draft` and `announcement.draft` were **removed** on
@@ -177,6 +197,18 @@ propose and wait for her tap. §7 allows Low actions to auto-run "once trust is
 established"; trust is not established on day one, and the switch is cheap when
 she wants it — an auto-running tool is one that calls its executor directly
 instead of `propose`.
+
+**Schedules (2), added 2026-10-08.** `schedule_change_set` (one date differs:
+different times, not coming, or back to the usual) and `schedule_plan_set` (a new
+weekly schedule from a later date, or cancelling one before it starts). Both are
+Low, propose and wait for her tap, and use the console's own validation. They are
+the one exception to the no-delete line below: taking a one-off change back or
+cancelling a planned week deletes that row. It is only her own note about the
+future, removing it puts the child back on the schedule already on file, and the
+card says exactly that before she taps.
+
+**Money/PII and Medium (4), added 2026-10-01 to 2026-10-05.** `family.add`,
+`enrollment.decide`, `payment.record` and `account.create` — see the table.
 
 **None of the five can delete**, which is the one line drawn across this group.
 §3 already gates deletions regardless of tier because this app has no trash, and
@@ -207,19 +239,21 @@ have not been written; the path they plug into has been.
 
 | Store action(s) in `useStore.ts` | AI tool name | Risk tier | Status |
 |---|---|---|---|
-| `checkIn` / `checkOut` / `markAbsent` | `attendance.set` | Low | **Built 2026-09-28** |
+| `checkIn` / `checkOut` / `markAbsent` | `attendance.set` | Low | **Built 2026-09-28** — one visit per arrival/departure since 2026-10-08; marking absent is refused once times are recorded |
 | `addDailyLog` / `updateDailyLog` / ~~`deleteDailyLog`~~ | `dailyLog.write` | Low | **Built 2026-09-28** — write/update only, no delete |
 | ~~`addDocument`~~ / `toggleDocVisibility` / ~~`deleteDocument`~~ | `document.manage` | Low | **Built 2026-09-28** — visibility only; upload needs a file Ro doesn't have |
 | `addCalendarEvent` / `updateCalendarEvent` / ~~`deleteCalendarEvent`~~ | `calendar.mutate` | Low | **Built 2026-09-28** — add/update only |
 | `addLead` / `updateLead` | `lead.mutate` | Low | **Built 2026-09-28** |
 | ~~`setWaitlist`~~ | ~~`waitlist.mutate`~~ | — | **Cancelled 2026-09-28 — see below** |
-| `addFamily` / ~~`updateFamily`~~ / `addChild` / ~~`updateChild`~~ | `family.add` | Medium | **Built 2026-10-01** — a new family with its children in one step, gated, no undo; changing an existing family or child still Waiting |
+| `addFamily` / ~~`updateFamily`~~ / `addChild` / ~~`updateChild`~~ | `family.add` | Medium | **Built 2026-10-01** — a new family with its children in one step, gated, no undo; changing an existing family or child still Waiting. Since 2026-10-08 each child takes an optional weekly schedule instead of the old plan dropdown |
+| `saveScheduleChange` / `removeScheduleChange` | `schedule_change_set` | Low | **Built 2026-10-08** — gated, no undo; removing deletes the row (see above) |
+| `saveSchedulePlan` / `removeSchedulePlan` | `schedule_plan_set` | Low | **Built 2026-10-08** — gated, no undo; must start after today; cancelling deletes the row |
 | `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium | **Built 2026-10-05** — gated, no undo; the form is claimed with a compare-and-swap before the family is written, an email already on file blocks approval, and a failed write rolls back and returns the form to pending |
 | `updateSettings` / `updateRates` / `updatePolicies` | `settings.mutate` | **Money** — *added 2026-09-27* | Waiting |
 | `startThread` / `sendThreadMessage` | `message.send` | **Send** | **Built 2026-09-28** |
 | `addAnnouncement` | `announcement.send` | **Send** | **Built 2026-09-28** |
 | ~~`createInvoice`~~ / `recordPayment` / ~~`deleteInvoice`~~ | `payment.record` | **Money** | **Built 2026-10-01** — record a payment only, gated, no undo; creating and deleting invoices still Waiting |
-| `createParentLogin` (via `api/create-parent-login.ts`) | `account.create` | **Money/PII** | **Built 2026-10-01** — gated; she types the password on the card at her tap, so it never reaches a model, a tool argument or `ai_audit_log`; shares `api/_lib/parentLogin.ts` with the console endpoint; no undo |
+| `createParentLogin` (via `api/create-parent-login.ts`) | `account.create` (`parent_login_create` in code) | **Money/PII** | **Built 2026-10-01** — gated; she types the password on the card at her tap, so it never reaches a model, a tool argument or `ai_audit_log`; shares `api/_lib/parentLogin.ts` with the console endpoint; no undo |
 | *(none — Ro's own tables)* | `rule.save` / `rule.retire` | Medium | **Built 2026-09-28** |
 | *(none — Ro's own tables)* | `commitment.note` / `commitment.close` | Low, ungated | **Built 2026-09-28** |
 
@@ -232,8 +266,10 @@ a parent's action on their own account.
 Deletions are gated regardless of the tier they sit in: this app has no
 trash, so a deleted daily log or invoice is gone, and §8's undo window covers
 sends rather than deletes. And `settings.mutate` is filed under Money rather
-than Medium because `updateRates` changes the rate card every future invoice
-is built from — a quiet edit there is a pricing change, not a preference.
+than Medium because `updateRates` changes prices — a quiet edit there is a
+pricing change, not a preference. (Updated 2026-10-08: invoice prefill now bills
+each family's own weekly rate, so the rate card no longer sets tuition lines; its
+sibling discount still goes on every multi-child invoice, which keeps this Money.)
 
 **`waitlist.mutate` was cancelled on 2026-09-28, and this table was wrong to
 list it.** `setWaitlist` exists in `useStore.ts` and nothing calls it; no page
@@ -375,13 +411,20 @@ pinged about the same thing five times or at 9pm on a Sunday.
 
 | Trigger | Condition | Priority |
 |---|---|---|
-| `daily_log_missing` | A child's `attendance` shows `checked-out` today, no matching `dailyLogs` entry exists | Medium |
+| `daily_log_missing` | A child's `attendance` shows `checked-out` today, no matching `dailyLogs` entry exists — skipped while a split day still has a later block to come (2026-10-08) | Medium |
 | `payment_overdue` | An invoice is past `dueDate` with a balance owed, no reminder sent within the cooldown window | Medium → High with age |
 | `enrollment_new` | An `enrollments` row is `pending` and arrived within the stale threshold (3 days) — *added 2026-10-01* | High |
 | `enrollment_stale` | An `enrollments` row has sat `pending` past a threshold | Medium |
 | `ack_pending` | A `documents` row has `requiresAck: true` and a family hasn't acknowledged it | Low |
+| `incident_unacknowledged` | An incident report in the last 30 days that no parent in the family has confirmed reading in its current version | Medium → High after 24h |
 | `unanswered_message` | A `threads` entry's last message is from a parent, no reply within the cooldown window | Medium → High with age |
 | `cold_lead` | A `leads`/`waitlist` entry has had no status change or activity in N days | Low |
+| `schedule_plan_starting` | A new weekly schedule starts within the next 7 days — the reminder for a change she recorded ahead of time (2026-10-08) | Low |
+
+**As built:** cooldowns and quiet hours are computed and reported, not
+applied. Nothing is pushed at her yet — she asks and the sweep answers — so
+suppressing a result she asked for would be wrong. They arrive with unattended
+delivery; see the header of `api/_lib/ai/triggers.ts`.
 
 Each of these is a plain read query, evaluated by ordinary code — no model
 call, no cost, no judgment involved in deciding *whether* something is
@@ -892,6 +935,12 @@ the RLS policies alongside it, not after.
    Money/PII pass: invoices and payments, new families and children, enrollment
    decisions, parent logins, and the rate card — plus a deliberate pass on
    deletions, which nothing in Ro can do yet on purpose.
+
+   Status 2026-10-08: of that pass, new families and children, enrollment
+   decisions, recording payments and parent logins are built (2026-10-01 to
+   10-05), and child schedules landed as their own slice (2026-10-08, see §2).
+   Still Waiting: creating and deleting invoices, changing an existing family
+   or child, `settings.mutate`, and the deletions pass.
 4. **Phase 3 — broader action set.** Billing reminders, enrollment
    nudges — still confirmation-gated for anything in the Money/PII tier,
    indefinitely. Full unattended autonomy on money or child-safety
@@ -923,14 +972,21 @@ rather than splitting to a second vendor for voice.
 
 ## 15. Suggested next step
 
-Phase 0 is done, every decision in §14 is closed, and §12 confirms
-nothing is permission-gated. This is no longer "finish the migration
-first" or "wait on a decision" — it's just "start Phase 1." §3's tool
-catalog and §5's trigger queries, against the real Supabase tables that
-now exist, are the next concrete build targets.
+**Updated 2026-10-08.** This section used to say "start Phase 1", which is
+long done. What is actually next, from §3's table and §13:
 
-Two small pieces of upkeep, done alongside this update while they were
-already in view:
+- The rest of the Money/PII pass: creating and deleting invoices, changing an
+  existing family or child (write the jsonb columns the UI writes — see §3's
+  schema note), and `settings.mutate`. Check each against a page that actually
+  calls it before building, per the `waitlist.mutate` lesson.
+- A deliberate deletions pass, with card wording that says plainly a delete
+  cannot be taken back.
+- The latency tuning pass from §2: the slow Tier-0 answers and the TTS start
+  time.
+- Applying §5's cooldowns and quiet hours, once anything is delivered
+  unattended.
+
+Two small pieces of upkeep from the September 27 pass, kept for the record:
 
 - The earlier `AI_ASSISTANT_ENABLED` duplicate in `.env.local` (set both
   `false` and `true` in two different places) is gone — confirmed a

@@ -67,7 +67,7 @@ export default function AdminSettings() {
 
   const saveRates = () => {
     updateRates(rates)
-    pushToast({ title: 'Rate card saved', description: 'The tuition estimator on the public site updates immediately.' })
+    pushToast({ title: 'Rate card saved' })
   }
 
   const savePolicies = () => {
@@ -164,7 +164,7 @@ export default function AdminSettings() {
             </span>
             <div>
               <h2 className="font-display text-lg font-bold text-slate-900">Rate card</h2>
-              <p className="text-sm text-slate-500">Drives the public estimator. Invoice prefill uses each family's own weekly rate, plus the sibling discount here.</p>
+              <p className="text-sm text-slate-500">Your published prices, for reference. Invoice prefill bills each family's own weekly rate and applies the sibling discount set here.</p>
             </div>
           </div>
 

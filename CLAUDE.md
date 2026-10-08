@@ -19,7 +19,7 @@ demo login: every account is created by the owner in the admin console.
 - **react-router-dom 6** — `BrowserRouter` + `vercel.json` SPA rewrite
 - framer-motion · lucide-react · recharts · react-hook-form + zod · date-fns
 - **i18n** — en / es / vi, all three kept at exact key parity
-- Deploys to **Vercel**; one serverless function in `api/`
+- Deploys to **Vercel**; six serverless functions in `api/` (parent logins + Ro)
 
 ## Commands
 
@@ -33,9 +33,14 @@ npm run preview    # serve the production build
 ```
 
 **Non-negotiable:** `npm run lint`, `npm run typecheck` and `npm test` must
-all exit 0 before any change is called done. Both currently exit 0 with zero warnings
-and zero errors — the last 3 `react-hooks/exhaustive-deps` warnings were
-fixed 2026-09-26. Keep it at zero.
+all exit 0 before any change is called done. All three currently exit 0 with
+zero warnings and zero errors — the last 3 `react-hooks/exhaustive-deps`
+warnings were fixed 2026-09-26. Keep it at zero.
+
+Known exception, left for now (2026-10-08): `npm run build` prints two Rollup
+"annotation that Rollup cannot interpret" warnings from comments inside zod's
+own files (`zod/v4/core/regexes.js`, `util.js`; present since zod 4.5.0). They
+are not from app code. Any other build warning is new and must be fixed.
 
 ## Code standards (Allen Code Co)
 
@@ -71,9 +76,13 @@ schema/domain mismatch at build time rather than at runtime against live data.
 - `src/components/ProtectedRoute.tsx` — route guards; holds the route until
   `store.ready` so a hard refresh does not bounce a signed-in user to /login.
 - Documents live in a **private** bucket; downloads use short-lived signed URLs.
-- `api/create-parent-login.ts` is the only server function. It needs the
-  service-role key, verifies the caller's token and checks `role = 'admin'`.
-  That key must never be `VITE_`-prefixed or Vite inlines it into the bundle.
+- Server functions in `api/`: `create-parent-login.ts`, plus Ro's
+  `ai/chat.ts`, `ai/confirm.ts`, `ai/status.ts`, `ai/transcribe.ts` and
+  `ai/speak.ts`. Each verifies the caller's token and checks
+  `role = 'admin'`. Creating a parent login needs the service-role key
+  (`api/_lib/parentLogin.ts`, shared by the console endpoint and Ro's
+  `ai/confirm.ts`); Ro needs the OpenRouter key. Neither may be
+  `VITE_`-prefixed, or Vite inlines it into the bundle.
 
 ## Product rules from the owner — apply to every feature
 
@@ -116,7 +125,8 @@ schema/domain mismatch at build time rather than at runtime against live data.
   `todayInZone()` on the server.
 - Invoice prefill bills each enrolled child at the family's own weekly rate
   (`customWeeklyRate`) for 4 weeks; with no rate on file it asks for one. The
-  Settings rate card drives only the public estimator and the sibling discount.
+  Settings rate card is not a fallback — only its sibling discount is applied.
+  (There is no public tuition estimator; nothing public reads the rate card.)
 
 ## Brand
 
@@ -154,6 +164,7 @@ every public page.
 
 - `.claude/ARCHITECTURE.md` — routes, data model, store, security boundary
 - `.claude/LAUNCH-CHECKLIST.md` — what is still outstanding before launch
-- `AI-ADMIN-ASSISTANT-PLAN.md` + `.claude/AI-ASSISTANT-BUILD-HANDOFF.md` —
-  the AI admin assistant ("Ro"): full spec and, respectively, a start-here
-  briefing for whichever session begins writing it. Read the handoff first.
+- `AI-ADMIN-ASSISTANT-PLAN.md` — the AI admin assistant ("Ro"): spec and
+  living status. §2 is where it stands, §3 the tool-by-tool table, §15 what
+  is next. `.claude/AI-ASSISTANT-BUILD-HANDOFF.md` is the original
+  start-of-build briefing, kept for its non-negotiables.

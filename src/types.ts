@@ -58,8 +58,8 @@ export interface Family {
   /**
    * Weekly tuition rate agreed with this family, per enrolled child. Invoice
    * prefill bills every enrolled child at this rate for 4 weeks. Undefined
-   * means no rate on file: prefill asks for one instead of guessing (the
-   * Settings rate card drives only the public estimator).
+   * means no rate on file: prefill asks for one instead of guessing. The
+   * Settings rate card is not a fallback; only its sibling discount is used.
    */
   customWeeklyRate?: number
 }

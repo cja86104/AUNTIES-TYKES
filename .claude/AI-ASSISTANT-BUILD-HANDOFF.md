@@ -1,5 +1,15 @@
 # Handoff — AI Admin Assistant ("Ro"), start of build
 
+> **Read this first (updated 2026-10-08).** This handoff was written for the
+> start of the build and is kept for its non-negotiables, which still hold.
+> Its status is history: Ro has been live in production since 2026-09-28,
+> `api/` has six server functions, and 34 tools are built. "Nothing
+> AI-related exists in code yet" and "Start here" below are no longer true.
+> For the current state read `AI-ADMIN-ASSISTANT-PLAN.md` §2 (status),
+> §3 (tool-by-tool table) and §15 (what is next). The environment block
+> below is the September 27 configuration; check `.env.local` and Vercel for
+> the values actually in use.
+
 **Written:** September 27, 2026, for whichever session actually starts
 writing code. **Read `AI-ADMIN-ASSISTANT-PLAN.md` in full before touching
 anything** — that document (v4, ~600 lines) is the real spec: architecture,
