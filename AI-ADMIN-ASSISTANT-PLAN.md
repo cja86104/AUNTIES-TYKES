@@ -826,6 +826,12 @@ the rest of the tool catalog) through the proper channels without the
 `tools.0.custom.name` rejection. Do not re-introduce dots into any
 `ToolSpec.name` in a future tool.
 
+**Changed 2026-10-08:** Tier 2 is now `anthropic/claude-haiku-5.5`, pinned to
+OpenRouter's Anthropic provider (`AI_MODEL_TIER2_ESCALATION_PROVIDER=anthropic`,
+sent as `provider: { only: ["anthropic"], allow_fallbacks: false }`). The
+description below is of the original pick, kept for the reasoning; reconfirm
+Haiku 5.5's pricing on OpenRouter's Models API.
+
 **Tier 2 — rare escalation.** `anthropic/claude-haiku-4.5` — $1 / $5 per
 1M tokens, 200K context, extended thinking with controllable reasoning
 depth. OpenRouter's own listing puts it at matching Claude Sonnet 4 on
