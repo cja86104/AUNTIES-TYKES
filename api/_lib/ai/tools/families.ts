@@ -21,10 +21,10 @@
  *  - The age groups and relations are the same option lists those forms
  *    offer. If one list changes, change both.
  *
- * Deliberately NOT here: changing an existing family or child, the secondary
- * contact and emergency contacts, and a custom weekly rate. The rate is the Money
- * tier (§3 files rate changes there), and the contacts can be filled in on the
- * family's page — a card that tries to show all of it stops being readable.
+ * Deliberately NOT here: the secondary contact, emergency contacts and a custom
+ * weekly rate — a card that tries to show all of it at once stops being readable.
+ * They are filled in afterwards with `family_update`, which is also where every
+ * change to an existing family or child lives (./familyEdits.ts).
  */
 
 import type { WeeklySchedule } from '../../../../src/types.js'
@@ -86,7 +86,7 @@ export function exactPattern(value: string): string {
 }
 
 /** The console's email check, character for character. */
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** More than this many children in one family is a misread, not a family. */
 const MAX_CHILDREN = 6
@@ -118,13 +118,13 @@ export interface PendingFamily {
 }
 
 /** Case-insensitive match against a fixed option list, returning its spelling. */
-function pick<T extends string>(raw: string | null, options: readonly T[]): T | null {
+export function pick<T extends string>(raw: string | null, options: readonly T[]): T | null {
   if (raw === null) return null
   return options.find((option) => option.toLowerCase() === raw.toLowerCase()) ?? null
 }
 
 /** A list of short strings — from an array, or from "peanuts, eggs" text. */
-function readList(value: unknown): string[] {
+export function readList(value: unknown): string[] {
   const items: string[] = Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === 'string')
     : typeof value === 'string'

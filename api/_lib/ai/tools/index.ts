@@ -22,6 +22,7 @@ import type { ToolDefinition } from '../openrouter.js'
 import { accountTools } from './accounts.js'
 import { billingTools } from './billing.js'
 import { familyTools } from './families.js'
+import { familyEditTools } from './familyEdits.js'
 import { draftTools } from './drafts.js'
 import { enrollmentTools } from './enrollments.js'
 import { readTools } from './reads.js'
@@ -45,6 +46,7 @@ export const roTools: ToolSpec[] = [
   ...scheduleTools,
   ...billingTools,
   ...familyTools,
+  ...familyEditTools,
   ...accountTools,
   ...enrollmentTools,
 ]

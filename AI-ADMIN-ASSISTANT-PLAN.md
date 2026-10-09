@@ -110,6 +110,14 @@ roster-based "today" line in her prompt, and promotion of started plans at the
 start of every chat turn. `attendance.set` now records one visit per
 arrival/departure, so a split day keeps both visits.
 
+**Done 2026-10-08: creating invoices.** `invoice.create`, gated, sharing its
+tuition and period wording with the Invoices page through `src/lib/invoiceLines.ts`.
+
+**Done 2026-10-08: changing families and children.** `family.update` and
+`child.update` (`api/_lib/ai/tools/familyEdits.ts`), gated, changing only the
+fields she named and refusing to save over a console edit made while the card
+waited.
+
 **Not done:** the mutation tools still marked Waiting in the table below, and
 the deletions pass.
 
@@ -160,7 +168,7 @@ business settings, thread creation, and every deletion. The complete map is
 below, and the audit is the reason it is worth trusting: it was derived from
 `useStore.ts` rather than from memory of what the app does.
 
-### Built and live — 34 tools (as of 2026-10-08)
+### Built and live — 37 tools (as of 2026-10-08)
 
 **Naming note, 2026-10-01.** Every tool name below is written with dots (`family.find`) because that's how this table has always shown them. The actual `ToolSpec.name` in code is now underscore-separated (`family_find`) for every built tool — see the Tier 2 incident note in §10 for why: Anthropic's tool-name schema rejects dots. Treat every dotted name on this page, built or still-"Waiting", as shorthand for its underscore form in code; a not-yet-built tool should be named with underscores from the start when it's built.
 
@@ -207,8 +215,9 @@ cancelling a planned week deletes that row. It is only her own note about the
 future, removing it puts the child back on the schedule already on file, and the
 card says exactly that before she taps.
 
-**Money/PII and Medium (4), added 2026-10-01 to 2026-10-05.** `family.add`,
-`enrollment.decide`, `payment.record` and `account.create` — see the table.
+**Money/PII and Medium (7), added 2026-10-01 to 2026-10-08.** `family.add`,
+`family.update`, `child.update`, `enrollment.decide`, `payment.record`,
+`account.create` and `invoice.create` — see the table.
 
 **None of the five can delete**, which is the one line drawn across this group.
 §3 already gates deletions regardless of tier because this app has no trash, and
@@ -245,14 +254,17 @@ have not been written; the path they plug into has been.
 | `addCalendarEvent` / `updateCalendarEvent` / ~~`deleteCalendarEvent`~~ | `calendar.mutate` | Low | **Built 2026-09-28** — add/update only |
 | `addLead` / `updateLead` | `lead.mutate` | Low | **Built 2026-09-28** |
 | ~~`setWaitlist`~~ | ~~`waitlist.mutate`~~ | — | **Cancelled 2026-09-28 — see below** |
-| `addFamily` / ~~`updateFamily`~~ / `addChild` / ~~`updateChild`~~ | `family.add` | Medium | **Built 2026-10-01** — a new family with its children in one step, gated, no undo; changing an existing family or child still Waiting. Since 2026-10-08 each child takes an optional weekly schedule instead of the old plan dropdown |
+| `addFamily` / `addChild` | `family.add` | Medium | **Built 2026-10-01** — a new family with its children in one step, gated, no undo. Since 2026-10-08 each child takes an optional weekly schedule instead of the old plan dropdown |
+| `updateFamily` | `family.update` | Medium; **Money** when the weekly rate changes | **Built 2026-10-08** — gated, no undo. Only the named fields change; the card shows each as before → after, and the executor saves nothing if any "before" moved while the card waited. Writes the jsonb `secondary`/`emergency` the dialog writes, never `family_contacts`. Emergency contacts are added/removed by name, max 4. An email change is checked against other families and does not change the parent's sign-in email (the card says so) |
+| `updateChild` | `child.update` | Medium | **Built 2026-10-08** — gated, no undo, same before-check. Allergies and medications are added/removed by name, never retyped, and a removal gets its own Careful line. Status covers moving a child to or from the waitlist (§3's cancelled `waitlist.mutate`). Deliberately not the weekly schedule — parents get no marker for an in-place edit, so schedules stay with the schedule tools — and not moving a child to another family (the isolation boundary) |
 | `saveScheduleChange` / `removeScheduleChange` | `schedule_change_set` | Low | **Built 2026-10-08** — gated, no undo; removing deletes the row (see above) |
 | `saveSchedulePlan` / `removeSchedulePlan` | `schedule_plan_set` | Low | **Built 2026-10-08** — gated, no undo; must start after today; cancelling deletes the row |
 | `approveEnrollment` / `declineEnrollment` | `enrollment.decide` | Medium | **Built 2026-10-05** — gated, no undo; the form is claimed with a compare-and-swap before the family is written, an email already on file blocks approval, and a failed write rolls back and returns the form to pending |
 | `updateSettings` / `updateRates` / `updatePolicies` | `settings.mutate` | **Money** — *added 2026-09-27* | Waiting |
 | `startThread` / `sendThreadMessage` | `message.send` | **Send** | **Built 2026-09-28** |
 | `addAnnouncement` | `announcement.send` | **Send** | **Built 2026-09-28** |
-| ~~`createInvoice`~~ / `recordPayment` / ~~`deleteInvoice`~~ | `payment.record` | **Money** | **Built 2026-10-01** — record a payment only, gated, no undo; creating and deleting invoices still Waiting |
+| ~~`createInvoice`~~ / `recordPayment` / ~~`deleteInvoice`~~ | `payment.record` | **Money** | **Built 2026-10-01** — record a payment only, gated, no undo |
+| `createInvoice` | `invoice.create` | **Money** | **Built 2026-10-08** — gated, no undo. Tuition lines and the period come from `src/lib/invoiceLines.ts`, which the Invoices page's prefill now calls too, so the two cannot drift; extra lines need a price she gave or the rate card's. Number from `next_invoice_id`, then insert. The card warns on a second invoice for the same period and on a due date already past. Deleting an invoice is in the deletions pass |
 | `createParentLogin` (via `api/create-parent-login.ts`) | `account.create` (`parent_login_create` in code) | **Money/PII** | **Built 2026-10-01** — gated; she types the password on the card at her tap, so it never reaches a model, a tool argument or `ai_audit_log`; shares `api/_lib/parentLogin.ts` with the console endpoint; no undo |
 | *(none — Ro's own tables)* | `rule.save` / `rule.retire` | Medium | **Built 2026-09-28** |
 | *(none — Ro's own tables)* | `commitment.note` / `commitment.close` | Low, ungated | **Built 2026-09-28** |
@@ -945,8 +957,9 @@ the RLS policies alongside it, not after.
    Status 2026-10-08: of that pass, new families and children, enrollment
    decisions, recording payments and parent logins are built (2026-10-01 to
    10-05), and child schedules landed as their own slice (2026-10-08, see §2).
-   Still Waiting: creating and deleting invoices, changing an existing family
-   or child, `settings.mutate`, and the deletions pass.
+   Creating invoices and changing an existing family or child landed
+   2026-10-08. Still Waiting: `settings.mutate`, and the deletions pass (which
+   includes deleting an invoice).
 4. **Phase 3 — broader action set.** Billing reminders, enrollment
    nudges — still confirmation-gated for anything in the Money/PII tier,
    indefinitely. Full unattended autonomy on money or child-safety
@@ -981,9 +994,8 @@ rather than splitting to a second vendor for voice.
 **Updated 2026-10-08.** This section used to say "start Phase 1", which is
 long done. What is actually next, from §3's table and §13:
 
-- The rest of the Money/PII pass: creating and deleting invoices, changing an
-  existing family or child (write the jsonb columns the UI writes — see §3's
-  schema note), and `settings.mutate`. Check each against a page that actually
+- The rest of the Money/PII pass (creating invoices and changing families and
+  children done 2026-10-08): `settings.mutate`. Check each against a page that actually
   calls it before building, per the `waitlist.mutate` lesson.
 - A deliberate deletions pass, with card wording that says plainly a delete
   cannot be taken back.

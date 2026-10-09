@@ -19,6 +19,7 @@ import {
 import { useStore } from '../../store/useStore'
 import { fmtDate, invoiceBalance, invoiceStatus, money, todayISO, uid } from '../../lib/helpers'
 import type { InvoiceStatus, LineItem } from '../../types'
+import { invoicePeriod, tuitionLines } from '../../lib/invoiceLines'
 
 interface DraftLine {
   id: string
@@ -122,7 +123,6 @@ export default function AdminInvoices() {
       pushToast({ tone: 'info', title: 'No enrolled children', description: 'This family has no active enrollments to bill.' })
       return
     }
-    const rate = settings.rates
     const family = families.find((f) => f.id === familyId)
     const weeklyRate = family?.customWeeklyRate
     if (weeklyRate == null) {
@@ -134,26 +134,11 @@ export default function AdminInvoices() {
       })
       return
     }
-    const next: DraftLine[] = kids.map((c) => ({
-      id: uid('line'),
-      label: `${c.name} — Tuition (4 weeks)`,
-      qty: '4',
-      unit: String(weeklyRate),
-    }))
-
-    if (kids.length > 1 && rate.siblingDiscountPct > 0) {
-      const weekly = next.map((l) => Number(l.unit) || 0).sort((a, b) => a - b)
-      const cheapest = weekly[0] ?? 0
-      const discount = Math.round(cheapest * 4 * (rate.siblingDiscountPct / 100))
-      if (discount > 0) {
-        next.push({
-          id: uid('line'),
-          label: `Sibling discount (${rate.siblingDiscountPct}% on second child)`,
-          qty: '1',
-          unit: String(-discount),
-        })
-      }
-    }
+    const next: DraftLine[] = tuitionLines(
+      kids.map((c) => c.name),
+      weeklyRate,
+      settings.rates.siblingDiscountPct,
+    ).map((l) => ({ id: uid('line'), label: l.label, qty: String(l.qty), unit: String(l.unit) }))
 
     setLines(next)
     setErrors((e) => ({ ...e, lines: undefined }))
@@ -177,12 +162,11 @@ export default function AdminInvoices() {
       amount: lineTotal(l),
     }))
     const amount = lineItems.reduce((s, l) => s + l.amount, 0)
-    const shortName = familyName(familyId).replace(/\s*Family$/, '')
 
     setSaving(true)
     const id = await createInvoice({
       familyId,
-      period: `${fmtDate(todayISO(), 'MMMM yyyy')} · ${shortName}`,
+      period: invoicePeriod(todayISO(), familyName(familyId)),
       dueDate,
       amount,
       lineItems,

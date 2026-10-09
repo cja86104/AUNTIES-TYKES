@@ -29,8 +29,16 @@ import { prettyDate } from './clock.js'
 import { uid } from './ids.js'
 import { retireRule, saveRule, type SendTarget } from './rules.js'
 import { readPendingRule } from './tools/rules.js'
-import { readAmount, readInvoiceBalance, readMethod, toCents } from './tools/billing.js'
+import { readAmount, readInvoiceBalance, readMethod, readPendingInvoice, toCents } from './tools/billing.js'
 import { DEFAULT_TEACHER, exactPattern, pickHue, readPendingFamily } from './tools/families.js'
+import {
+  canonical,
+  familyUsingEmail,
+  readChildChanges,
+  readFamilyChanges,
+  type ChildChanges,
+  type FamilyChanges,
+} from './tools/familyEdits.js'
 import { emailInUse, LOGIN_SECRET, readPendingLogin } from './tools/accounts.js'
 import { familyWithEmail, readEnrollmentSnapshot } from './tools/enrollments.js'
 import { createParentAccount } from '../parentLogin.js'
@@ -910,6 +918,58 @@ const recordPaymentExecutor: Executor = {
 }
 
 /**
+ * Creates one invoice, mirroring `createInvoice` in useStore.ts as the Invoices
+ * page's "New invoice" form calls it: the number from the database's own counter
+ * first (migration 0015), then a plain insert — never an upsert, so an id that
+ * somehow exists already is refused rather than overwriting an invoice.
+ *
+ * The lines, period and due date are the ones on the card, read back from the
+ * proposal; the total is worked out again from those lines rather than trusted.
+ * The family is checked again because it could have been removed while the card
+ * waited. If the number is issued and the insert then fails, that number is
+ * skipped — the same as the console, and harmless: numbers are never reused.
+ *
+ * No undo. Taking an invoice back is a deletion, and nothing in Ro deletes (§3).
+ */
+const createInvoiceExecutor: Executor = {
+  tool: 'invoice.create',
+  run: async (ctx, proposal) => {
+    const pending = readPendingInvoice(proposal.arguments)
+    if (typeof pending === 'string') return { ok: false, error: `That invoice could not be read back: ${pending}` }
+
+    const family = await ctx.caller.db.from('families').select('id').eq('id', pending.familyId).maybeSingle()
+    if (family.error !== null) return { ok: false, error: `Could not check that family: ${family.error.message}` }
+    if (family.data === null) return { ok: false, error: `${pending.familyLabel} is no longer on file, so nothing was created.` }
+
+    const issued = await ctx.caller.db.rpc('next_invoice_id')
+    if (issued.error !== null) {
+      return { ok: false, error: `Could not get an invoice number: ${issued.error.message}. Nothing was created.` }
+    }
+    const id = issued.data
+
+    const written = await ctx.caller.db.from('invoices').insert({
+      id,
+      family_id: pending.familyId,
+      period: pending.period,
+      issued_at: ctx.today,
+      due_date: pending.dueDate,
+      amount: pending.amount,
+      line_items: pending.lineItems,
+      memo: pending.memo,
+    })
+    if (written.error !== null) {
+      return { ok: false, error: `Could not create that invoice: ${written.error.message}` }
+    }
+
+    return {
+      ok: true,
+      summary: `${id} created — ${money(pending.amount)} to ${pending.familyLabel}, due ${prettyDate(pending.dueDate)}. It is in their portal now.`,
+      targets: [id],
+    }
+  },
+}
+
+/**
  * Adds one family and its children, mirroring `addFamily` + `addChild` in
  * useStore.ts as the Families page's "Add family" dialog calls them.
  *
@@ -1013,6 +1073,92 @@ const addFamilyExecutor: Executor = {
           : `${pending.name} added to Families, with ${names.join(' and ')}.`,
       targets: [familyId, ...childIds],
     }
+  },
+}
+
+/**
+ * The columns in `before` whose value on file is no longer what the card showed.
+ * Empty means it is safe to write `after`.
+ */
+function movedSince(current: Record<string, unknown>, before: Record<string, unknown>): string[] {
+  return Object.keys(before).filter((column) => canonical(current[column]) !== canonical(before[column]))
+}
+
+const MOVED =
+  'changed in the console while this card was waiting, so nothing was saved — ask me again ' +
+  'and I will start from what is on file now.'
+
+/**
+ * Changes an existing family, mirroring `updateFamily` as the family page's Edit
+ * details dialog calls it — but writing only the columns on the card, and only if
+ * each one still holds the value the card showed as "before" (see
+ * ./tools/familyEdits.ts). The email is checked against other families again,
+ * since one could have taken it while the card waited.
+ *
+ * No undo, matching the console; a wrong edit is put right with another edit.
+ */
+const updateFamilyExecutor: Executor = {
+  tool: 'family.update',
+  run: async (ctx, proposal) => {
+    const familyId = readString(proposal.arguments, 'familyId')
+    const familyLabel = readString(proposal.arguments, 'familyLabel') ?? 'That family'
+    const before = readFamilyChanges(proposal.arguments.before)
+    const after = readFamilyChanges(proposal.arguments.after)
+    if (familyId === null || typeof before === 'string' || typeof after === 'string') {
+      return { ok: false, error: 'That change could not be read back, so nothing was saved' }
+    }
+    if (Object.keys(after).length === 0) return { ok: false, error: 'That card had no changes on it' }
+
+    const read = await ctx.caller.db.from('families').select('*').eq('id', familyId).maybeSingle()
+    if (read.error !== null) return { ok: false, error: `Could not read that family: ${read.error.message}` }
+    if (read.data === null) return { ok: false, error: `${familyLabel} is no longer on file, so nothing was saved.` }
+
+    const moved = movedSince(read.data, before)
+    if (moved.length > 0) return { ok: false, error: `${familyLabel}'s ${moved.join(', ')} ${MOVED}` }
+
+    if (after.email !== undefined) {
+      const clash = await familyUsingEmail(ctx, after.email, familyId)
+      if (!clash.ok) return { ok: false, error: clash.error }
+      if (clash.name !== null) return { ok: false, error: `${clash.name} already uses ${after.email}, so nothing was saved.` }
+    }
+
+    const patch: FamilyChanges = after
+    const written = await ctx.caller.db.from('families').update(patch).eq('id', familyId)
+    if (written.error !== null) return { ok: false, error: `Could not save those changes: ${written.error.message}` }
+
+    return { ok: true, summary: `${familyLabel} updated.`, targets: [familyId] }
+  },
+}
+
+/**
+ * Changes an existing child, mirroring `updateChild` as the child page's Edit
+ * details dialog calls it, under the same before-check as the family above. Never
+ * touches the schedule or the family the child belongs to.
+ */
+const updateChildExecutor: Executor = {
+  tool: 'child.update',
+  run: async (ctx, proposal) => {
+    const childId = readString(proposal.arguments, 'childId')
+    const childLabel = readString(proposal.arguments, 'childLabel') ?? 'That child'
+    const before = readChildChanges(proposal.arguments.before)
+    const after = readChildChanges(proposal.arguments.after)
+    if (childId === null || typeof before === 'string' || typeof after === 'string') {
+      return { ok: false, error: 'That change could not be read back, so nothing was saved' }
+    }
+    if (Object.keys(after).length === 0) return { ok: false, error: 'That card had no changes on it' }
+
+    const read = await ctx.caller.db.from('children').select('*').eq('id', childId).maybeSingle()
+    if (read.error !== null) return { ok: false, error: `Could not read that child: ${read.error.message}` }
+    if (read.data === null) return { ok: false, error: `${childLabel} is no longer on file, so nothing was saved.` }
+
+    const moved = movedSince(read.data, before)
+    if (moved.length > 0) return { ok: false, error: `${childLabel}'s ${moved.join(', ')} ${MOVED}` }
+
+    const patch: ChildChanges = after
+    const written = await ctx.caller.db.from('children').update(patch).eq('id', childId)
+    if (written.error !== null) return { ok: false, error: `Could not save those changes: ${written.error.message}` }
+
+    return { ok: true, summary: `${childLabel}'s details updated.`, targets: [childId] }
   },
 }
 
@@ -1243,7 +1389,10 @@ const executors: Executor[] = [
   leadExecutor,
   documentExecutor,
   recordPaymentExecutor,
+  createInvoiceExecutor,
   addFamilyExecutor,
+  updateFamilyExecutor,
+  updateChildExecutor,
   createParentLoginExecutor,
   decideEnrollmentExecutor,
 ]
