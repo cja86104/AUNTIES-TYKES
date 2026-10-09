@@ -17,6 +17,7 @@
 import type { Contact, Incident, WeeklySchedule } from '../../../../src/types.js'
 import { expectedWords, loadDays, MAX_DAYS, notExpectedWords, scheduleWords } from '../schedules.js'
 import { daysSince, prettyDate, shiftDays } from '../clock.js'
+import { AGE_GROUPS } from './families.js'
 import {
   invoiceState,
   type AttendanceBrief,
@@ -349,14 +350,14 @@ const rosterList: ToolSpec = {
     '"who is enrolled", age-group counts, or to resolve a child name to an id.',
   parameters: schema({
     status: { type: 'string', enum: ['active', 'waitlist', 'all'] },
-    ageGroup: { type: 'string', enum: ['Infant', 'Toddler', 'Preschool'] },
+    ageGroup: { type: 'string', enum: AGE_GROUPS },
   }),
   execute: async (args, ctx): Promise<ToolOutcome> => {
     const status = readEnum(args, 'status', ['active', 'waitlist', 'all'] as const, 'active')
     const ageGroup = readEnum(
       args,
       'ageGroup',
-      ['Infant', 'Toddler', 'Preschool', 'any'] as const,
+      [...AGE_GROUPS, 'any'] as const,
       'any',
     )
 

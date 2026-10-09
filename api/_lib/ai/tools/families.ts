@@ -46,7 +46,7 @@ import {
 import { readWeek, WEEK_SCHEMA } from './schedules.js'
 
 /** Mirrors AGE_GROUPS in src/components/ChildForm.tsx and the `age_group` enum. */
-export const AGE_GROUPS = ['Infant', 'Toddler', 'Preschool'] as const
+export const AGE_GROUPS = ['Infant', 'Toddler', 'Preschool', 'Elementary', 'Middle School'] as const
 export type AgeGroup = (typeof AGE_GROUPS)[number]
 
 /** Mirrors the `child_status` enum. */

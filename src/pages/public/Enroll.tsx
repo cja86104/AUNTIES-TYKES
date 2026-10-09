@@ -4,13 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, ArrowRight, CheckCircle2, Plus, Trash2, Phone, Send } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import ScheduleGrid, { scheduleIsValid } from '../../components/ScheduleGrid'
+import { AGE_GROUPS } from '../../components/ChildForm'
 import { Badge, Button, Card, Field, Input, Select, Textarea } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { uid, todayISO, fmtDate } from '../../lib/helpers'
 import { scheduleForSaving } from '../../lib/schedule'
-import type { AgeGroup, Contact, EnrollmentChildDraft, WeeklySchedule } from '../../types'
-
-const AGE_GROUPS: AgeGroup[] = ['Infant', 'Toddler', 'Preschool']
+import type { Contact, EnrollmentChildDraft, WeeklySchedule } from '../../types'
 
 const STEPS = [
   { n: 1, label: 'Your family' },

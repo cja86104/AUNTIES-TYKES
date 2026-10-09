@@ -35,7 +35,9 @@
   "ageGroup": {
     "Infant": "Trẻ sơ sinh",
     "Toddler": "Trẻ mới biết đi",
-    "Preschool": "Mẫu giáo"
+    "Preschool": "Mẫu giáo",
+    "Elementary": "Tiểu học",
+    "Middle School": "Trung học cơ sở"
   },
   "dashboard": {
     "incidentAlertTitle_one": "Có một báo cáo sự cố cần bạn xem",

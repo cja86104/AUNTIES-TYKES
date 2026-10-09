@@ -66,7 +66,7 @@ export interface Family {
 
 /* -------------------------------- children -------------------------------- */
 
-export type AgeGroup = 'Infant' | 'Toddler' | 'Preschool'
+export type AgeGroup = 'Infant' | 'Toddler' | 'Preschool' | 'Elementary' | 'Middle School'
 export type ChildStatus = 'active' | 'waitlist'
 
 /**

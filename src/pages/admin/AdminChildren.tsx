@@ -16,7 +16,7 @@ import {
   statusTone,
   Modal,
 } from '../../components/ui'
-import ChildForm, { emptyChildForm, formToChild, validateChildForm } from '../../components/ChildForm'
+import ChildForm, { AGE_GROUPS, emptyChildForm, formToChild, validateChildForm } from '../../components/ChildForm'
 import type { ChildFormValue } from '../../components/ChildForm'
 import { useStore } from '../../store/useStore'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
@@ -59,10 +59,9 @@ export default function AdminChildren() {
   const today = todayISO()
 
   const tabs = useMemo(() => {
-    const groups = ['Infant', 'Toddler', 'Preschool']
     return [
       { value: 'all', label: 'All', count: children.length },
-      ...groups.map((g) => ({ value: g, label: g, count: children.filter((c) => c.ageGroup === g).length })),
+      ...AGE_GROUPS.map((g) => ({ value: g, label: g, count: children.filter((c) => c.ageGroup === g).length })),
       { value: 'waitlist', label: 'Waitlist', count: children.filter((c) => c.status === 'waitlist').length },
     ]
   }, [children])

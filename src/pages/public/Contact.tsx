@@ -154,6 +154,8 @@ export default function Contact() {
                         <option>Infants</option>
                         <option>Toddlers</option>
                         <option>Preschool</option>
+                        <option>Elementary</option>
+                        <option>Middle School</option>
                         <option>Not sure yet</option>
                       </Select>
                     </Field>

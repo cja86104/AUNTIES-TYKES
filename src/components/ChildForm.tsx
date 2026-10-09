@@ -24,7 +24,12 @@ export interface ChildFormValue {
   notes: string
 }
 
-const AGE_GROUPS: AgeGroup[] = ['Infant', 'Toddler', 'Preschool']
+/**
+ * The age groups, in age order — this dropdown, the Children page's filter tabs
+ * and the public Enroll form all use this list. Mirrors the `age_group` enum
+ * (migrations 0001 and 0023); a value added here needs a migration too.
+ */
+export const AGE_GROUPS: AgeGroup[] = ['Infant', 'Toddler', 'Preschool', 'Elementary', 'Middle School']
 
 export const emptyChildForm = (familyId = ''): ChildFormValue => ({
   familyId,

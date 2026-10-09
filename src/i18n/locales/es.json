@@ -35,7 +35,9 @@
   "ageGroup": {
     "Infant": "Bebé",
     "Toddler": "Niño pequeño",
-    "Preschool": "Preescolar"
+    "Preschool": "Preescolar",
+    "Elementary": "Primaria",
+    "Middle School": "Secundaria"
   },
   "dashboard": {
     "incidentAlertTitle_one": "Un reporte de incidente necesita tu atención",
