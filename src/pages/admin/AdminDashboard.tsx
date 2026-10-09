@@ -31,7 +31,7 @@ import {
 import { useStore } from '../../store/useStore'
 import { buildCalendar } from '../../lib/calendar'
 import { buildDayRoster } from '../../lib/schedule'
-import { ConsoleRosterBadge, consoleDayText } from '../../components/ScheduleSummary'
+import { ConsoleDayText, ConsoleRosterBadge } from '../../components/ScheduleSummary'
 import type { CalendarEntryKind } from '../../lib/calendar'
 import { money, todayISO, fmtTime, fmtDate, invoiceBalance, invoiceStatus, sum } from '../../lib/helpers'
 import type { Child } from '../../types'
@@ -230,10 +230,10 @@ export default function AdminDashboard() {
                         >
                           {child.name}
                         </Link>
-                        <p className="truncate text-xs text-slate-500">
-                          {child.ageGroup} · {consoleDayText(row)} ·{' '}
-                          {record?.checkIn ? `in ${fmtTime(record.checkIn)}` : 'not in yet'}
-                          {record?.checkOut ? ` · out ${fmtTime(record.checkOut)}` : ''}
+                        <p className="text-xs text-slate-500 sm:truncate">
+                          {child.ageGroup} · <ConsoleDayText row={row} /> ·{' '}
+                          {record?.checkIn ? <span className="whitespace-nowrap">in {fmtTime(record.checkIn)}</span> : 'not in yet'}
+                          {record?.checkOut && <> · <span className="whitespace-nowrap">out {fmtTime(record.checkOut)}</span></>}
                         </p>
                       </div>
                       <ConsoleRosterBadge row={row} group="main" />

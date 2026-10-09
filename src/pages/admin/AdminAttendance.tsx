@@ -20,7 +20,7 @@ import { useStore } from '../../store/useStore'
 import { cx, fmtDate, fmtTime, todayISO, ageLabel } from '../../lib/helpers'
 import { buildDayRoster } from '../../lib/schedule'
 import { visitsOn } from '../../lib/visits'
-import { ConsoleRosterBadge, consoleDayText } from '../../components/ScheduleSummary'
+import { ConsoleDayText, ConsoleRosterBadge, consoleDayText } from '../../components/ScheduleSummary'
 import type { ConsoleRosterRow } from '../../components/ScheduleSummary'
 
 type Group = 'main' | 'unscheduled' | 'notToday'
@@ -109,15 +109,15 @@ export default function AdminAttendance() {
             >
               {child.name}
             </Link>
-            <p className="truncate text-xs text-slate-500">
-              {child.ageGroup} · {ageLabel(child.dob)} · {consoleDayText(row)}
+            <p className="text-xs text-slate-500 sm:truncate">
+              {child.ageGroup} · {ageLabel(child.dob)} · <ConsoleDayText row={row} />
               {/* The labelled In/Out block below is hidden on phones, where a rigid
                   160px column starved this name to zero width, so the times ride
                   along here instead. */}
               {group === 'main' && (
                 <span className="sm:hidden">
-                  {record?.checkIn ? ` · in ${fmtTime(record.checkIn)}` : ' · not in yet'}
-                  {record?.checkOut ? ` · out ${fmtTime(record.checkOut)}` : ''}
+                  {record?.checkIn ? <> · <span className="whitespace-nowrap">in {fmtTime(record.checkIn)}</span></> : ' · not in yet'}
+                  {record?.checkOut && <> · <span className="whitespace-nowrap">out {fmtTime(record.checkOut)}</span></>}
                 </span>
               )}
             </p>

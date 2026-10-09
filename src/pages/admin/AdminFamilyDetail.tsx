@@ -127,7 +127,7 @@ export default function AdminFamilyDetail() {
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_1fr]">
         <div className="space-y-6">
           {/* Children */}
           <Card className="p-5">
@@ -140,7 +140,7 @@ export default function AdminFamilyDetail() {
             {kids.length === 0 ? (
               <p className="mt-4 text-sm text-slate-500">No children linked to this family yet.</p>
             ) : (
-              <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {kids.map((k) => (
                   <li key={k.id}>
                     <Link

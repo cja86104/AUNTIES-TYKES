@@ -132,7 +132,7 @@ export default function AdminChildren() {
           }
         />
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((c, i) => {
             const family = families.find((f) => f.id === c.familyId)
             const record = attendance.find((a) => a.childId === c.id && a.date === today)

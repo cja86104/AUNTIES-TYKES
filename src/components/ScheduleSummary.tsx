@@ -99,6 +99,16 @@ export function consoleDayText(row: ConsoleRosterRow): string {
 }
 
 /**
+ * `consoleDayText` for the roster on screen: a scheduled day's times never
+ * split across lines on a phone ("7:30 am– / 5:30 pm"), while a reason
+ * ("Off today: trip") still wraps normally. The CSV export keeps the plain text.
+ */
+export function ConsoleDayText({ row }: { row: ConsoleRosterRow }) {
+  const text = consoleDayText(row)
+  return <>{row.day.state === 'expected' ? keepTimesTogether(text) : text}</>
+}
+
+/**
  * The status pill for a roster row. Children in the side groups (no schedule,
  * not today) who have no record get a pill saying so rather than "expected",
  * which they are not.

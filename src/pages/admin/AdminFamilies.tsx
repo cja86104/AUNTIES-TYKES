@@ -190,7 +190,7 @@ export default function AdminFamilies() {
             action={<Button variant="outline" onClick={() => setQuery('')}>Clear search</Button>}
           />
         ) : (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((f, i) => (
               <motion.div
                 key={f.id}
