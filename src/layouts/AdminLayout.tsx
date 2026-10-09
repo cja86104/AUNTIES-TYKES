@@ -17,6 +17,7 @@ import {
   LogOut,
   Menu,
   ExternalLink,
+  BookOpen,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { setPortalLanguage } from '../i18n'
@@ -32,6 +33,8 @@ interface NavItem {
   icon: typeof LayoutDashboard
   /** Which unread count, if any, shows as a badge on this row. */
   badge?: keyof UnreadCounts
+  /** Shown in place of the number when the badge is lit — for a yes/no marker. */
+  pill?: string
 }
 
 const nav: NavItem[] = [
@@ -47,6 +50,7 @@ const nav: NavItem[] = [
   { to: '/admin/messages', label: 'Messages / Announcements', icon: MessageSquare, badge: 'messages' },
   { to: '/admin/enrollments', label: 'Future Arrivals', icon: ClipboardList, badge: 'enrollments' },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
+  { to: '/admin/ro-guide', label: 'Ro Guide', icon: BookOpen, badge: 'roGuide', pill: 'New' },
 ]
 
 export default function AdminLayout() {
@@ -124,9 +128,15 @@ export default function AdminLayout() {
                 {count > 0 ? (
                   <span
                     className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-[#F5B942] px-1.5 text-xs font-bold text-[#1F2537]"
-                    aria-label={n.badge === 'enrollments' ? `${count} waiting on you` : `${count} new`}
+                    aria-label={
+                      n.pill !== undefined
+                        ? n.pill
+                        : n.badge === 'enrollments'
+                          ? `${count} waiting on you`
+                          : `${count} new`
+                    }
                   >
-                    {count}
+                    {n.pill ?? count}
                   </span>
                 ) : (
                   isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#F5B942]" />

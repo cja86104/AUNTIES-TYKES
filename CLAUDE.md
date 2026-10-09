@@ -95,6 +95,10 @@ schema/domain mismatch at build time rather than at runtime against live data.
 - **Ro keeps up.** Ro already writes daily reports; any new part of a
   feature Ro covers must be reachable through Ro's tools too
   (`api/_lib/ai/tools/`).
+- **The Ro Guide keeps up too.** `/admin/ro-guide` tells the owner what Ro can
+  do and what to say. When a Ro tool is added, changed or removed, update
+  `src/data/roGuide.ts` and move `RO_GUIDE_UPDATED_AT` forward (to the time of
+  the change, never a future time) — that relights the guide's "New" pill.
 
 ## Schedules & attendance — read before touching either
 

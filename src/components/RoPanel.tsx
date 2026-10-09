@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import {
   AlertTriangle,
+  BookOpen,
   Check,
   ChevronDown,
   Copy,
@@ -915,6 +917,17 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                       Who is checked in, what is overdue, who is waiting on a reply. I can write a
                       message and send it once you&rsquo;ve read it.
                     </p>
+                    <Link
+                      to="/admin/ro-guide"
+                      onClick={() => {
+                        // On a phone the panel covers the page, so close it to show the guide.
+                        if (narrow) setOpen(false)
+                      }}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-chip px-2 py-1 text-sm font-semibold text-brand transition hover:bg-brand-tint"
+                    >
+                      <BookOpen size={16} strokeWidth={1.75} />
+                      See everything I can do
+                    </Link>
                   </div>
                 )}
 

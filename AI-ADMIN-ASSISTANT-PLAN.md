@@ -118,6 +118,13 @@ tuition and period wording with the Invoices page through `src/lib/invoiceLines.
 fields she named and refusing to save over a console edit made while the card
 waited.
 
+**Done 2026-10-08: the owner's guide.** `/admin/ro-guide` ("Ro Guide" in the
+sidebar, and linked from Ro's empty panel) explains what Ro can do, what to say,
+how cards and undo work, and what she cannot do yet. Its words live in
+`src/data/roGuide.ts`; a "New" pill on the sidebar link (section marker
+`ro_guide`, migration 0022) lights whenever `RO_GUIDE_UPDATED_AT` moves. Every
+new or changed tool from here on updates that file too.
+
 **Not done:** the mutation tools still marked Waiting in the table below, and
 the deletions pass.
 

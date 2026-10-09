@@ -28,7 +28,7 @@ export type AttendanceStatusDb = 'present' | 'absent' | 'expected' | 'checked-ou
 export type DocumentCategoryDb = 'Handbooks' | 'Policies' | 'Forms' | 'Menus' | 'Calendars'
 export type EnrollmentStatusDb = 'pending' | 'approved' | 'declined'
 /** Sections that carry a "new since you last looked" marker. */
-export type SectionName = 'documents' | 'messages' | 'daily_reports' | 'inquiries' | 'schedule_changes'
+export type SectionName = 'documents' | 'messages' | 'daily_reports' | 'inquiries' | 'schedule_changes' | 'ro_guide'
 export type CalendarEventKindDb =
   | 'closure'
   | 'early_close'

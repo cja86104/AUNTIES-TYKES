@@ -38,6 +38,7 @@ const AdminInvoiceDetail = lazy(() => import('./pages/admin/AdminInvoiceDetail')
 const AdminDocuments = lazy(() => import('./pages/admin/AdminDocuments'))
 const AdminMessages = lazy(() => import('./pages/admin/AdminMessages'))
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'))
+const AdminRoGuide = lazy(() => import('./pages/admin/AdminRoGuide'))
 
 const ParentDashboard = lazy(() => import('./pages/parent/ParentDashboard'))
 const ParentChildren = lazy(() => import('./pages/parent/ParentChildren'))
@@ -99,6 +100,7 @@ function AnimatedRoutes() {
             <Route path="/admin/documents" element={<AdminDocuments />} />
             <Route path="/admin/messages" element={<AdminMessages />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/ro-guide" element={<AdminRoGuide />} />
           </Route>
 
           <Route

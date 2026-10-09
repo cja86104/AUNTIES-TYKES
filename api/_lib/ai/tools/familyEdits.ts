@@ -31,7 +31,8 @@
  *    flag — the owner's rule is that anything new for a parent comes with a way
  *    to notice it.
  *  - Moving a child to another family. That changes which parent login can see
- *    the child — the family-isolation boundary — and stays in the console.
+ *    the child — the family-isolation boundary. The console's child page does
+ *    not offer it either.
  *  - The parent login's own email. Changing the family's email does not change
  *    the address they sign in with, and the card says so.
  *

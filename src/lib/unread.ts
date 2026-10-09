@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import type { SectionName } from './database.types'
 import { todayISO } from './helpers'
+import { RO_GUIDE_UPDATED_AT } from '../data/roGuide'
 import type {
   Announcement,
   DailyLog,
@@ -191,6 +192,12 @@ export interface UnreadCounts {
    * owner, who makes them.
    */
   calendar: number
+  /**
+   * Owner only: 1 while the Ro Guide has changed since she last opened it
+   * (RO_GUIDE_UPDATED_AT in src/data/roGuide.ts), else 0. Shown as a "New" pill
+   * rather than a number. Always 0 for a parent, who has no Ro.
+   */
+  roGuide: number
 }
 
 /**
@@ -215,7 +222,7 @@ export function useUnreadCounts(): UnreadCounts {
   const scheduleChanges = useStore((s) => s.scheduleChanges)
   const schedulePlans = useStore((s) => s.schedulePlans)
 
-  if (!user) return { documents: 0, messages: 0, enrollments: 0, dailyReports: 0, inquiries: 0, calendar: 0 }
+  if (!user) return { documents: 0, messages: 0, enrollments: 0, dailyReports: 0, inquiries: 0, calendar: 0, roGuide: 0 }
 
   const docsSeen = sectionViews.documents
   const msgsSeen = sectionViews.messages
@@ -228,6 +235,7 @@ export function useUnreadCounts(): UnreadCounts {
       dailyReports: newIncidentAcks(incidentAcks, sectionViews.daily_reports).length,
       inquiries: newLeads(leads, sectionViews.inquiries).length,
       calendar: 0,
+      roGuide: newerThan(RO_GUIDE_UPDATED_AT, sectionViews.ro_guide) ? 1 : 0,
     }
   }
 
@@ -259,5 +267,6 @@ export function useUnreadCounts(): UnreadCounts {
         sectionViews.schedule_changes,
         todayISO(),
       ).length,
+    roGuide: 0,
   }
 }
