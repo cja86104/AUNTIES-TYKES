@@ -9,6 +9,11 @@ import { useEffect } from 'react'
  * current offset is the behaviour that actually holds there, so the offset is
  * captured on open and restored on close.
  *
+ * The restore must be instant. `html { scroll-behavior: smooth }` in index.css
+ * would otherwise animate it: unpinning the body drops the page to the top, and
+ * a smooth scrollTo then glides back down, so every close flashes the top of
+ * the page. Smooth scrolling is switched off for that one call only.
+ *
  * One overlay at a time: the app never stacks a modal on top of the drawer, and
  * a nested pair would restore the outer offset when the inner one closed.
  */
@@ -34,7 +39,12 @@ export function useBodyScrollLock(active: boolean): void {
       body.style.top = previous.top
       body.style.width = previous.width
       body.style.overflow = previous.overflow
+
+      const html = document.documentElement
+      const previousBehavior = html.style.scrollBehavior
+      html.style.scrollBehavior = 'auto'
       window.scrollTo(0, scrollY)
+      html.style.scrollBehavior = previousBehavior
     }
   }, [active])
 }

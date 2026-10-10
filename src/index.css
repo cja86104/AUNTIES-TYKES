@@ -120,6 +120,31 @@ input, textarea, select, button {
   font-family: inherit;
 }
 
+/* The chevron on every <Select> (ui.tsx). `appearance-none` removes the native
+   arrow, so without this a dropdown reads as a text box. The 16px size comes
+   from bg-[length:16px] on the element; pr-9 keeps the text clear of it. */
+.at-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+}
+
+/* iOS Safari draws an empty date/time field shorter than the text fields
+   beside it (its value box has nothing in it to give it height) and centres
+   the value. iOS only (-webkit-touch-callout), phone width only: 2.875rem is
+   the height of a phone-size field in ui.tsx (16px text, py-2.5, border). */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 639px) {
+    input[type='date'],
+    input[type='time'] {
+      min-height: 2.875rem;
+    }
+  }
+}
+input::-webkit-date-and-time-value {
+  text-align: left;
+}
+
 :focus-visible {
   outline: 2px solid var(--at-primary);
   outline-offset: 2px;

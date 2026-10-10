@@ -578,6 +578,16 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
     if (open && !narrow) inputRef.current?.focus()
   }, [open, narrow])
 
+  // Grow the message box with what she types, up to its max-h-32, and shrink it
+  // back once a message is sent. On a phone return makes a new line, so a fixed
+  // one-row box would hide everything but the line she is on.
+  useEffect(() => {
+    const node = inputRef.current
+    if (node === null) return
+    node.style.height = 'auto'
+    node.style.height = `${String(node.scrollHeight + node.offsetHeight - node.clientHeight)}px`
+  }, [input, open])
+
   // Keep the newest message in view, including right after a remount.
   useEffect(() => {
     const node = scrollRef.current
@@ -1046,8 +1056,11 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
                     onKeyDown={(event) => {
-                      // Enter sends, Shift+Enter makes a new line.
-                      if (event.key === 'Enter' && !event.shiftKey) {
+                      // With a keyboard, Enter sends and Shift+Enter makes a new
+                      // line. A touch screen has no Shift, so there return makes a
+                      // new line and the Send button sends.
+                      const touch = window.matchMedia('(pointer: coarse)').matches
+                      if (event.key === 'Enter' && !event.shiftKey && !touch) {
                         event.preventDefault()
                         void send(input)
                       }

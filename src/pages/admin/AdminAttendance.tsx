@@ -149,7 +149,7 @@ export default function AdminAttendance() {
           <ConsoleRosterBadge row={row} group={group} />
         </div>
 
-        <div className="flex shrink-0 gap-1.5">
+        <div className="flex shrink-0 basis-full gap-1.5 sm:basis-auto">
           <Button
             size="sm"
             variant="outline"

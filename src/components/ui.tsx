@@ -205,7 +205,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
   return (
     <select
       ref={ref}
-      className={cx(fieldBase, 'appearance-none bg-[length:16px] pr-9', invalid ? invalidRing : normalRing, className)}
+      className={cx(fieldBase, 'at-select appearance-none bg-[length:16px] pr-9', invalid ? invalidRing : normalRing, className)}
       {...rest}
     >
       {children}
