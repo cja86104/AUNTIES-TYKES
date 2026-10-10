@@ -75,7 +75,7 @@ export default function Login() {
   const phoneReady = !isPlaceholder(settings.phone)
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#FCF7EA]">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-canvas bg-gradient-to-b from-canvas-top via-canvas to-canvas-bottom">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <span className="at-blob left-[-6rem] top-[-6rem] h-80 w-80 bg-[#3F8570]/25" />
         <span className="at-blob right-[-4rem] top-[10rem] h-72 w-72 bg-[#F5B942]/30" style={{ animationDelay: '2s' }} />

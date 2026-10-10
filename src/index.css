@@ -22,7 +22,7 @@ body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--at-ink);
-  background-color: #fcf7ea;
+  background-color: #d6effc;
 }
 
 h1, h2, h3, h4, h5, .font-display {

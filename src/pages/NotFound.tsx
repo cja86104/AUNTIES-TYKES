@@ -10,7 +10,7 @@ const suggestions = [
 
 export default function NotFound() {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#FCF7EA] px-5 py-16">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas bg-gradient-to-b from-canvas-top via-canvas to-canvas-bottom px-5 py-16">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <span className="at-blob left-[-6rem] top-[-6rem] h-80 w-80 bg-[#3F8570]/25" />
         <span className="at-blob right-[-4rem] bottom-[2rem] h-72 w-72 bg-[#F5B942]/30" style={{ animationDelay: '2s' }} />

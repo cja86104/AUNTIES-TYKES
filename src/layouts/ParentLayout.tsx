@@ -65,7 +65,7 @@ export default function ParentLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FCF7EA]">
+    <div className="min-h-screen bg-canvas bg-gradient-to-b from-canvas-top via-canvas to-canvas-bottom">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
           <Link to="/parent/dashboard" className="flex items-center gap-3">

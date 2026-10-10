@@ -166,7 +166,7 @@ export default function AdminLayout() {
   )
 
   return (
-    <div className="min-h-screen bg-[#F7F1E4]">
+    <div className="min-h-screen bg-canvas bg-gradient-to-b from-canvas-top via-canvas to-canvas-bottom">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[370px] bg-[#1F2537] lg:block">{SidebarInner}</aside>
 
       <AnimatePresence>

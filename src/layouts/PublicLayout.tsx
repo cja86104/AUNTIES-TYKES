@@ -12,7 +12,7 @@ export default function PublicLayout() {
   // Light blue-sky gradient (the owner's blue sky & rainbows theme). Kept light on
   // purpose: body text in ink reads at 10:1+ on it; the old #63879A was 3.5:1.
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[#D6EFFC] bg-gradient-to-b from-[#BEE3F8] via-[#D6EFFC] to-[#EAF7FE]">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-canvas bg-gradient-to-b from-canvas-top via-canvas to-canvas-bottom">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[520px] overflow-hidden">
         <span className="at-blob left-[-6rem] top-[-8rem] h-80 w-80 bg-[#3F8570]/25" />
         <span className="at-blob right-[-4rem] top-[2rem] h-72 w-72 bg-[#F5B942]/30" style={{ animationDelay: '2s' }} />

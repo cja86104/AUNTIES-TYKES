@@ -34,7 +34,17 @@ export const colors = {
     tint: '#FDF1DC',
   },
   ink: '#2b2f3a',
-  canvas: '#FCF7EA',
+  /**
+   * Page background -- the light blue-sky gradient from the public landing page
+   * (the owner's blue sky & rainbows theme). Every page uses it:
+   * `bg-canvas bg-gradient-to-b from-canvas-top via-canvas to-canvas-bottom`.
+   * `DEFAULT` is also the solid fallback (body, manifest, drawers).
+   */
+  canvas: {
+    DEFAULT: '#D6EFFC',
+    top: '#BEE3F8',
+    bottom: '#EAF7FE',
+  },
   console: '#1F2537',
   /** Decorative rainbow accents for the hero headline + wordmark, echoing the classroom rainbow-wall photo. Not for general UI. */
   rainbow: {

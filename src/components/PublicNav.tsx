@@ -32,7 +32,7 @@ export default function PublicNav() {
     <header
       className={cx(
         'sticky top-0 z-50 transition-all duration-300',
-        scrolled ? 'border-b border-slate-200/80 bg-[#FCF7EA]/85 backdrop-blur-xl' : 'bg-transparent',
+        scrolled ? 'border-b border-slate-200/80 bg-canvas/85 backdrop-blur-xl' : 'bg-transparent',
       )}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 lg:px-8">
