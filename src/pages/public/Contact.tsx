@@ -192,8 +192,8 @@ export default function Contact() {
                 <div className="h-52 w-full overflow-hidden bg-slate-100">
                   <img
                     data-aiwp-slot="4"
-                    src="https://images.unsplash.com/photo-1761061079517-2ff8192b2f02?auto=format&fit=crop&w=1200&q=80"
-                    alt="A residential street near Aunties Tykes in Camp Hill, Pennsylvania"
+                    src="/visit-us.jpg"
+                    alt="The Aunties Tykes home in Camp Hill, Pennsylvania"
                     className="h-full w-full object-cover"
                     loading="lazy"
                   />
