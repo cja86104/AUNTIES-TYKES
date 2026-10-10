@@ -19,6 +19,7 @@ import type {
 } from '../src/lib/schedule.ts'
 import {
   buildDayRoster,
+  dayLabel,
   dayProblem,
   formatBlock,
   formatWeeklySchedule,
@@ -537,14 +538,24 @@ void describe('formatWeeklySchedule', () => {
     assert.equal(formatWeeklySchedule(WEEK, 'en-US'), 'Mon 7–9 am, 3–6 pm · Tue–Fri 8 am–5 pm · Sat 9:30 am–12 pm · Sun 11 am–1 pm')
   })
 
+  // Day abbreviations come from the runtime's locale data (CLDR), which differs
+  // between Node and browser versions: Vietnamese Monday is "Thứ 2" in older
+  // data and "Th 2" in newer. So the day names are read through dayLabel and
+  // only checked to be the right kind of name; what this test pins down is the
+  // order, the grouping of identical days, and the 24-hour times.
   void it('reads naturally in Spanish and Vietnamese', () => {
+    const es = (day: (typeof WEEKDAYS)[number]) => dayLabel(day, 'es')
+    assert.match(es('mon'), /^lun\.?$/u)
     assert.equal(
       formatWeeklySchedule(WEEK, 'es'),
-      'lun 7:00–9:00, 15:00–18:00 · mar–vie 8:00–17:00 · sáb 9:30–12:00 · dom 11:00–13:00',
+      `${es('mon')} 7:00–9:00, 15:00–18:00 · ${es('tue')}–${es('fri')} 8:00–17:00 · ${es('sat')} 9:30–12:00 · ${es('sun')} 11:00–13:00`,
     )
+
+    const vi = (day: (typeof WEEKDAYS)[number]) => dayLabel(day, 'vi')
+    assert.match(vi('mon'), /^Th(ứ)? 2$/u)
     assert.equal(
       formatWeeklySchedule(WEEK, 'vi'),
-      'Thứ 2 7:00–9:00, 15:00–18:00 · Thứ 3–Thứ 6 8:00–17:00 · Thứ 7 9:30–12:00 · CN 11:00–13:00',
+      `${vi('mon')} 7:00–9:00, 15:00–18:00 · ${vi('tue')}–${vi('fri')} 8:00–17:00 · ${vi('sat')} 9:30–12:00 · ${vi('sun')} 11:00–13:00`,
     )
   })
 
