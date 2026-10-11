@@ -86,7 +86,7 @@ export interface PromptState {
  * block named a different signed-in owner put two different people in one prompt,
  * which is the same kind of contradiction as an ambiguous `awaitingReply`.
  */
-const identity = (owner: string): string => `You are Ro, ${owner}'s operations partner at Aunties Tykes.
+const identity = (owner: string): string => `You are Ro, ${owner}'s operations partner at Auntie's Tykes.
 
 You know which families are enrolled, who's checked in today, whose invoice is
 overdue, and what she's told you about how she wants each family handled. You
@@ -405,7 +405,7 @@ export async function gatherPromptState(
   return {
     state: {
       ownerName: ctx.caller.name,
-      businessName: settings.data?.business_name ?? 'Aunties Tykes',
+      businessName: settings.data?.business_name ?? "Auntie's Tykes",
       today: ctx.today,
       time: timeInZone(now),
       numbers: {

@@ -65,7 +65,7 @@ function authorOf(ctx: ToolContext): { author_id: string; author_name: string } 
     author_id: ctx.caller.id,
     // Same fallback as AdminMessages.tsx, so a profile with no name reads the
     // same whether the message came from the form or from Ro.
-    author_name: ctx.caller.name.length > 0 ? ctx.caller.name : 'Aunties Tykes',
+    author_name: ctx.caller.name.length > 0 ? ctx.caller.name : "Auntie's Tykes",
   }
 }
 
@@ -527,7 +527,7 @@ const dailyLogExecutor: Executor = {
       activities: activities ?? [],
       incident: incident ?? null,
       // Written as her, the same as a log typed into the console.
-      author: ctx.caller.name.length > 0 ? ctx.caller.name : 'Aunties Tykes',
+      author: ctx.caller.name.length > 0 ? ctx.caller.name : "Auntie's Tykes",
       author_id: ctx.caller.id,
     })
     if (created.error !== null) {

@@ -9,7 +9,7 @@
 import { SEARCH_INDEXABLE } from './config'
 
 export const SITE = {
-  name: 'Aunties Tykes',
+  name: "Auntie's Tykes",
   /** Update to the customer's real domain at launch. */
   url: 'https://aunties-tykes.vercel.app',
   locale: 'en_US',
@@ -38,31 +38,31 @@ export const PRIVATE_PREFIXES = [
 ] as const
 
 export const DEFAULT_SEO: PageSeo = {
-  title: 'Aunties Tykes — Family Portal | Camp Hill, PA Home Daycare',
+  title: "Auntie's Tykes — Family Portal | Camp Hill, PA Home Daycare",
   description:
-    'The Aunties Tykes family portal — daily reports, photos, attendance, invoices, and messages for our Camp Hill, PA home daycare families.',
+    "The Auntie's Tykes family portal — daily reports, photos, attendance, invoices, and messages for our Camp Hill, PA home daycare families.",
 }
 
 export const PAGE_SEO: Record<string, PageSeo> = {
   '/': DEFAULT_SEO,
   '/parent-portal-guide': {
-    title: 'Parent Portal Guide | Aunties Tykes Daycare, Camp Hill PA',
+    title: "Parent Portal Guide | Auntie's Tykes Daycare, Camp Hill PA",
     description:
-      'A walkthrough of the Aunties Tykes parent portal — daily reports, attendance, billing, documents, and messaging, all explained in plain language.',
+      "A walkthrough of the Auntie's Tykes parent portal — daily reports, attendance, billing, documents, and messaging, all explained in plain language.",
   },
   '/contact': {
-    title: 'Contact Us | Aunties Tykes, Camp Hill PA',
+    title: "Contact Us | Auntie's Tykes, Camp Hill PA",
     description:
-      'Get in touch with Aunties Tykes in Camp Hill, PA. Tell us your child’s age and when you need care, and we will get back to you.',
+      "Get in touch with Auntie's Tykes in Camp Hill, PA. Tell us your child’s age and when you need care, and we will get back to you.",
   },
   '/enroll': {
-    title: 'Enrollment Form | Aunties Tykes Daycare',
+    title: "Enrollment Form | Auntie's Tykes Daycare",
     description:
-      'Enroll your child at Aunties Tykes in Camp Hill, PA. Tell us about your family, your children, and their care schedule.',
+      "Enroll your child at Auntie's Tykes in Camp Hill, PA. Tell us about your family, your children, and their care schedule.",
   },
   '/login': {
-    title: 'Parent Login | Aunties Tykes',
-    description: 'Sign in to the Aunties Tykes parent portal for daily reports, attendance, invoices, and documents.',
+    title: "Parent Login | Auntie's Tykes",
+    description: "Sign in to the Auntie's Tykes parent portal for daily reports, attendance, invoices, and documents.",
   },
 }
 

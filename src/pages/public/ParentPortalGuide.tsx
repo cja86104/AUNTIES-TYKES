@@ -29,7 +29,7 @@ const guideItems: GuideItem[] = [
     key: 'login',
     title: 'Logging in',
     icon: LogIn,
-    body: `Once your enrollment is set up, we'll create your family login using the email and password Aunties Tykes gave you. From then on, click **Parent Login** in the site header, sign in, and your dashboard opens with everything for your family in one place.`,
+    body: `Once your enrollment is set up, we'll create your family login using the email and password Auntie's Tykes gave you. From then on, click **Parent Login** in the site header, sign in, and your dashboard opens with everything for your family in one place.`,
   },
   {
     key: 'dashboard',

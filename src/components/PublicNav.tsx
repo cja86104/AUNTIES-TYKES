@@ -36,15 +36,15 @@ export default function PublicNav() {
       )}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3.5 lg:px-8">
-        <Link to="/" className="group flex items-center gap-3" aria-label="Aunties Tykes home">
+        <Link to="/" className="group flex items-center gap-3" aria-label="Auntie's Tykes home">
           <img
             src="/logo-mark.png"
-            alt="Aunties Tykes"
+            alt="Auntie's Tykes"
             className="h-11 w-11 shrink-0 object-contain transition-transform duration-300 group-hover:rotate-6"
           />
           <span className="leading-tight">
             <span className="block font-display text-lg font-extrabold tracking-tight">
-              <span className="text-[#FF13F0] rainbow-outline-sm">Aunties</span> <span className="text-rainbow-blue rainbow-outline-sm">Tykes</span>
+              <span className="text-[#FF13F0] rainbow-outline-sm">Auntie's</span> <span className="text-rainbow-blue rainbow-outline-sm">Tykes</span>
             </span>
             <span className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-ink">
               Family Daycare, Preschool, Pre-K and Summer camp

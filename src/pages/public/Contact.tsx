@@ -177,7 +177,7 @@ export default function Contact() {
                       {isSubmitting ? 'Sending…' : 'Send inquiry'} <Send size={17} />
                     </Button>
                     <p className="text-xs text-slate-500">
-                      Your inquiry goes straight to Aunties Tykes — no account needed.
+                      Your inquiry goes straight to Auntie's Tykes — no account needed.
                     </p>
                   </div>
                 </form>
@@ -193,7 +193,7 @@ export default function Contact() {
                   <img
                     data-aiwp-slot="4"
                     src="/visit-us.jpg"
-                    alt="The Aunties Tykes home in Camp Hill, Pennsylvania"
+                    alt="The Auntie's Tykes home in Camp Hill, Pennsylvania"
                     className="h-full w-full object-cover"
                     loading="lazy"
                   />

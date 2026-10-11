@@ -206,7 +206,7 @@ export default function AdminMessages() {
         {
           id: uid('msg'),
           from: 'admin',
-          authorName: user?.name ?? 'Aunties Tykes',
+          authorName: user?.name ?? "Auntie's Tykes",
           at: nowISO(),
           body: threadBody.trim(),
         },
@@ -227,7 +227,7 @@ export default function AdminMessages() {
     if (!activeThread || !reply.trim()) return
     sendThreadMessage(activeThread.id, {
       from: 'admin',
-      authorName: user?.name ?? 'Aunties Tykes',
+      authorName: user?.name ?? "Auntie's Tykes",
       body: reply.trim(),
     })
     setReply('')

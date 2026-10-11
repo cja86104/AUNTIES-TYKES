@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion } from 'framer-motion'
-import { ArrowLeft, LogIn, ShieldCheck, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, LogIn, ShieldCheck, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import { Button, Card, Field, Input } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { isPlaceholder } from '../../lib/helpers'
@@ -37,6 +37,7 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const [formError, setFormError] = useState('')
+  const [reveal, setReveal] = useState(false)
 
   const {
     register,
@@ -93,9 +94,9 @@ export default function Login() {
         <div className="grid flex-1 items-center gap-10 py-10 lg:grid-cols-[1fr_1fr]">
           <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <div className="flex items-center gap-3">
-              <img src="/logo-mark.png" alt="Aunties Tykes" className="h-12 w-12 shrink-0 object-contain" />
+              <img src="/logo-mark.png" alt="Auntie's Tykes" className="h-12 w-12 shrink-0 object-contain" />
               <div>
-                <p className="font-display text-lg font-extrabold text-slate-900">Aunties Tykes</p>
+                <p className="font-display text-lg font-extrabold text-slate-900">Auntie's Tykes</p>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Family portal</p>
               </div>
             </div>
@@ -117,7 +118,7 @@ export default function Login() {
           <motion.div initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
             <Card className="p-7 sm:p-9">
               <h2 className="font-display text-2xl font-extrabold text-slate-900">Sign in</h2>
-              <p className="mt-1.5 text-sm text-slate-500">Use the email and password Aunties Tykes gave you.</p>
+              <p className="mt-1.5 text-sm text-slate-500">Use the email and password Auntie's Tykes gave you.</p>
 
               <form
                 onSubmit={(e) => {
@@ -136,13 +137,25 @@ export default function Login() {
                   />
                 </Field>
                 <Field label="Password" error={errors.password?.message}>
-                  <Input
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    invalid={!!errors.password}
-                    {...register('password')}
-                  />
+                  <div className="relative">
+                    <Input
+                      type={reveal ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      placeholder="••••••••"
+                      invalid={!!errors.password}
+                      className="pr-12"
+                      {...register('password')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setReveal((r) => !r)}
+                      aria-label={reveal ? 'Hide password' : 'Show password'}
+                      aria-pressed={reveal}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      {reveal ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
                 </Field>
 
                 {formError && (
@@ -162,7 +175,7 @@ export default function Login() {
               </form>
 
               <p className="mt-8 border-t border-slate-200 pt-6 text-xs leading-relaxed text-slate-500">
-                Accounts are created by Aunties Tykes — there is no sign-up.{' '}
+                Accounts are created by Auntie's Tykes — there is no sign-up.{' '}
                 {phoneReady ? (
                   <>
                     If you need a login or have forgotten your password, call us at{' '}

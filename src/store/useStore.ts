@@ -632,7 +632,7 @@ export const useStore = create<StoreState>()((set, get) => {
           {
             category: 'Forms' as const,
             visibleToParents: false,
-            uploadedBy: s.user?.name ?? 'Aunties Tykes',
+            uploadedBy: s.user?.name ?? "Auntie's Tykes",
             uploadedAt: nowISO(),
             url: '#',
             requiresAck: false,

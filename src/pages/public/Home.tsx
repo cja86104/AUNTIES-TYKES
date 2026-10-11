@@ -20,7 +20,7 @@ export default function Home() {
               <span className="text-rainbow-red rainbow-outline">Welcome</span>{' '}
               <span className="text-rainbow-orange rainbow-outline">to</span>{' '}
               <span className="text-rainbow-gold rainbow-outline">your</span>{' '}
-              <span className="text-[#FF13F0] rainbow-outline">Aunties</span>{' '}
+              <span className="text-[#FF13F0] rainbow-outline">Auntie's</span>{' '}
               <span className="text-rainbow-blue rainbow-outline">Tykes</span>{' '}
               <span className="text-rainbow-purple rainbow-outline">portal.</span>
             </motion.h1>
@@ -61,7 +61,7 @@ export default function Home() {
                 <img
                   data-aiwp-slot="1"
                   src="/hero-rainbow-wall.jpg"
-                  alt="A classroom wall at Aunties Tykes decorated with colorful bubble-letter affirmations -- be kind, honest, thankful, brave, happy, humble, creative, you -- beside a plush rainbow with clouds and a handwritten quote: you're braver than you believe, stronger than you seem, smarter than you think"
+                  alt="A classroom wall at Auntie's Tykes decorated with colorful bubble-letter affirmations -- be kind, honest, thankful, brave, happy, humble, creative, you -- beside a plush rainbow with clouds and a handwritten quote: you're braver than you believe, stronger than you seem, smarter than you think"
                   className="h-full w-full object-cover object-[50%_32%]"
                 />
               </div>

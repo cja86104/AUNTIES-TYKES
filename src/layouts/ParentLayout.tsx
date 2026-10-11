@@ -69,9 +69,9 @@ export default function ParentLayout() {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
           <Link to="/parent/dashboard" className="flex items-center gap-3">
-            <img src="/logo-mark.png" alt="Aunties Tykes" className="h-10 w-10 shrink-0 object-contain" />
+            <img src="/logo-mark.png" alt="Auntie's Tykes" className="h-10 w-10 shrink-0 object-contain" />
             <span className="leading-tight">
-              <span className="block font-display text-base font-extrabold text-slate-900">Aunties Tykes</span>
+              <span className="block font-display text-base font-extrabold text-slate-900">Auntie's Tykes</span>
               <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t('portal.brandLine')}</span>
             </span>
           </Link>

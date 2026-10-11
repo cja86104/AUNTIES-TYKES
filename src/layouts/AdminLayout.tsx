@@ -96,9 +96,9 @@ export default function AdminLayout() {
   const SidebarInner = (
     <div className="flex h-full flex-col">
       <Link to="/" className="flex items-center gap-3 px-5 py-5">
-        <img src="/logo-mark.png" alt="Aunties Tykes" className="h-11 w-11 shrink-0 object-contain" />
+        <img src="/logo-mark.png" alt="Auntie's Tykes" className="h-11 w-11 shrink-0 object-contain" />
         <span className="leading-tight">
-          <span className="block font-script text-2xl font-semibold text-white">Aunties Tykes</span>
+          <span className="block font-script text-2xl font-semibold text-white">Auntie's Tykes</span>
           <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50">Home care console</span>
         </span>
       </Link>
@@ -204,7 +204,7 @@ export default function AdminLayout() {
                 <Menu size={20} strokeWidth={1.75} />
               </button>
               <div>
-                <p className="font-display text-sm font-extrabold text-slate-900">Aunties Tykes — Admin</p>
+                <p className="font-display text-sm font-extrabold text-slate-900">Auntie's Tykes — Admin</p>
                 <p className="text-xs text-slate-500">Owner console</p>
               </div>
             </div>
