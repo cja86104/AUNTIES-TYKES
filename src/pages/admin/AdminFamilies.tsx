@@ -200,28 +200,35 @@ export default function AdminFamilies() {
               >
                 <Card hover className="flex h-full flex-col p-5">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="truncate font-display text-lg font-extrabold text-slate-900">{f.name}</h2>
-                      <p className="truncate text-sm text-slate-500">
-                        {f.primaryContact} · {f.relation}
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      {f.kids.length > 0 ? (
+                        <h2 className="space-y-2">
+                          {f.kids.map((k) => (
+                            <span key={k.id} className="flex min-w-0 items-center gap-3">
+                              <Avatar name={k.name} hue={k.hue} size="md" />
+                              <span className="truncate font-display text-2xl font-extrabold text-slate-900">
+                                {k.name}
+                              </span>
+                            </span>
+                          ))}
+                        </h2>
+                      ) : (
+                        <h2 className="truncate font-display text-2xl font-extrabold text-slate-900">{f.name}</h2>
+                      )}
                     </div>
                     <Badge tone={f.balance > 0 ? 'amber' : 'green'}>
                       {f.balance > 0 ? money(f.balance) : 'Paid up'}
                     </Badge>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {f.kids.map((k) => (
-                      <span
-                        key={k.id}
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 py-1 pl-1 pr-2.5 text-xs font-semibold text-slate-700"
-                      >
-                        <Avatar name={k.name} hue={k.hue} size="sm" />
-                        {k.name.split(' ')[0]}
-                      </span>
-                    ))}
-                    {f.kids.length === 0 && <span className="text-xs text-slate-500">No children on file</span>}
+                  <div className="mt-3 min-w-0">
+                    {f.kids.length > 0 && (
+                      <p className="truncate text-sm font-semibold text-slate-600">{f.name} family</p>
+                    )}
+                    <p className="truncate text-sm text-slate-500">
+                      {f.primaryContact} · {f.relation}
+                    </p>
+                    {f.kids.length === 0 && <p className="mt-1 text-xs text-slate-500">No children on file</p>}
                   </div>
 
                   <ul className="mt-5 flex-1 space-y-2 text-sm text-slate-600">
