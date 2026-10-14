@@ -495,12 +495,17 @@ export interface Lead {
   childAges: string
   message: string
   createdAt: string
+  /** A tour the owner arranged. Never written by the public form. */
   tourDate: string
+  /** When the family would like to start, as they gave it. '' when not given. */
+  startDate: string
+  /** The days and times of care they asked for. Absent when they did not say. */
+  schedule?: WeeklySchedule
   status: string
 }
 
-export type NewLead = Omit<Lead, 'id' | 'createdAt' | 'status' | 'tourDate'> &
-  Partial<Pick<Lead, 'createdAt' | 'status' | 'tourDate'>>
+export type NewLead = Omit<Lead, 'id' | 'createdAt' | 'status' | 'tourDate' | 'startDate'> &
+  Partial<Pick<Lead, 'createdAt' | 'status' | 'tourDate' | 'startDate'>>
 
 /* -------------------------------- settings -------------------------------- */
 

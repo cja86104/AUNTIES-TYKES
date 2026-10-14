@@ -23,7 +23,7 @@
  */
 
 import type { Proposal } from './audit.js'
-import type { Incident, ScheduleBlock } from '../../../src/types.js'
+import type { Incident, ScheduleBlock, WeeklySchedule } from '../../../src/types.js'
 import { formatDayBlocks, formatWeeklySchedule } from '../../../src/lib/schedule.js'
 import { prettyDate } from './clock.js'
 import { uid } from './ids.js'
@@ -783,6 +783,15 @@ const leadExecutor: Executor = {
     const childAges = readString(proposal.arguments, 'childAges')
     const message = readString(proposal.arguments, 'message')
     const tourDate = readString(proposal.arguments, 'tourDate')
+    const startDate = readString(proposal.arguments, 'startDate')
+    // Checked again here: the stored proposal is JSON, not the value the tool saw.
+    let schedule: WeeklySchedule | null = null
+    const rawSchedule = proposal.arguments.schedule
+    if (rawSchedule !== undefined && rawSchedule !== null) {
+      const read = readWeek(rawSchedule)
+      if (typeof read === 'string') return { ok: false, error: read }
+      schedule = read
+    }
     const status = readString(proposal.arguments, 'status')
 
     if (leadId === null) {
@@ -796,6 +805,8 @@ const leadExecutor: Executor = {
         child_ages: childAges ?? '',
         message: message ?? '',
         tour_date: tourDate,
+        start_date: startDate,
+        schedule,
         // The console's own default for a new lead.
         status: status ?? 'New inquiry',
       })
@@ -812,6 +823,8 @@ const leadExecutor: Executor = {
       child_ages?: string
       message?: string
       tour_date?: string | null
+      start_date?: string | null
+      schedule?: WeeklySchedule
       status?: string
     } = {}
     if (parentName !== null) patch.parent_name = parentName
@@ -820,6 +833,8 @@ const leadExecutor: Executor = {
     if (childAges !== null) patch.child_ages = childAges
     if (message !== null) patch.message = message
     if (tourDate !== null) patch.tour_date = tourDate
+    if (startDate !== null) patch.start_date = startDate
+    if (schedule !== null) patch.schedule = schedule
     if (status !== null) patch.status = status
     if (Object.keys(patch).length === 0) return { ok: false, error: 'There was nothing to change' }
 

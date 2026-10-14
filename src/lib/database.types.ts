@@ -269,6 +269,10 @@ export type LeadRow = {
   child_ages: string
   message: string
   tour_date: string | null
+  /** Migration 0024. */
+  start_date: string | null
+  /** Migration 0024. Same shape and check as children.schedule; NULL = not given. */
+  schedule: WeeklySchedule | null
   status: string
   created_at: string
 }

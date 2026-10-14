@@ -43,13 +43,10 @@ do not reintroduce it, and do not describe the daycare as licensed anywhere.
 ## Before the site goes into search — 3 steps, in order
 
 1. Fill phone / email / hours above. Nothing else here matters until that is done.
-2. `src/lib/config.ts` → `export const SEARCH_INDEXABLE: boolean = true`, and set
-   the real domain in `src/lib/seo.ts`:
-   ```ts
-   url: 'https://auntiestykes.com',
-   ```
-   `SITE.url` builds every canonical and og:url — a stale value points them all
-   at the preview domain. It is currently `https://aunties-tykes.vercel.app`.
+2. `src/lib/config.ts` → `export const SEARCH_INDEXABLE: boolean = true`.
+   (`SITE.url` in `src/lib/seo.ts` is already the real domain,
+   `https://auntiestykes.com` — set 2026-10-14 for the parent link preview,
+   along with the static tags in `index.html`.)
 3. `public/robots.txt` — delete the `Disallow: /` block and uncomment the launch
    rules below it.
 

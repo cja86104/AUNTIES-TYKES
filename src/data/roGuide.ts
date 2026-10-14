@@ -15,7 +15,7 @@
  */
 
 /** When the guide last changed. ISO timestamp, in the past. */
-export const RO_GUIDE_UPDATED_AT = '2026-10-14T00:25:00.000Z'
+export const RO_GUIDE_UPDATED_AT = '2026-10-14T13:05:00.000Z'
 
 export interface GuideTopic {
   /** Anchor id, and the key the page uses to pick an icon. */
@@ -302,8 +302,12 @@ export const TOPICS: GuideTopic[] = [
       'Log a new inquiry: Jamie Lee called about a toddler spot, 717-555-0188.',
       'Book a tour with Jamie Lee for Tuesday.',
       'Mark the Lee inquiry as enrolled.',
+      'The Lee family wants to start November 3rd, Monday to Wednesday, 7:30 to 3.',
     ],
-    notes: ['Ro cannot delete an inquiry.'],
+    notes: [
+      'Families can now pick the days and times they need on the contact form. You see them on the inquiry as "Needs care".',
+      'Ro cannot delete an inquiry.',
+    ],
   },
   {
     id: 'rules',

@@ -923,7 +923,7 @@ export const useStore = create<StoreState>()((set, get) => {
       commit(
         (s) => ({
           leads: [
-            { createdAt: todayISO(), status: 'New inquiry', tourDate: '', ...lead, id: uid('ld') },
+            { createdAt: todayISO(), status: 'New inquiry', tourDate: '', startDate: '', ...lead, id: uid('ld') },
             ...s.leads,
           ],
         }),

@@ -240,9 +240,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       console.error('[ro] tier failed', tier, JSON.stringify(result.attempts))
       if (tier !== 'escalation' && !escalated) {
         // Tier 0 unreachable is exactly what §10's escalation tier is for.
+        const failedModel = config.config.models[tier][0]
         escalated = true
         tier = 'escalation'
-        warnings.push('The usual model was unavailable, so this answer came from the backup.')
+        // Only a different model is "the backup". With every tier on the same
+        // model (all Haiku since 2026-10-13) this is a plain retry, and telling
+        // her a backup answered would be untrue. The failure is logged above.
+        if (config.config.models.escalation[0] !== failedModel) {
+          warnings.push('The usual model was unavailable, so this answer came from the backup.')
+        }
         continue
       }
       res.status(result.status).json({ error: result.error, warnings })
@@ -271,18 +277,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     // A draft belongs to Tier 1. Re-issue the round there rather than keeping
-    // wording the intent model wrote.
+    // wording the intent model wrote — unless Tier 1 IS the model that just
+    // wrote it. With every tier on the same model (all Haiku since 2026-10-13),
+    // re-issuing would pay for the identical call twice and spend a round on
+    // it, so the answer is kept and the turn simply carries on as Tier 1.
     const wantsDraft = result.toolCalls.some((call) => findTool(call.function.name)?.tier === 'draft')
-    if (wantsDraft && tier === 'intent') {
+    // The wording a parent actually reads is Tier 1's job, the same as a draft.
+    const wantsSend = result.toolCalls.some((call) => findTool(call.function.name)?.tier === 'send')
+    if ((wantsDraft || wantsSend) && tier === 'intent') {
       tier = 'drafting'
-      continue
-    }
-    if (result.toolCalls.some((call) => findTool(call.function.name)?.tier === 'send')) {
-      // The wording a parent actually reads is Tier 1's job, the same as a draft.
-      if (tier === 'intent') {
-        tier = 'drafting'
-        continue
-      }
+      if (config.config.models.drafting[0] !== result.model) continue
     }
 
     // An invented tool name is the signal to escalate — see the header.

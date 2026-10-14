@@ -27,6 +27,13 @@
  * file. Only visibility is reachable.
  */
 
+import type { WeeklySchedule } from '../../../../src/types.js'
+import {
+  formatWeeklySchedule,
+  MAX_BLOCKS_PER_DAY,
+  sanitizeWeeklySchedule,
+  WEEKDAYS,
+} from '../../../../src/lib/schedule.js'
 import { propose, type AuditSubject } from '../audit.js'
 import { prettyDate } from '../clock.js'
 import {
@@ -48,6 +55,31 @@ const MAX_TEXT = 1000
 const MAX_TITLE = 200
 
 const CALENDAR_KINDS = ['closure', 'early_close', 'activity', 'reminder'] as const
+
+/**
+ * The care an enquiry asks for: the same week shape as a child's schedule.
+ * Built here rather than imported from `./schedules.ts`, which imports this
+ * file — a module-level constant read across that cycle can be read before it
+ * exists, depending on which file loads first.
+ */
+const CARE_WEEK_SCHEMA = schema(
+  Object.fromEntries(
+    WEEKDAYS.map((weekday) => [
+      weekday,
+      {
+        type: 'array',
+        maxItems: MAX_BLOCKS_PER_DAY,
+        items: schema(
+          {
+            start: { type: 'string', description: 'Drop-off, 24-hour HH:mm, e.g. 07:30' },
+            end: { type: 'string', description: 'Pickup, 24-hour HH:mm, e.g. 15:00' },
+          },
+          ['start', 'end'],
+        ),
+      },
+    ]),
+  ),
+)
 
 /**
  * Every tool here follows the same three steps, so they share one. Exported for
@@ -178,8 +210,9 @@ const leadMutate: ToolSpec = {
   tier: 'low',
   description:
     'Record a new enquiry from a prospective family, or update one — a tour date, ' +
-    'a status, a note. Nothing happens until the owner taps. This cannot remove a ' +
-    'lead.',
+    'a status, a note, when they want to start, and the days and times they need ' +
+    'care. Use only times she gave. Nothing happens until the owner taps. This ' +
+    'cannot remove a lead.',
   parameters: schema(
     {
       leadId: { type: 'string', description: 'Omit to record a new enquiry' },
@@ -188,7 +221,12 @@ const leadMutate: ToolSpec = {
       phone: { type: 'string' },
       childAges: { type: 'string', description: 'In her words — "2 and 4"' },
       message: { type: 'string', description: 'What they asked' },
-      tourDate: { type: 'string', description: 'yyyy-MM-dd' },
+      tourDate: { type: 'string', description: 'A tour she arranged, yyyy-MM-dd' },
+      startDate: { type: 'string', description: 'When they want to start, yyyy-MM-dd' },
+      schedule: {
+        ...CARE_WEEK_SCHEMA,
+        description: 'Days and times they need care, keyed mon…sun. A day left out is a day they do not need',
+      },
       status: { type: 'string', description: 'Her own wording, e.g. "Tour booked"' },
     },
     [],
@@ -201,6 +239,19 @@ const leadMutate: ToolSpec = {
     const childAges = readString(args, 'childAges')?.slice(0, MAX_TITLE) ?? null
     const message = readString(args, 'message')?.slice(0, MAX_TEXT) ?? null
     const tourDate = readDate(args, 'tourDate')
+    const startDate = readDate(args, 'startDate')
+    let schedule: WeeklySchedule | null = null
+    if (args.schedule !== undefined) {
+      schedule = sanitizeWeeklySchedule(args.schedule) ?? null
+      if (schedule === null) {
+        return {
+          ok: false,
+          error:
+            'Those days and times will not work: give each day as a list of {start, end} in ' +
+            `24-hour HH:mm, pickup after drop-off, no overlaps, at most ${String(MAX_BLOCKS_PER_DAY)} a day`,
+        }
+      }
+    }
     const status = readString(args, 'status')?.slice(0, MAX_TITLE) ?? null
 
     if (email !== null && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -218,13 +269,15 @@ const leadMutate: ToolSpec = {
       }
     }
 
-    const payload = { leadId, parentName, email, phone, childAges, message, tourDate, status }
+    const payload = { leadId, parentName, email, phone, childAges, message, tourDate, startDate, schedule, status }
     const detail: { label: string; value: string }[] = []
     if (parentName !== null) detail.push({ label: 'Parent', value: parentName })
     if (email !== null) detail.push({ label: 'Email', value: email })
     if (phone !== null) detail.push({ label: 'Phone', value: phone })
     if (childAges !== null) detail.push({ label: 'Children', value: childAges })
     if (tourDate !== null) detail.push({ label: 'Tour', value: prettyDate(tourDate) })
+    if (startDate !== null) detail.push({ label: 'Start', value: prettyDate(startDate) })
+    if (schedule !== null) detail.push({ label: 'Needs care', value: formatWeeklySchedule(schedule, 'en-US') })
     if (status !== null) detail.push({ label: 'Status', value: status })
     if (message !== null) detail.push({ label: 'They said', value: message })
 

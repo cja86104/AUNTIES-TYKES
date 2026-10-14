@@ -284,6 +284,8 @@ export function toLead(row: LeadRow): Lead {
     message: row.message,
     createdAt: row.created_at,
     tourDate: row.tour_date ?? '',
+    startDate: row.start_date ?? '',
+    schedule: row.schedule ?? undefined,
     status: row.status,
   }
 }
@@ -536,6 +538,8 @@ export function fromLead(lead: Lead): Ins<'leads'> {
     child_ages: lead.childAges,
     message: lead.message,
     tour_date: lead.tourDate || null,
+    start_date: lead.startDate || null,
+    schedule: lead.schedule ?? null,
     status: lead.status,
   }
 }

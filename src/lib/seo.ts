@@ -10,8 +10,12 @@ import { SEARCH_INDEXABLE } from './config'
 
 export const SITE = {
   name: "Auntie's Tykes",
-  /** Update to the customer's real domain at launch. */
-  url: 'https://aunties-tykes.vercel.app',
+  /**
+   * The live domain — the link the owner sends to parents. Set 2026-10-14 so
+   * shared-link previews and og:url name it. Indexing is still off: that is
+   * SEARCH_INDEXABLE plus robots.txt, not this.
+   */
+  url: 'https://auntiestykes.com',
   locale: 'en_US',
   ogImage: '/og-image.png',
   twitterCard: 'summary_large_image',
@@ -38,7 +42,7 @@ export const PRIVATE_PREFIXES = [
 ] as const
 
 export const DEFAULT_SEO: PageSeo = {
-  title: "Auntie's Tykes — Family Portal | Camp Hill, PA Home Daycare",
+  title: "Auntie's Tykes Family Portal | Family Daycare, Preschool, Pre-K and Summer camp",
   description:
     "The Auntie's Tykes family portal — daily reports, photos, attendance, invoices, and messages for our Camp Hill, PA home daycare families.",
 }

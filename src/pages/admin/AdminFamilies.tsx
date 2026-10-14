@@ -25,6 +25,7 @@ import { todayISO } from '../../lib/helpers'
 import { useStore } from '../../store/useStore'
 import { money, fmtDate, invoiceBalance, sum } from '../../lib/helpers'
 import { newLeads } from '../../lib/unread'
+import { formatWeeklySchedule } from '../../lib/schedule'
 
 const leadStatuses = ['New inquiry', 'Tour scheduled', 'Waitlisted', 'Enrolled', 'Not a fit']
 
@@ -278,8 +279,14 @@ export default function AdminFamilies() {
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
                       Child age: {l.childAges} · received {fmtDate(l.createdAt)}
+                      {l.startDate ? ` · wants to start ${fmtDate(l.startDate)}` : ''}
                       {l.tourDate ? ` · tour ${fmtDate(l.tourDate)}` : ''}
                     </p>
+                    {l.schedule && formatWeeklySchedule(l.schedule, 'en-US') !== '' && (
+                      <p className="mt-1 text-xs text-slate-700">
+                        <span className="font-semibold">Needs care:</span> {formatWeeklySchedule(l.schedule, 'en-US')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Select

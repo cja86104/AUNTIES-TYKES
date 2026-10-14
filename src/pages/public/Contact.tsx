@@ -6,8 +6,11 @@ import { z } from 'zod'
 import { motion } from 'framer-motion'
 import { MapPin, Mail, Clock, Send, CheckCircle2, ArrowRight } from 'lucide-react'
 import PageTransition, { Reveal } from '../../components/PageTransition'
+import ScheduleGrid, { scheduleIsValid } from '../../components/ScheduleGrid'
 import { Button, Card, Field, Input, Textarea, Select } from '../../components/ui'
 import { useStore } from '../../store/useStore'
+import { scheduleForSaving } from '../../lib/schedule'
+import type { WeeklySchedule } from '../../types'
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -28,6 +31,10 @@ export default function Contact() {
   const addLead = useStore((s) => s.addLead)
   const pushToast = useStore((s) => s.pushToast)
   const [sent, setSent] = useState(false)
+  // The care they need, outside react-hook-form for the same reason as on the
+  // enrollment form: ScheduleGrid is a controlled whole-week value, not a field.
+  const [schedule, setSchedule] = useState<WeeklySchedule>({})
+  const [scheduleError, setScheduleError] = useState('')
 
   const {
     register,
@@ -48,6 +55,11 @@ export default function Contact() {
   })
 
   const onSubmit = (values: ContactValues) => {
+    if (!scheduleIsValid(schedule)) {
+      setScheduleError('Please fix the times marked in red.')
+      return
+    }
+    setScheduleError('')
     try {
       addLead({
         parentName: values.parentName,
@@ -55,10 +67,13 @@ export default function Contact() {
         phone: values.phone,
         childAges: values.childAges,
         message: `[${values.program || 'Any program'}] ${values.message}`,
-        tourDate: values.startDate || '',
+        // A start date, not a tour: tours are arranged by the owner (0024).
+        startDate: values.startDate || '',
+        schedule: scheduleForSaving(schedule),
       })
       setSent(true)
       reset()
+      setSchedule({})
       pushToast({
         title: 'Inquiry sent',
         description: 'Melissa will reply within one business day.',
@@ -162,6 +177,21 @@ export default function Contact() {
                     <Field label="Ideal start date" hint="Approximate is fine">
                       <Input type="date" {...register('startDate')} />
                     </Field>
+                    <div className="min-w-0 sm:col-span-2">
+                      <ScheduleGrid
+                        idPrefix="contact"
+                        legend="Days and times you need care"
+                        hint="Add each day and time, for example 7–9 am and back 3–6 pm. Leave it empty if you are not sure yet."
+                        value={schedule}
+                        onChange={(next) => {
+                          setSchedule(next)
+                          if (scheduleError !== '' && scheduleIsValid(next)) setScheduleError('')
+                        }}
+                      />
+                      {scheduleError !== '' && (
+                        <p className="mt-1.5 text-xs font-medium text-rose-600">{scheduleError}</p>
+                      )}
+                    </div>
                     <Field label="Tell us about your family *" error={errors.message?.message} className="sm:col-span-2">
                       <Textarea
                         rows={5}

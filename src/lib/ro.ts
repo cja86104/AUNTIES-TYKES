@@ -175,6 +175,13 @@ function nonJsonError(path: string, status: number): RoError {
   return new RoError(DEV_SERVER_HINT, { apiUnavailable: true, status })
 }
 
+/**
+ * The signed-in owner's bearer token. Every caller awaits this BEFORE its
+ * `try` around `fetch`: that catch turns any throw into "the server functions
+ * aren't reachable", so an expired session thrown from inside it was reported
+ * as the server being down, and she was sent hunting for a broken deploy when
+ * all she needed was to sign in again.
+ */
 async function authHeader(): Promise<Record<string, string>> {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
@@ -208,9 +215,10 @@ function errorFrom(body: unknown, status: number): RoError {
 
 /** Is Ro switched on, and what can she do? Called once when the console mounts. */
 export async function fetchRoStatus(): Promise<RoStatus> {
+  const auth = await authHeader()
   let response: Response
   try {
-    response = await fetch('/api/ai/status', { headers: await authHeader() })
+    response = await fetch('/api/ai/status', { headers: auth })
   } catch {
     throw new RoError(DEV_SERVER_HINT, { apiUnavailable: true })
   }
@@ -275,11 +283,12 @@ function readReply(body: unknown): RoReply {
 
 /** Sends one turn. History is trimmed server-side too; this keeps the body small. */
 export async function askRo(message: string, history: RoTurn[]): Promise<RoReply> {
+  const auth = await authHeader()
   let response: Response
   try {
     response = await fetch('/api/ai/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      headers: { 'Content-Type': 'application/json', ...auth },
       body: JSON.stringify({ message, history: history.slice(-20) }),
     })
   } catch {
@@ -311,11 +320,12 @@ export async function confirmRoAction(
   decision: 'approve' | 'decline' | 'undo',
   secret?: string,
 ): Promise<RoActionResult> {
+  const auth = await authHeader()
   let response: Response
   try {
     response = await fetch('/api/ai/confirm', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      headers: { 'Content-Type': 'application/json', ...auth },
       body: JSON.stringify(secret === undefined ? { proposalId, decision } : { proposalId, decision, secret }),
     })
   } catch {
@@ -420,11 +430,12 @@ export async function transcribeRecording(blob: Blob): Promise<string> {
   if (blob.size === 0) throw new RoError("That recording came through empty — I didn't catch anything.")
 
   const audio = await toBase64(blob)
+  const auth = await authHeader()
   let response: Response
   try {
     response = await fetch('/api/ai/transcribe', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      headers: { 'Content-Type': 'application/json', ...auth },
       body: JSON.stringify({ audio, format: formatFor(blob.type) }),
     })
   } catch {
@@ -460,11 +471,12 @@ export interface RoSpeech {
  * Internal: go through `speechFor`, which owns the URL's lifetime.
  */
 async function fetchSpeech(text: string): Promise<RoSpeech> {
+  const auth = await authHeader()
   let response: Response
   try {
     response = await fetch('/api/ai/speak', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+      headers: { 'Content-Type': 'application/json', ...auth },
       body: JSON.stringify({ text }),
     })
   } catch {
