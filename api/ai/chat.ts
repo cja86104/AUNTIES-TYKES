@@ -4,7 +4,7 @@ import { todayInZone } from '../_lib/ai/clock.js'
 import { loadAiConfig, type ModelTier } from '../_lib/ai/config.js'
 import { matchStandingInstruction, type InstructionMatch } from '../_lib/ai/instructions.js'
 import { chat, type ChatMessage } from '../_lib/ai/openrouter.js'
-import { buildSystemPrompt, gatherPromptState } from '../_lib/ai/prompt.js'
+import { buildSystemPrompt, gatherPromptState, SECTION_BREAK } from '../_lib/ai/prompt.js'
 import { runTriggers } from '../_lib/ai/triggers.js'
 import { findTool, runToolCall, toolDefinitions } from '../_lib/ai/tools/index.js'
 import { readActionPreview, type ActionPreview, type ToolContext } from '../_lib/ai/tools/kit.js'
@@ -173,10 +173,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   // §6's fast path. Informs the turn; never replaces it.
   const instruction: InstructionMatch | null = matchStandingInstruction(turn.message)
 
-  const systemPrompt =
+  const prompt = buildSystemPrompt(state)
+  const livePrompt =
     instruction === null
-      ? buildSystemPrompt(state)
-      : `${buildSystemPrompt(state)}\n\n---\n\nNOTE ON WHAT SHE JUST SAID\n\n` +
+      ? prompt.live
+      : `${prompt.live}${SECTION_BREAK}NOTE ON WHAT SHE JUST SAID\n\n` +
         `That reads like a standing instruction (${instruction.shape}) — a plain regex ` +
         `spotted the shape, not you, so treat it as a hint and not a verdict. If it is ` +
         `one, save it with rule_save: resolve the family first if it names one, put her ` +
@@ -186,7 +187,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         `Either way, answer anything else she asked in the same message.`
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt },
+    {
+      role: 'system',
+      // The opening of the prompt never changes between turns, and together with
+      // the tool list ahead of it it is most of every request. Marked so
+      // Anthropic caches it: within five minutes of her last turn, the next one
+      // reads it at a tenth of the input price instead of paying for it again.
+      // The live half (clock, numbers, notices) changes every turn and comes
+      // after the mark. `chat` sends this as one plain string to a non-Anthropic
+      // model, so a fallback tier sees the same prompt it always did.
+      content: [
+        { type: 'text', text: prompt.stable, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: `${SECTION_BREAK}${livePrompt}` },
+      ],
+    },
     ...turn.history.map((entry) =>
       entry.role === 'user'
         ? ({ role: 'user', content: entry.content } as const)
@@ -236,6 +250,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
 
     answeredBy = result.model
+    if (result.usage !== null) {
+      // One line per round, so whether caching is landing can be read straight
+      // off Vercel's runtime logs: `cached` near the prompt size means it hit.
+      console.info(
+        '[ro] round usage',
+        JSON.stringify({
+          model: result.model,
+          prompt: result.usage.promptTokens,
+          cached: result.usage.cachedTokens,
+          written: result.usage.cacheWriteTokens,
+          completion: result.usage.completionTokens,
+        }),
+      )
+    }
 
     if (result.toolCalls.length === 0) {
       reply = result.content

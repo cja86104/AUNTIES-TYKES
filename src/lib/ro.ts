@@ -348,10 +348,11 @@ export async function confirmRoAction(
  *    to the server and comes back as text; text goes to the server and comes
  *    back as an audio file. That is what makes iOS Safari work, and it is not a
  *    preference.
- *  - Playback starts from a tap. §11 wants a tap-to-listen control per reply and
- *    no autoplay, which is also the user-gesture rule every browser enforces.
- *    Generating the audio is not playback, so that starts as soon as a reply
- *    arrives — see `speechFor`.
+ *  - Each reply is read out as soon as it arrives (the owner asked for it to
+ *    speak without a tap; changed 2026-10-13). Browsers only start audio inside
+ *    a tap, so the Send tap unlocks one shared element that the reply's audio
+ *    later plays through — see `roPlayback.ts`. Generating starts as soon as a
+ *    reply arrives — see `speechFor`.
  */
 
 /** What `MediaRecorder` produced, mapped to the formats the server accepts. */
@@ -488,9 +489,8 @@ async function fetchSpeech(text: string): Promise<RoSpeech> {
  * Why this exists: generating speech is the slow part of Listen — the server
  * waits for the whole clip before it answers, and a phone then downloads all of
  * it before playing. Started only on the tap, all of that was dead air. The panel
- * now calls `speechFor` the moment a reply arrives, so by the time she taps
- * Listen the audio is usually already here. Playback itself still starts only
- * from her tap (§11); only the generation moved earlier.
+ * now calls `speechFor` the moment a reply arrives, and the same request feeds
+ * both the reply being read out on arrival and any later Listen tap.
  *
  * Module scope rather than component state on purpose: `App.tsx` remounts the
  * panel on every navigation (see roSession.ts), and a cache inside the component

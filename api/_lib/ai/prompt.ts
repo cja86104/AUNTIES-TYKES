@@ -241,8 +241,21 @@ function listBlock(title: string, items: string[], emptyLine: string, footer = '
  * before it is given facts, then the live state, then the output rules last —
  * the closing section governs how it talks, and it holds better closest to the
  * model's turn.
+ *
+ * Returned in two parts so the first can be cached (see `chat` in
+ * openrouter.ts). `stable` is the opening sections, which only change if the
+ * owner's name does; `live` starts at the clock and is different every turn.
+ * Joined with `SECTION_BREAK` they are exactly the prompt this used to return
+ * as one string — the split moves nothing.
  */
-export function buildSystemPrompt(state: PromptState): string {
+export const SECTION_BREAK = '\n\n---\n\n'
+
+export interface SystemPrompt {
+  stable: string
+  live: string
+}
+
+export function buildSystemPrompt(state: PromptState): SystemPrompt {
   // An empty roster is not a quiet day, and saying so would make Ro sound
   // broken on day one. The console starts genuinely empty: Melissa adds the
   // first family herself, so until she does, the honest reading of zero
@@ -255,10 +268,9 @@ export function buildSystemPrompt(state: PromptState): string {
       'it would help, offer to walk her through adding the first family.'
     : 'Nothing is flagged right now. Quiet day on the exceptions.'
 
-  const sections = [
-    identity(state.ownerName),
-    HOW_YOU_WORK,
-    CALIBRATION,
+  const stable = [identity(state.ownerName), HOW_YOU_WORK, CALIBRATION]
+
+  const live = [
     `WHO YOU'RE TALKING TO\n\n` +
       `${state.ownerName}, who owns and runs ${state.businessName}. She is the only ` +
       `person who ever talks to you. It is ${state.time} on ${state.today}.`,
@@ -296,7 +308,7 @@ export function buildSystemPrompt(state: PromptState): string {
       'together. You may not add one, drop one, or change a number in one.',
     howYouRespond(state.ownerName),
   ]
-  return sections.join('\n\n---\n\n')
+  return { stable: stable.join(SECTION_BREAK), live: live.join(SECTION_BREAK) }
 }
 
 /* ------------------------------ state gathering ---------------------------- */

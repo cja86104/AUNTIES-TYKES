@@ -15,7 +15,7 @@
  */
 
 /** When the guide last changed. ISO timestamp, in the past. */
-export const RO_GUIDE_UPDATED_AT = '2026-10-09T00:00:00.000Z'
+export const RO_GUIDE_UPDATED_AT = '2026-10-14T00:25:00.000Z'
 
 export interface GuideTopic {
   /** Anchor id, and the key the page uses to pick an icon. */
@@ -52,9 +52,10 @@ export const GETTING_STARTED: GuideStep[] = [
       'listening, and your words appear once you stop.',
   },
   {
-    title: 'Listen to her answer',
+    title: 'Hear her answer',
     body:
-      'Tap Listen under any reply and Ro reads it out loud. Tap Stop to end it early.',
+      'Ro reads each reply out loud as soon as it arrives. Tap Mute under it to stop that one — ' +
+      'the next reply still speaks. Tap Listen under any reply to hear it again. Closing Ro stops her talking.',
   },
   {
     title: 'Start fresh',

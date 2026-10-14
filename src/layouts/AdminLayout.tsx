@@ -26,6 +26,7 @@ import { cx } from '../lib/helpers'
 import { useUnreadCounts, type UnreadCounts } from '../lib/unread'
 import { useBodyScrollLock } from '../lib/useBodyScrollLock'
 import RoAssistant from '../components/RoPanel'
+import { stopPlayback } from '../lib/roPlayback'
 
 interface NavItem {
   to: string
@@ -89,6 +90,8 @@ export default function AdminLayout() {
   }, [])
 
   const doLogout = () => {
+    // The panel unmounts with this layout; its voice would otherwise keep talking.
+    stopPlayback()
     logout()
     navigate('/')
   }

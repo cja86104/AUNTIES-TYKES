@@ -37,12 +37,22 @@ export interface ToolCall {
 }
 
 /**
+ * One block of a system prompt sent as parts. `cache_control` marks the end of
+ * a prefix for Anthropic to cache; see `chat`.
+ */
+export interface SystemPart {
+  type: 'text'
+  text: string
+  cache_control?: { type: 'ephemeral' }
+}
+
+/**
  * Serializes straight to OpenRouter's message array. A tool-calling assistant
  * turn carries `content: null`, which is why content is nullable on that arm
  * only.
  */
 export type ChatMessage =
-  | { role: 'system'; content: string }
+  | { role: 'system'; content: string | SystemPart[] }
   | { role: 'user'; content: string }
   | { role: 'assistant'; content: string | null; tool_calls?: ToolCall[] }
   | { role: 'tool'; tool_call_id: string; content: string }
@@ -62,6 +72,10 @@ export interface TokenUsage {
   promptTokens: number
   completionTokens: number
   totalTokens: number
+  /** Prompt tokens read from the cache — billed at a tenth of the input price. */
+  cachedTokens: number
+  /** Prompt tokens written to the cache — billed at 1.25x, once. */
+  cacheWriteTokens: number
 }
 
 export interface ChatSuccess {
@@ -227,11 +241,39 @@ function readUsage(value: unknown): TokenUsage | null {
   const completion = value.completion_tokens
   const total = value.total_tokens
   if (typeof prompt !== 'number' || typeof completion !== 'number') return null
+  // OpenRouter's names for Anthropic's cache read and cache write counts.
+  const details = isRecord(value.prompt_tokens_details) ? value.prompt_tokens_details : {}
+  const cached = details.cached_tokens
+  const written = details.cache_write_tokens
   return {
     promptTokens: prompt,
     completionTokens: completion,
     totalTokens: typeof total === 'number' ? total : prompt + completion,
+    cachedTokens: typeof cached === 'number' ? cached : 0,
+    cacheWriteTokens: typeof written === 'number' ? written : 0,
   }
+}
+
+/**
+ * True for a model OpenRouter serves from Anthropic, which is what prompt
+ * caching is built for. Ro's tiers are all Claude Haiku today, but they are
+ * env-configured and have run gpt-oss before, so this is checked per model.
+ */
+function isAnthropicModel(model: string): boolean {
+  return /^~?anthropic\//.test(model)
+}
+
+/**
+ * The same messages with every system prompt as one plain string, for a model
+ * that is not Anthropic's. The parts carry their own separators, so joining
+ * them gives back exactly the prompt they were split from.
+ */
+function withPlainSystem(messages: ChatMessage[]): ChatMessage[] {
+  return messages.map((message) =>
+    message.role === 'system' && typeof message.content !== 'string'
+      ? { role: 'system', content: message.content.map((part) => part.text).join('') }
+      : message,
+  )
 }
 
 function readToolCalls(value: unknown): ToolCall[] {
@@ -346,9 +388,10 @@ export async function chat(
   }
 
   for (const model of models) {
+    const caches = isAnthropicModel(model)
     const payload: Record<string, unknown> = {
       model,
-      messages: request.messages,
+      messages: caches ? request.messages : withPlainSystem(request.messages),
       // Always sent, never conditional. Anthropic's API requires max_tokens on
       // every request, so omitting it made the escalation tier — and only the
       // escalation tier — fail with OpenRouter's generic "Provider returned
@@ -362,6 +405,18 @@ export async function chat(
       payload.tool_choice = request.toolChoice ?? 'auto'
     }
     if (request.temperature !== undefined) payload.temperature = request.temperature
+
+    // Prompt caching, Anthropic only. Two marks, both five-minute ephemeral:
+    //  - the one inside the system prompt (set by the caller) covers the tool
+    //    list plus the prompt's unchanging opening, so a new turn within five
+    //    minutes of the last one reads all of that from the cache;
+    //  - this top-level one is automatic caching: Anthropic puts a mark on the
+    //    last block and moves it forward, so round two of a turn (after a tool
+    //    call) reads everything round one already sent.
+    // Reads cost 0.1x input and writes 1.25x, so a turn's second round alone
+    // pays for it. A round sent without tools (the last-call guard in
+    // api/ai/chat.ts) changes the prefix and simply misses.
+    if (caches) payload.cache_control = { type: 'ephemeral' }
 
     // A pinned provider (config.ts: `<tier>_PROVIDER`) is sent with no
     // fallback, same reasoning as the TTS pin below: the point of pinning is

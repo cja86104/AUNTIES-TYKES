@@ -743,10 +743,15 @@ deliberate upgrade to evaluate on its own, not a v1 default; it'd be a
 second vendor and key outside the OpenRouter-only standard this app holds
 to everywhere else.
 
-**Playback UI:** every Ro reply gets a tap-to-listen affordance next to
-the text — never autoplay. That satisfies the universal user-gesture
-requirement automatically and means nothing about the Safari story depends
-on a workaround; it's just how the feature is built.
+**Playback UI:** every Ro reply is read out as soon as it arrives, and
+carries a Mute button while it speaks and a Listen button to replay it.
+(Changed 2026-10-13 at the owner's request — this was originally
+tap-to-listen only, never autoplay.) Browsers only start audio inside a
+user gesture, so the Send tap plays 50ms of silence on one shared audio
+element, and the reply's audio later plays through that same element —
+iOS Safari allows an element that has played inside a tap to play again.
+Mute stops that one reply only; it is not a setting. Closing the panel
+stops speech. See `src/lib/roPlayback.ts`.
 
 **Verification, not just architecture.** Test actual recording and
 playback on a real iPhone in Safari once, early in the build — before
@@ -762,6 +767,16 @@ launch.
 Final picks, deliberately spread across three different labs rather than
 defaulting to one provider for everything — chosen for fit, not chased on
 price. Verified against OpenRouter's own model pages, September 2026:
+
+> **Current state, 2026-10-13:** all three tiers run `anthropic/claude-haiku-5.5`
+> pinned to the `anthropic` provider (set in Vercel env; the picks below are the
+> original September choices). Prompt caching is on for Anthropic models: the
+> tool list plus the system prompt's unchanging opening (identity, how you work,
+> calibration) is cached with an explicit five-minute mark, and automatic caching
+> covers each turn's later rounds. Cache reads are billed at 0.1x input, writes at
+> 1.25x; Haiku 5.5 caches prompts of 512 tokens and up. Each round logs
+> `[ro] round usage` with its cached and written token counts. See `chat` in
+> `api/_lib/ai/openrouter.ts`.
 
 **Tier 0 — intent parsing.** `inclusionai/ling-3.0-flash-vl` — $0.06 / $0.18
 per 1M tokens, 131K context. Hybrid instant/reasoning model with tool
@@ -885,10 +900,11 @@ defending to a client, not "AI costs," full stop.
 - **Both typed and spoken input from day one.** A microphone control next
   to the text input, using the OpenRouter/Whisper pipeline from §9 — not
   the browser's own speech recognition.
-- **Every Ro reply gets a tap-to-listen control**, using the OpenRouter
-  TTS pipeline from §9, with the voice picked there. Off by default per
-  message (she taps to hear it, it doesn't talk at her unprompted),
-  always available.
+- **Every Ro reply is read out on arrival**, using the OpenRouter TTS
+  pipeline from §9, with the voice picked there. A Mute button stops the
+  reply that is speaking (that reply only — the next one speaks); Listen
+  replays any reply. Changed 2026-10-13 from tap-to-listen at the owner's
+  request; see §9's playback note.
 - Every AI action surfaces as a running activity feed — "Sent to: Brooks,
   Okafor, Chen — tap to view" — doubling as the audit log's UI. The
   proactive notices from §5 land in the same feed, ranked by priority.

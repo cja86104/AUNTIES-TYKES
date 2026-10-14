@@ -7,10 +7,9 @@ import { speak } from '../_lib/ai/openrouter.js'
  * Ro's reply as audio — plan §9's output half.
  *
  * Returns the audio bytes directly rather than base64 in JSON, so the client can
- * hand the response straight to an `<audio>` element. §11 requires playback to
- * start from a tap and never autoplay, which also satisfies the user-gesture
- * rule every modern browser enforces — so the Safari story needs no workaround,
- * it is just how the feature is built.
+ * hand the response straight to an `<audio>` element. The panel reads each reply
+ * out as it arrives, through one element unlocked by her Send tap — see
+ * src/lib/roPlayback.ts for how that works on iOS Safari.
  *
  * No caching: the audio is generated per reply, a reply is shown once, and a
  * cached copy of one parent's draft being read aloud is not something worth
