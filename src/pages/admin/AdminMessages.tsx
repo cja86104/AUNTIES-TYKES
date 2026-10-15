@@ -20,7 +20,8 @@ import {
 import FileUploader from '../../components/FileUploader'
 import { useStore } from '../../store/useStore'
 import { bytes, cx, fmtDate, nowISO, uid } from '../../lib/helpers'
-import { downloadDocument, removeDocumentFile } from '../../lib/storage'
+import { downloadDocument, isInlineImage, removeDocumentFile } from '../../lib/storage'
+import { AttachmentPhoto } from '../../components/DailyLogCard'
 import { useSectionSeen } from '../../lib/unread'
 import type { UploadedFileMeta } from '../../types'
 
@@ -298,12 +299,23 @@ export default function AdminMessages() {
                   </div>
                   {a.attachmentStoragePath && (
                     <div className="border-t border-slate-100 px-5 py-3">
-                      <Button size="sm" variant="outline" onClick={() => onDownloadAttachment(a)}>
-                        <Paperclip size={14} /> {a.attachmentFileName ?? 'Attachment'}
-                        {typeof a.attachmentSize === 'number' && (
-                          <span className="text-slate-400">· {bytes(a.attachmentSize)}</span>
-                        )}
-                      </Button>
+                      {/* A photo shows as a thumbnail; anything else keeps the download button. */}
+                      {a.attachmentFileName && isInlineImage(a.attachmentFileName) ? (
+                        <AttachmentPhoto
+                          attachment={{
+                            storagePath: a.attachmentStoragePath,
+                            fileName: a.attachmentFileName,
+                            size: a.attachmentSize ?? 0,
+                          }}
+                        />
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => onDownloadAttachment(a)}>
+                          <Paperclip size={14} /> {a.attachmentFileName ?? 'Attachment'}
+                          {typeof a.attachmentSize === 'number' && (
+                            <span className="text-slate-400">· {bytes(a.attachmentSize)}</span>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   )}
                 </Card>
@@ -534,9 +546,13 @@ export default function AdminMessages() {
             <p className="mb-1.5 text-sm font-semibold text-slate-700">Attachment (optional)</p>
             {attachment ? (
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                  <Paperclip size={16} />
-                </span>
+                {isInlineImage(attachment.fileName) ? (
+                  <AttachmentPhoto attachment={attachment} showName={false} />
+                ) : (
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                    <Paperclip size={16} />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-800">{attachment.fileName}</p>
                   <p className="text-xs text-slate-500">{bytes(attachment.size)}</p>

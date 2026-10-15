@@ -753,7 +753,7 @@ iOS Safari allows an element that has played inside a tap to play again.
 Mute stops that one reply only; it is not a setting. Closing the panel
 stops speech. See `src/lib/roPlayback.ts`.
 
-**Time to first word, 2026-10-14.** Gemini TTS sends nothing until a clip is
+**Time to first word, 2026-10-14 — LOCKED as the best speech speed for Aunties Tykes (tested on the owner's iPhone; see CLAUDE.md).** Gemini TTS sends nothing until a clip is
 finished — measured: first byte 4.56 s, whole clip 4.66 s for 150 characters;
 3.06 s for 38 characters — so streaming cannot help, and the voice (Erinome) is
 the owner's firm pick, not up for swapping. A reply over 160 characters is

@@ -20,7 +20,8 @@ import {
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { bytes, cx, fmtDate, nowISO, uid } from '../../lib/helpers'
-import { downloadDocument } from '../../lib/storage'
+import { downloadDocument, isInlineImage } from '../../lib/storage'
+import { AttachmentPhoto } from '../../components/DailyLogCard'
 import { useSectionSeen } from '../../lib/unread'
 
 interface NewThreadErrors {
@@ -160,16 +161,27 @@ export default function ParentMessages() {
                   </div>
                   {a.attachmentStoragePath && (
                     <div className="border-t border-slate-100 px-5 py-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onDownloadAttachment(a.attachmentStoragePath ?? '', a.attachmentFileName)}
-                      >
-                        <Paperclip size={14} /> {a.attachmentFileName ?? t('messages.attachment')}
-                        {typeof a.attachmentSize === 'number' && (
-                          <span className="text-slate-400">· {bytes(a.attachmentSize)}</span>
-                        )}
-                      </Button>
+                      {/* A photo shows as a thumbnail; anything else keeps the download button. */}
+                      {a.attachmentFileName && isInlineImage(a.attachmentFileName) ? (
+                        <AttachmentPhoto
+                          attachment={{
+                            storagePath: a.attachmentStoragePath,
+                            fileName: a.attachmentFileName,
+                            size: a.attachmentSize ?? 0,
+                          }}
+                        />
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onDownloadAttachment(a.attachmentStoragePath ?? '', a.attachmentFileName)}
+                        >
+                          <Paperclip size={14} /> {a.attachmentFileName ?? t('messages.attachment')}
+                          {typeof a.attachmentSize === 'number' && (
+                            <span className="text-slate-400">· {bytes(a.attachmentSize)}</span>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   )}
                 </Card>

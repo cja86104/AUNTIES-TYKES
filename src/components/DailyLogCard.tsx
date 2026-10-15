@@ -31,8 +31,12 @@ const Row = ({ icon: Icon, label, children }: RowProps) => (
 /**
  * One attached photo. The bucket is private, so the image source is a signed
  * URL fetched when the card mounts; tapping it opens the full-size photo.
+ *
+ * Exported for announcements (admin and parent Messages), which show an
+ * attached photo the same way. `showName` is off where the file name is
+ * already printed beside it.
  */
-function AttachmentPhoto({ attachment }: { attachment: LogAttachment }) {
+export function AttachmentPhoto({ attachment, showName = true }: { attachment: LogAttachment; showName?: boolean }) {
   const { t } = useTranslation()
   const [url, setUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
@@ -75,7 +79,7 @@ function AttachmentPhoto({ attachment }: { attachment: LogAttachment }) {
           {failed ? <ImageOff size={20} aria-label={t('dailyLogCard.photoUnavailable')} /> : null}
         </div>
       )}
-      <figcaption className="mt-1.5 truncate text-xs text-slate-500">{attachment.fileName}</figcaption>
+      {showName && <figcaption className="mt-1.5 truncate text-xs text-slate-500">{attachment.fileName}</figcaption>}
     </figure>
   )
 }

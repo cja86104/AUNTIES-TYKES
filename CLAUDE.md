@@ -132,6 +132,25 @@ schema/domain mismatch at build time rather than at runtime against live data.
   Settings rate card is not a fallback — only its sibling discount is applied.
   (There is no public tuition estimator; nothing public reads the rate card.)
 
+## Ro's voice — LOCKED, best speech speed (2026-10-14)
+
+Tested on the owner's iPhone and confirmed by Chris as the best speech speed
+for Aunties Tykes. Do not revisit, re-tune or "improve" this without being asked.
+
+- **Voice:** `google/gemini-3.8-flash-lite-tts`, voice `Erinome`. The owner loves
+  it. Never suggest swapping the TTS model or voice for speed — Kokoro was tried
+  and rejected, and a faster model is a downgrade here, not a fix.
+- **Speaks on arrival, no tap.** Mute stops that one reply only (not a setting);
+  Listen replays. Built Safari-on-iPhone first: the Send tap unlocks one shared
+  audio element (`src/lib/roPlayback.ts`).
+- **Speed comes from the split, not the model.** Gemini sends nothing until a
+  clip is finished (measured: ~2.6 s fixed + ~0.014 s/char; first byte ≈ whole
+  clip, so streaming cannot help). Replies over 160 characters are spoken in up
+  to three pieces requested in parallel — first sentence, then up to 5× that,
+  then the rest, split only at sentence ends (`src/lib/speechParts.ts`, tested in
+  `tests/speechParts.test.ts`). First word in ~3 s at any length. ~3 s is this
+  voice's floor.
+
 ## Brand
 
 - Primary `#4F77D9` · Sunny `#F5B942` · Sage `#5DC4A6` · Ink `#2b2f3a` · Canvas `#FBFAF7`
