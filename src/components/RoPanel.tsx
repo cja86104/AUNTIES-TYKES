@@ -29,7 +29,6 @@ import {
   canRecord,
   pickRecordingMimeType,
   RoError,
-  speechFor,
   transcribeRecording,
   type RoAction,
   type RoDraft,
@@ -37,7 +36,15 @@ import {
   type RoToolRun,
 } from '../lib/ro'
 import { useRoSession, type RoDecision, type RoMessage } from '../lib/roSession'
-import { claimArrival, playReply, primePlayback, stopPlayback, useRoPlayback, type PlayOutcome } from '../lib/roPlayback'
+import {
+  claimArrival,
+  playReply,
+  prefetchReply,
+  primePlayback,
+  stopPlayback,
+  useRoPlayback,
+  type PlayOutcome,
+} from '../lib/roPlayback'
 
 /**
  * Ro's console presence — plan §11.
@@ -780,7 +787,7 @@ export default function RoAssistant({ onOpen }: RoAssistantProps) {
     if (latest.role !== 'assistant' || latest.content.length === 0) return
     if (!claimArrival(latest.id)) return
     if (!open) {
-      void speechFor(latest.id, latest.content).catch(() => undefined)
+      prefetchReply(latest.id, latest.content)
       return
     }
     void playReply(latest.id, latest.content).then((outcome) => report(outcome, true))

@@ -753,6 +753,15 @@ iOS Safari allows an element that has played inside a tap to play again.
 Mute stops that one reply only; it is not a setting. Closing the panel
 stops speech. See `src/lib/roPlayback.ts`.
 
+**Time to first word, 2026-10-14.** Gemini TTS sends nothing until a clip is
+finished — measured: first byte 4.56 s, whole clip 4.66 s for 150 characters;
+3.06 s for 38 characters — so streaming cannot help, and the voice (Erinome) is
+the owner's firm pick, not up for swapping. A reply over 160 characters is
+therefore spoken in up to three pieces, all requested in parallel: the first
+sentence, then up to five times that, then the rest, joined at sentence ends
+(`src/lib/speechParts.ts`, tested in `tests/speechParts.test.ts`). She hears Ro
+after ~3 s whatever the length, instead of ~8 s for a 400-character reply.
+
 **Verification, not just architecture.** Test actual recording and
 playback on a real iPhone in Safari once, early in the build — before
 Melissa is relying on it. The mechanism above is standard and safe, but

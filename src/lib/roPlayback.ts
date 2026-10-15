@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { speechFor, type RoSpeech } from './ro'
+import { splitForSpeech } from './speechParts'
 
 /**
  * Ro's voice: the one audio element she speaks through, and which reply is
@@ -52,6 +53,46 @@ let element: HTMLAudioElement | null = null
  */
 let generation = 0
 
+/**
+ * Releases a reply that is waiting for one piece to finish before playing the
+ * next. Pausing never fires `ended`, so without this a muted reply would wait
+ * forever.
+ */
+let releaseWait: (() => void) | null = null
+
+/** Moves `generation` on and releases anything waiting on the old one. */
+function interrupt(): number {
+  generation += 1
+  releaseWait?.()
+  releaseWait = null
+  return generation
+}
+
+/** Resolves true when the current piece ends, false if something interrupts it first. */
+function untilEnded(el: HTMLAudioElement): Promise<boolean> {
+  return new Promise((resolve) => {
+    releaseWait = () => resolve(false)
+    el.onended = () => {
+      releaseWait = null
+      resolve(true)
+    }
+  })
+}
+
+/**
+ * Every piece of one reply's audio, all requested now and in parallel. Keyed
+ * per piece, so the prefetch, the arrival and a Listen tap share each request
+ * and nothing is generated — or paid for — twice.
+ */
+function speechParts(messageId: string, text: string): Promise<RoSpeech>[] {
+  return splitForSpeech(text).map((part, index) => speechFor(`${messageId}#${String(index)}`, part))
+}
+
+/** Starts making a reply's audio without playing it, so a later Listen is quick. */
+export function prefetchReply(messageId: string, text: string): void {
+  for (const clip of speechParts(messageId, text)) void clip.catch(() => undefined)
+}
+
 /** Replies already spoken on arrival, so a remount never reads one twice. */
 const spokenOnArrival = new Set<string>()
 
@@ -65,7 +106,7 @@ function audio(): HTMLAudioElement {
  * shared element on iOS and silences whatever was playing.
  */
 export function primePlayback(): void {
-  generation += 1
+  interrupt()
   const el = audio()
   el.pause()
   // Cleared before the primer: otherwise the silence ends, fires the old
@@ -81,7 +122,7 @@ export function primePlayback(): void {
 
 /** Mute: stops what is playing now, and anything still on its way. */
 export function stopPlayback(): void {
-  generation += 1
+  interrupt()
   if (element !== null) {
     element.pause()
     element.onended = null
@@ -108,36 +149,48 @@ export type PlayOutcome =
   | { kind: 'failed'; cause: unknown }
 
 /**
- * Speaks one reply. The audio is shared with the prefetch through `speechFor`,
- * so a reply is never generated — or paid for — twice.
+ * Speaks one reply, in the pieces `splitForSpeech` makes, back to back on the
+ * one unlocked element. Resolves once the LAST piece has started, so a "read the
+ * first part" notice for an over-long reply shows when that part begins.
  */
 export async function playReply(messageId: string, text: string): Promise<PlayOutcome> {
-  generation += 1
-  const mine = generation
+  const mine = interrupt()
   const el = audio()
   useRoPlayback.setState({ speakingId: messageId })
 
-  let speech: RoSpeech
-  try {
-    speech = await speechFor(messageId, text)
-  } catch (cause) {
+  const clips = speechParts(messageId, text)
+  let trimmed = false
+  for (const [index, clip] of clips.entries()) {
+    let speech: RoSpeech
+    try {
+      speech = await clip
+    } catch (cause) {
+      if (mine !== generation) return { kind: 'cancelled' }
+      useRoPlayback.setState({ speakingId: null })
+      return { kind: 'failed', cause }
+    }
     if (mine !== generation) return { kind: 'cancelled' }
-    useRoPlayback.setState({ speakingId: null })
-    return { kind: 'failed', cause }
-  }
-  if (mine !== generation) return { kind: 'cancelled' }
+    trimmed = trimmed || speech.trimmed
 
-  el.onended = () => {
-    if (mine === generation) useRoPlayback.setState({ speakingId: null })
+    const last = index === clips.length - 1
+    // Set before play() so a very short piece cannot end unheard by the handler.
+    const finished = last ? null : untilEnded(el)
+    if (last) {
+      el.onended = () => {
+        if (mine === generation) useRoPlayback.setState({ speakingId: null })
+      }
+    }
+    el.src = speech.url
+    try {
+      await el.play()
+    } catch (cause) {
+      if (mine !== generation) return { kind: 'cancelled' }
+      useRoPlayback.setState({ speakingId: null })
+      if (cause instanceof DOMException && cause.name === 'NotAllowedError') return { kind: 'blocked' }
+      return { kind: 'failed', cause }
+    }
+    if (finished === null) return { kind: 'played', trimmed }
+    if (!(await finished) || mine !== generation) return { kind: 'cancelled' }
   }
-  el.src = speech.url
-  try {
-    await el.play()
-  } catch (cause) {
-    if (mine !== generation) return { kind: 'cancelled' }
-    useRoPlayback.setState({ speakingId: null })
-    if (cause instanceof DOMException && cause.name === 'NotAllowedError') return { kind: 'blocked' }
-    return { kind: 'failed', cause }
-  }
-  return { kind: 'played', trimmed: speech.trimmed }
+  return { kind: 'cancelled' }
 }

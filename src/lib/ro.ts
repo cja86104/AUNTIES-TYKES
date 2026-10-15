@@ -513,10 +513,12 @@ const speechCache = new Map<string, Promise<RoSpeech>>()
 
 /**
  * How many clips are kept. Each is uncompressed WAV — about 48 KB per second of
- * speech, so up to ~4 MB for the longest reply the server will read — which on a
- * phone is worth bounding. Enough for the newest reply plus a few to replay.
+ * speech, so up to ~4 MB for the longest piece the server will read — which on a
+ * phone is worth bounding. A reply is spoken in up to three pieces
+ * (`speechParts.ts`), each its own entry here, so this is the newest reply plus
+ * a few to replay.
  */
-const SPEECH_CACHE_LIMIT = 4
+const SPEECH_CACHE_LIMIT = 12
 
 /**
  * The audio for one reply, generating it if this is the first ask.
