@@ -14,6 +14,13 @@
  * iPhone uses); there it becomes a JPEG, which every browser can show inline.
  * Anything that cannot be decoded, or would not come out smaller, is uploaded
  * exactly as it was — shrinking is a saving, never a reason to fail an upload.
+ *
+ * One photo at a time, app-wide. A phone photo decoded at full size takes
+ * ~100–190 MB, and choosing several at once decoded them all together, which
+ * is past what iOS Safari allows a tab: Safari killed and reloaded the page
+ * mid-report, which looked like being signed out (2026-10-19). Shrinks now
+ * queue behind each other, and each full-size image is released as soon as it
+ * has been drawn. Uploads of the shrunk copies still run side by side.
  */
 import { fitWithin, JPEG_QUALITY, jpegName } from './imageSize'
 
@@ -32,8 +39,17 @@ function toJpeg(canvas: HTMLCanvasElement): Promise<Blob | null> {
   })
 }
 
-export async function shrinkImage(file: File): Promise<File> {
-  if (!SHRINKABLE_TYPES.includes(file.type)) return file
+/** The tail of the shrink queue; each shrink starts when the one before it ends. */
+let queueTail: Promise<unknown> = Promise.resolve()
+
+export function shrinkImage(file: File): Promise<File> {
+  if (!SHRINKABLE_TYPES.includes(file.type)) return Promise.resolve(file)
+  const result = queueTail.then(() => shrinkOne(file))
+  queueTail = result
+  return result
+}
+
+async function shrinkOne(file: File): Promise<File> {
   const url = URL.createObjectURL(file)
   try {
     const img = await decode(url)
@@ -49,6 +65,8 @@ export async function shrinkImage(file: File): Promise<File> {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, width, height)
     ctx.drawImage(img, 0, 0, width, height)
+    // Lets the full-size decoded bitmap go now rather than whenever GC runs.
+    img.removeAttribute('src')
     const blob = await toJpeg(canvas)
     // Frees the bitmap now; iOS Safari caps total canvas memory per page.
     canvas.width = 0
