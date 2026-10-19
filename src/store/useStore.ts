@@ -13,6 +13,7 @@ import {
 import type { SectionName } from '../lib/database.types'
 import { sanitizeWeeklySchedule, sortedBlocks } from '../lib/schedule'
 import { openVisit, visitsOn } from '../lib/visits'
+import { clearViewUrls } from '../lib/storage'
 import type {
   Announcement,
   ApprovalResult,
@@ -424,6 +425,7 @@ export const useStore = create<StoreState>()((set, get) => {
       // Clear the cache as well as the session. On a shared device the next
       // person to sign in must not inherit the previous family's data.
       set({ user: null, ...emptyData })
+      clearViewUrls()
       void signOut().catch(() => {
         /* the local session is dropped either way */
       })

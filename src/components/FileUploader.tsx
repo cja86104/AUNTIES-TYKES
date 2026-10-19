@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { UploadCloud, FileText, CheckCircle2, AlertTriangle, X } from 'lucide-react'
 import { bytes, cx, uid } from '../lib/helpers'
 import { buildStoragePath, rejectionReason, uploadDocument } from '../lib/storage'
+import { shrinkImage } from '../lib/imageShrink'
 import type { UploadedFileMeta } from '../types'
 
 type QueueState = 'uploading' | 'done' | 'error'
@@ -72,17 +73,12 @@ export default function FileUploader({
       const files = Array.from(fileList ?? [])
       if (!files.length) return
 
-      files.forEach((file) => {
+      files.forEach((original) => {
         const id = uid('up')
-        setQueue((q) => [...q, { id, name: file.name, size: file.size, state: 'uploading' }])
+        setQueue((q) => [...q, { id, name: original.name, size: original.size, state: 'uploading' }])
 
-        const refusal = rejectionReason(file)
-        if (refusal) {
-          fail(id, refusal)
-          return
-        }
-
-        const storagePath = buildStoragePath(prefix, file.name)
+        // Counted as in flight from the start: the shrink step is part of the
+        // upload, so a form cannot post while a photo is still being prepared.
         inFlight.current += 1
         if (inFlight.current === 1) onBusyChange?.(true)
         // Settled before onUploaded/fail is called, so a parent that swaps this
@@ -96,8 +92,20 @@ export default function FileUploader({
           inFlight.current -= 1
           if (inFlight.current === 0) onBusyChange?.(false)
         }
-        void uploadDocument(file, storagePath)
-          .then(() => {
+
+        // Photos are shrunk first (src/lib/imageShrink.ts), so the size limit
+        // is checked against what is actually stored.
+        void shrinkImage(original)
+          .then(async (file) => {
+            const refusal = rejectionReason(file)
+            if (refusal) {
+              settle()
+              fail(id, refusal)
+              return
+            }
+            setQueue((q) => q.map((i) => (i.id === id ? { ...i, name: file.name, size: file.size } : i)))
+            const storagePath = buildStoragePath(prefix, file.name)
+            await uploadDocument(file, storagePath)
             settle()
             setQueue((q) => q.map((i) => (i.id === id ? { ...i, state: 'done' } : i)))
             onUploaded?.({
@@ -113,8 +121,8 @@ export default function FileUploader({
             fail(
               id,
               error instanceof Error
-                ? `${file.name} did not upload: ${error.message}`
-                : `${file.name} did not upload. Check your connection and try again.`,
+                ? `${original.name} did not upload: ${error.message}`
+                : `${original.name} did not upload. Check your connection and try again.`,
             )
           })
       })
