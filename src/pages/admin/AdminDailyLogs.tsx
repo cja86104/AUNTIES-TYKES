@@ -20,6 +20,7 @@ import { useStore } from '../../store/useStore'
 import { bytes, todayISO, fmtDate, isFilled, nowISO, nowTime } from '../../lib/helpers'
 import { removeDocumentFile } from '../../lib/storage'
 import { useSectionSeen } from '../../lib/unread'
+import { isEnrolled } from '../../lib/schedule'
 import type { DailyLog, Incident, LogAttachment, UploadedFileMeta } from '../../types'
 
 const moodOptions = [
@@ -115,7 +116,7 @@ export default function AdminDailyLogs() {
   const seen = useSectionSeen('daily_reports')
   const pushToast = useStore((s) => s.pushToast)
 
-  const active = useMemo(() => children.filter((c) => c.status === 'active'), [children])
+  const active = useMemo(() => children.filter((c) => isEnrolled(c.status)), [children])
 
   const [childFilter, setChildFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('')
@@ -194,18 +195,35 @@ export default function AdminDailyLogs() {
     }
   }
 
+  /**
+   * The page opens on today's reports only (Eastern time). Earlier days are
+   * reached through the search box or the date picker, which look across the
+   * whole history. Read on every render so a page left open overnight rolls
+   * over to the new day.
+   */
+  const today = todayISO()
+  const searching = Boolean(query.trim() || dateFilter)
+
+  /** Today's reports, or the whole history while she is searching. */
+  const inScope = useMemo(
+    () => (searching ? dailyLogs : dailyLogs.filter((l) => l.date === today)),
+    [dailyLogs, searching, today],
+  )
+
   const logs = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return dailyLogs
+    return inScope
       .filter((l) => (childFilter === 'all' ? true : l.childId === childFilter))
       .filter((l) => (dateFilter ? l.date === dateFilter : true))
       .filter((l) => {
         if (!q) return true
-        const text = `${l.meals} ${l.naps} ${l.potty} ${l.mood} ${l.notes} ${l.activities.join(' ')} ${l.incident?.description ?? ''}`.toLowerCase()
+        // The child's name is searchable so "Ellie" brings up Ellie's earlier reports.
+        const childName = children.find((c) => c.id === l.childId)?.name ?? ''
+        const text = `${childName} ${l.meals} ${l.naps} ${l.potty} ${l.mood} ${l.notes} ${l.activities.join(' ')} ${l.incident?.description ?? ''}`.toLowerCase()
         return text.includes(q)
       })
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-  }, [dailyLogs, childFilter, dateFilter, query])
+  }, [inScope, children, childFilter, dateFilter, query])
 
   const openNew = () => {
     startDraft()
@@ -368,17 +386,18 @@ export default function AdminDailyLogs() {
 
   const tabs = useMemo(
     () => [
-      { value: 'all', label: 'All children', count: dailyLogs.length },
+      { value: 'all', label: 'All children', count: inScope.length },
       ...active.map((c) => ({
         value: c.id,
         label: c.name.split(' ')[0] ?? c.name,
-        count: dailyLogs.filter((l) => l.childId === c.id).length,
+        count: inScope.filter((l) => l.childId === c.id).length,
       })),
     ],
-    [active, dailyLogs],
+    [active, inScope],
   )
 
   const filtersActive = Boolean(query || dateFilter || childFilter !== 'all')
+  const filteredChildName = children.find((c) => c.id === childFilter)?.name.split(' ')[0]
 
   return (
     <PageTransition>
@@ -392,7 +411,7 @@ export default function AdminDailyLogs() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search reports…"
+                placeholder="Search all reports…"
                 className="w-full pl-9 sm:w-56"
                 aria-label="Search daily logs"
               />
@@ -431,20 +450,33 @@ export default function AdminDailyLogs() {
         )}
         <Badge tone="neutral">
           {logs.length} {logs.length === 1 ? 'report' : 'reports'}
+          {searching ? '' : ' today'}
         </Badge>
       </div>
+
+      {!searching && (
+        <p className="-mt-3 mb-5 text-sm text-slate-500">
+          Showing today’s reports. Search or pick a date to look up an earlier day.
+        </p>
+      )}
 
       {logs.length === 0 ? (
         <EmptyState
           icon={NotebookPen}
-          title={filtersActive ? 'No reports match those filters' : 'No daily reports yet'}
+          title={
+            searching
+              ? 'No reports match that search'
+              : filteredChildName
+                ? `No report for ${filteredChildName} yet today`
+                : 'No reports yet today'
+          }
           description={
-            filtersActive
-              ? 'Try a different child or clear the date filter to see the full history.'
-              : 'Write the first report of the day and it will appear in the family’s portal right away.'
+            searching
+              ? 'Try different words, another date, or clear the search.'
+              : 'Write today’s report and it will appear in the family’s portal right away. Search or pick a date to look up an earlier day.'
           }
           action={
-            filtersActive ? (
+            searching ? (
               <Button
                 variant="outline"
                 onClick={() => {

@@ -27,7 +27,9 @@
     "unpaid": "Chưa thanh toán",
     "overdue": "Quá hạn",
     "active": "Đang học",
+    "summer_camp": "Trại hè",
     "waitlist": "Danh sách chờ",
+    "unenrolled": "Đã nghỉ học",
     "notScheduled": "Hôm nay không có lịch",
     "closedToday": "Hôm nay đóng cửa",
     "backAt": "Quay lại lúc {{time}}"

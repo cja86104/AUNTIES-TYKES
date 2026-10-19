@@ -128,7 +128,7 @@ export function statusTone(status: string | null | undefined): Tone {
   if (['paid', 'present', 'active'].includes(s)) return 'green'
   if (['overdue', 'absent'].includes(s)) return 'rose'
   if (['unpaid', 'expected', 'waitlist', 'partial'].includes(s)) return 'amber'
-  if (s === 'checked-out') return 'blue'
+  if (s === 'checked-out' || s === 'summer_camp') return 'blue'
   return 'neutral'
 }
 

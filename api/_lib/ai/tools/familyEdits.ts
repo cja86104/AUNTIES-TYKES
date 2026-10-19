@@ -44,11 +44,13 @@
 
 import type { Contact } from '../../../../src/types.js'
 import type { ChildRow, FamilyRow } from '../../../../src/lib/database.types.js'
+import { CHILD_STATUS_LABELS } from '../../../../src/lib/childStatus.js'
+import { isEnrolled } from '../../../../src/lib/schedule.js'
 import { propose } from '../audit.js'
 import { prettyDate } from '../clock.js'
 import { money } from '../projection.js'
 import { toCents } from './billing.js'
-import { AGE_GROUPS, CHILD_STATUSES, EMAIL, exactPattern, pick, readList, RELATIONS } from './families.js'
+import { AGE_GROUPS, CHILD_STATUSES, EMAIL, exactPattern, pick, readList, RELATIONS, type ChildStatus } from './families.js'
 import {
   alreadyProposed,
   dbFailure,
@@ -539,7 +541,7 @@ function describeChildValue(column: keyof ChildChanges, changes: ChildChanges): 
         ? '(blank)'
         : prettyDate(changes.start_date)
     case 'status':
-      return changes.status === 'waitlist' ? 'Waitlist' : 'Active'
+      return changes.status === undefined ? '(blank)' : CHILD_STATUS_LABELS[changes.status]
     default:
       return describeText(changes[column] ?? '')
   }
@@ -617,7 +619,7 @@ const childUpdate: ToolSpec = {
   tier: 'medium',
   description:
     "Change an existing child's details — the same as Edit details on their page: " +
-    'name, date of birth, age group, status (active, or waitlist), start date, ' +
+    'name, date of birth, age group, status (active, summer_camp, or waitlist), start date, ' +
     'teacher, notes, allergies and medications. Find the child with roster_list or ' +
     'family_get first. Pass ONLY what she asked to change. It does not save on its ' +
     'own: she sees each change as before → after and taps. Allergies and ' +
@@ -632,7 +634,11 @@ const childUpdate: ToolSpec = {
       name: { type: 'string' },
       dob: { type: 'string', description: 'Date of birth, yyyy-MM-dd' },
       ageGroup: { type: 'string', enum: AGE_GROUPS },
-      status: { type: 'string', enum: CHILD_STATUSES, description: 'waitlist takes them off the expected roster' },
+      status: {
+        type: 'string',
+        enum: CHILD_STATUSES,
+        description: 'summer_camp is enrolled the same as active; waitlist takes them off the expected roster',
+      },
       startDate: { type: 'string', description: 'yyyy-MM-dd' },
       teacher: { type: 'string' },
       notes: { type: 'string', description: 'Replaces the whole note' },
@@ -744,12 +750,12 @@ const childUpdate: ToolSpec = {
           `anywhere ${row.name}'s allergies and medications are listed.`,
       })
     }
-    if (after.status === 'waitlist') {
+    if (after.status !== undefined && !isEnrolled(after.status)) {
       detail.push({
         label: 'Careful',
         value:
           `${row.name} will no longer be expected on the attendance page or in today's headcount ` +
-          'until set back to active.',
+          'until set back to Active or Summer Camp.',
       })
     }
     detail.push({
@@ -770,4 +776,121 @@ const childUpdate: ToolSpec = {
   },
 }
 
-export const familyEditTools: ToolSpec[] = [familyUpdate, childUpdate]
+/* ----------------------------- family.unenroll ----------------------------- */
+
+/** One child on a family_unenroll card, with the status the card showed. */
+export interface UnenrollChild {
+  id: string
+  name: string
+  status: ChildStatus
+}
+
+/** A family_unenroll card's arguments, as the executor reads them back. */
+export interface UnenrollPayload {
+  familyId: string
+  familyLabel: string
+  children: UnenrollChild[]
+}
+
+/** Reads a family_unenroll card back; a string is the reason it could not be read. */
+export function readUnenrollPayload(raw: Record<string, unknown>): UnenrollPayload | string {
+  const familyId = raw.familyId
+  const familyLabel = raw.familyLabel
+  const list = raw.children
+  if (typeof familyId !== 'string' || typeof familyLabel !== 'string' || !Array.isArray(list) || list.length === 0) {
+    return 'That card could not be read back, so nothing was saved'
+  }
+  const children: UnenrollChild[] = []
+  for (const item of list as unknown[]) {
+    if (typeof item !== 'object' || item === null) return 'That card could not be read back, so nothing was saved'
+    const entry = item as Record<string, unknown>
+    const status = typeof entry.status === 'string' ? pick(entry.status, CHILD_STATUSES) : null
+    if (typeof entry.id !== 'string' || typeof entry.name !== 'string' || status === null) {
+      return 'That card could not be read back, so nothing was saved'
+    }
+    children.push({ id: entry.id, name: entry.name, status })
+  }
+  return { familyId, familyLabel, children }
+}
+
+const familyUnenroll: ToolSpec = {
+  name: 'family_unenroll',
+  tier: 'medium',
+  description:
+    'Unenroll a whole family — the same as "Unenroll family" on their page: every child in ' +
+    'the family who is not already unenrolled is set to unenrolled. Use it when she says a ' +
+    'family is leaving or has left. Find the family with family_find or family_get first. ' +
+    'Nothing is deleted: past reports, attendance, invoices and balances stay on file, and ' +
+    'their parent logins keep working. To unenroll just one child, or to re-enroll anyone, ' +
+    'use child_update with status. It does not save on its own: she sees the card and taps.',
+  parameters: schema({ familyId: { type: 'string', description: 'From family_find or family_get' } }, ['familyId']),
+  execute: async (args, ctx): Promise<ToolOutcome> => {
+    const familyId = readString(args, 'familyId')
+    if (familyId === null) return { ok: false, error: 'A familyId is required' }
+
+    const family = await ctx.caller.db.from('families').select('id, name').eq('id', familyId).maybeSingle()
+    if (family.error !== null) return dbFailure('that family', family.error)
+    if (family.data === null) return { ok: true, data: { unenrolled: false, reason: 'no family has that id', familyId } }
+
+    const kids = await ctx.caller.db
+      .from('children')
+      .select('id, name, status')
+      .eq('family_id', familyId)
+      .order('name', { ascending: true })
+    if (kids.error !== null) return dbFailure('their children', kids.error)
+    if (kids.data.length === 0) {
+      return { ok: true, data: { unenrolled: false, reason: 'this family has no children on file', familyId } }
+    }
+    const changing: UnenrollChild[] = kids.data
+      .filter((row) => row.status !== 'unenrolled')
+      .map((row) => ({ id: row.id, name: row.name, status: row.status }))
+    if (changing.length === 0) {
+      return { ok: true, data: { unenrolled: false, reason: 'every child in this family is already unenrolled', familyId } }
+    }
+
+    const payload: UnenrollPayload = { familyId, familyLabel: family.data.name, children: changing }
+    const key = `family.unenroll:${canonical(payload)}`
+    const seen = alreadyProposed(ctx, key)
+    if (seen !== undefined) return proposed(seen)
+
+    const logged = await propose(ctx, {
+      instruction: ctx.instruction,
+      tool: 'family.unenroll',
+      riskTier: 'medium',
+      arguments: { ...payload },
+      subject: { familyId, familyLabel: family.data.name, targets: changing.map((child) => child.id) },
+      model: ctx.model,
+    })
+    if (!logged.ok) return { ok: false, error: logged.error }
+
+    const detail: CardLine[] = [{ label: 'Family', value: family.data.name }]
+    for (const child of changing) {
+      detail.push({ label: child.name, value: `${CHILD_STATUS_LABELS[child.status]} → Unenrolled` })
+    }
+    detail.push({
+      label: 'Careful',
+      value:
+        'They will no longer be expected on the attendance page or in the headcount, and drop out of ' +
+        'new daily reports and invoice prefill until a child is set back to Active or Summer Camp.',
+    })
+    detail.push({
+      label: 'What happens',
+      value:
+        'The same as Unenroll family on their page. Past reports, attendance, invoices and any ' +
+        'balance stay on file, and the family can still sign in. Nothing is sent to the family.',
+    })
+
+    const preview: ActionPreview = {
+      id: logged.value,
+      kind: 'family.unenroll',
+      title: 'Unenroll a family',
+      summary: `${family.data.name}: ${changing.map((child) => child.name).join(', ')}`,
+      detail,
+      confirmLabel: 'Unenroll the family',
+    }
+    rememberProposal(ctx, key, preview)
+    return proposed(preview)
+  },
+}
+
+export const familyEditTools: ToolSpec[] = [familyUpdate, childUpdate, familyUnenroll]

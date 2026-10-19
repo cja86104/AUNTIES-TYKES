@@ -28,6 +28,7 @@ import {
   dayProblem,
   formatDayBlocks,
   formatWeeklySchedule,
+  isEnrolled,
   MAX_BLOCKS_PER_DAY,
   patternOn,
   sanitizeWeeklySchedule,
@@ -37,6 +38,7 @@ import {
   type DayProblem,
   type ResolverPlan,
 } from '../../../../src/lib/schedule.js'
+import { CHILD_STATUS_LABELS } from '../../../../src/lib/childStatus.js'
 import { prettyDate, shiftDays } from '../clock.js'
 import { loadDays, scheduleWords } from '../schedules.js'
 import { offer } from './office.js'
@@ -221,8 +223,11 @@ const scheduleChangeSet: ToolSpec = {
       if (existing !== undefined) detail.push({ label: 'Replaces', value: `the change already saved (${blocksWords(existing.blocks)})` })
       if (note !== '') detail.push({ label: 'Note', value: note })
     }
-    if (child.status !== 'active') {
-      detail.push({ label: 'Careful', value: `${child.name} is on the waitlist, so is not expected on any day.` })
+    if (!isEnrolled(child.status)) {
+      detail.push({
+        label: 'Careful',
+        value: `${child.name} is not enrolled (${CHILD_STATUS_LABELS[child.status]}), so is not expected on any day.`,
+      })
     } else if (child.startDate !== '' && date < child.startDate) {
       detail.push({ label: 'Careful', value: `${child.name} does not start until ${prettyDate(child.startDate)}.` })
     }
@@ -370,8 +375,11 @@ const schedulePlanSet: ToolSpec = {
         value: `Another new week is already planned from ${prettyDate(later.startsOn)}, and takes over on that date.`,
       })
     }
-    if (found.status !== 'active') {
-      detail.push({ label: 'Careful', value: `${found.name} is on the waitlist, so is not expected on any day.` })
+    if (!isEnrolled(found.status)) {
+      detail.push({
+        label: 'Careful',
+        value: `${found.name} is not enrolled (${CHILD_STATUS_LABELS[found.status]}), so is not expected on any day.`,
+      })
     }
     detail.push({ label: 'Family sees it', value: FAMILY_SEES })
 

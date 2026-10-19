@@ -1,0 +1,23 @@
+-- ============================================================================
+-- 0026 — "Unenrolled" as a child status.
+--
+-- The owner needs a way to unenroll a family. Status lives on each child, so a
+-- family is unenrolled when every one of its children is: the family page's
+-- "Unenroll family" button (and Ro's family_unenroll tool) set them all at
+-- once, and the child status dropdown sets one child.
+--
+-- An unenrolled child is not expected on any day, gets no new daily reports,
+-- is left out of invoice prefill and out of Ro's "enrolled" lists — the same
+-- as the waitlist, decided by `isEnrolled` in src/lib/schedule.ts. Nothing is
+-- deleted: past reports, attendance, invoices and balances stay on file, and
+-- the family's parent logins keep working so they can still see them.
+-- Setting a child back to Active re-enrolls them.
+--
+-- Nothing in the database (RLS, functions, constraints) reads children.status,
+-- so adding the value is the whole schema change.
+--
+-- Additive only: no existing row changes. Idempotent: safe to run more than
+-- once. Run it on its own, after 0025.
+-- ============================================================================
+
+alter type public.child_status add value if not exists 'unenrolled' after 'waitlist';

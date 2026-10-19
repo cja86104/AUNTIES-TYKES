@@ -29,6 +29,7 @@
 
 import type { WeeklySchedule } from '../../../../src/types.js'
 import { formatWeeklySchedule } from '../../../../src/lib/schedule.js'
+import { CHILD_STATUSES, CHILD_STATUS_LABELS } from '../../../../src/lib/childStatus.js'
 import { propose } from '../audit.js'
 import { prettyDate } from '../clock.js'
 import {
@@ -49,8 +50,8 @@ import { readWeek, WEEK_SCHEMA } from './schedules.js'
 export const AGE_GROUPS = ['Infant', 'Toddler', 'Preschool', 'Elementary', 'Middle School'] as const
 export type AgeGroup = (typeof AGE_GROUPS)[number]
 
-/** Mirrors the `child_status` enum. */
-export const CHILD_STATUSES = ['active', 'waitlist'] as const
+/** Every child status, from the app's own list (src/lib/childStatus.ts). */
+export { CHILD_STATUSES }
 export type ChildStatus = (typeof CHILD_STATUSES)[number]
 
 /** Mirrors the relation options in src/components/FamilyForm.tsx. */
@@ -259,7 +260,11 @@ const familyAdd: ToolSpec = {
                 'in 24-hour HH:mm. A day left out is a day they do not come',
             },
             startDate: { type: 'string', description: 'yyyy-MM-dd' },
-            status: { type: 'string', enum: CHILD_STATUSES, description: 'Defaults to active' },
+            status: {
+              type: 'string',
+              enum: CHILD_STATUSES,
+              description: 'Defaults to active. summer_camp is enrolled the same as active; waitlist is not expected',
+            },
             allergies: { type: 'array', items: { type: 'string' } },
             medications: { type: 'array', items: { type: 'string' } },
             notes: { type: 'string' },
@@ -343,7 +348,7 @@ const familyAdd: ToolSpec = {
         child.schedule === null ? 'schedule not set' : formatWeeklySchedule(child.schedule, 'en-US'),
         `starts ${prettyDate(child.startDate)}`,
       ]
-      if (child.status === 'waitlist') parts.push('waitlist')
+      if (child.status !== 'active') parts.push(CHILD_STATUS_LABELS[child.status])
       detail.push({ label: child.name, value: parts.join(' · ') })
       detail.push({
         label: `${child.name} — allergies`,

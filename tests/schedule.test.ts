@@ -23,6 +23,7 @@ import {
   dayProblem,
   formatBlock,
   formatWeeklySchedule,
+  isEnrolled,
   patternOn,
   resolveChildDay,
   sanitizeWeeklySchedule,
@@ -373,6 +374,28 @@ void describe('resolveChildDay: who is enrolled', () => {
     })
   })
 
+  void it('expects a Summer Camp child on their scheduled days, exactly like an active one', () => {
+    assert.deepStrictEqual(
+      resolveChildDay(child({ status: 'summer_camp' }), TUE, none, noEvents),
+      resolveChildDay(child(), TUE, none, noEvents),
+    )
+    hasFields(resolveChildDay(child({ status: 'summer_camp' }), TUE, none, noEvents), { state: 'expected' })
+  })
+
+  void it('counts active and Summer Camp as enrolled, and the waitlist as not', () => {
+    assert.equal(isEnrolled('active'), true)
+    assert.equal(isEnrolled('summer_camp'), true)
+    assert.equal(isEnrolled('waitlist'), false)
+    assert.equal(isEnrolled('unenrolled'), false)
+  })
+
+  void it('never expects an unenrolled child, whatever the schedule says', () => {
+    hasFields(resolveChildDay(child({ status: 'unenrolled' }), TUE, none, noEvents), {
+      state: 'not_expected',
+      source: 'inactive',
+    })
+  })
+
   void it('does not expect a child before their start date', () => {
     hasFields(resolveChildDay(child({ startDate: '2026-10-07' }), TUE, none, noEvents), {
       state: 'not_expected',
@@ -638,10 +661,24 @@ void describe('buildDayRoster', () => {
     assert.deepStrictEqual(roster.counts, { here: 0, gone: 0, absent: 0, due: 2, returning: 0 })
   })
 
+  void it('puts a Summer Camp child on the roster like any active child', () => {
+    const withCamp = [...kids, kid('gus', 'Gus', { status: 'summer_camp', schedule: { tue: [{ start: '08:00', end: '12:00' }] } })]
+    const roster = buildDayRoster(withCamp, [], [], [], TUE)
+    assert.deepStrictEqual(roster.main.map((r) => r.child.id), ['ava', 'gus', 'ben'])
+    assert.equal(roster.counts.due, 3)
+  })
+
   void it('leaves waitlisted children out entirely', () => {
     const roster = buildDayRoster(kids, [], [], [], TUE)
     const all = [...roster.main, ...roster.unscheduled, ...roster.notToday].map((r) => r.child.id)
     assert.equal(all.includes('eve'), false)
+  })
+
+  void it('leaves unenrolled children out entirely', () => {
+    const withGone = [...kids, kid('hal', 'Hal', { status: 'unenrolled', schedule: { tue: [{ start: '09:00', end: '12:00' }] } })]
+    const roster = buildDayRoster(withGone, [], [], [], TUE)
+    const all = [...roster.main, ...roster.unscheduled, ...roster.notToday].map((r) => r.child.id)
+    assert.equal(all.includes('hal'), false)
   })
 
   void it('always lists a child with a record that day, even when not scheduled (drop-in)', () => {

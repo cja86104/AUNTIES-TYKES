@@ -15,7 +15,7 @@
  */
 
 /** When the guide last changed. ISO timestamp, in the past. */
-export const RO_GUIDE_UPDATED_AT = '2026-10-14T13:05:00.000Z'
+export const RO_GUIDE_UPDATED_AT = '2026-10-19T12:55:00.000Z'
 
 export interface GuideTopic {
   /** Anchor id, and the key the page uses to pick an icon. */
@@ -237,10 +237,16 @@ export const TOPICS: GuideTopic[] = [
       'Add eggs to Ellie\'s allergies.',
       'Take peanuts off Sam\'s allergies.',
       'Move Sam to the waitlist.',
+      'Put Leo in Summer Camp.',
+      'Who is in Summer Camp?',
+      'The Brooks family is leaving — unenroll them.',
+      'Put Sam back to active.',
       'Set the Chens\' weekly rate to $250.',
     ],
     notes: [
       'Only what you name changes. The card shows each change as before → after.',
+      'Summer Camp children are expected, get daily reports and are billed just like Active ones. Waitlist children are not expected on any day.',
+      'Unenrolling a family sets all their children to Unenrolled. Their past reports, invoices and balance stay, and they can still sign in. To bring a child back, set them to Active or Summer Camp.',
       'Allergies, medications and emergency contacts are added or taken off one at a time, so nothing gets dropped by accident.',
       'Changing a family\'s email does not change the email they use to sign in to the portal.',
       'A child\'s days and times are changed under Schedules, not here. Ro cannot move a child to a different family.',

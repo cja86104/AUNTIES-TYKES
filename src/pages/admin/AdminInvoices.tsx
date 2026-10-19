@@ -20,6 +20,7 @@ import { useStore } from '../../store/useStore'
 import { fmtDate, invoiceBalance, invoiceStatus, money, todayISO, uid } from '../../lib/helpers'
 import type { InvoiceStatus, LineItem } from '../../types'
 import { invoicePeriod, tuitionLines } from '../../lib/invoiceLines'
+import { isEnrolled } from '../../lib/schedule'
 
 interface DraftLine {
   id: string
@@ -118,7 +119,7 @@ export default function AdminInvoices() {
       setErrors((e) => ({ ...e, familyId: 'Choose a family first' }))
       return
     }
-    const kids = children.filter((c) => c.familyId === familyId && c.status === 'active')
+    const kids = children.filter((c) => c.familyId === familyId && isEnrolled(c.status))
     if (!kids.length) {
       pushToast({ tone: 'info', title: 'No enrolled children', description: 'This family has no active enrollments to bill.' })
       return

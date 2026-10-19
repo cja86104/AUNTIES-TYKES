@@ -24,6 +24,7 @@ import { useStore } from '../../store/useStore'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 import { consoleScheduleText, scheduleNotSet } from '../../components/ScheduleSummary'
 import { visitsOn } from '../../lib/visits'
+import { CHILD_STATUS_LABELS } from '../../lib/childStatus'
 
 export default function AdminChildDetail() {
   const { id } = useParams()
@@ -138,7 +139,7 @@ export default function AdminChildDetail() {
               <Avatar name={child.name} hue={child.hue} size="xl" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={statusTone(child.status)}>{child.status}</Badge>
+                  <Badge tone={statusTone(child.status)}>{CHILD_STATUS_LABELS[child.status]}</Badge>
                   <Badge tone={statusTone(status)}>Today: {status}</Badge>
                   {child.allergies.length > 0 && (
                     <Badge tone="rose">

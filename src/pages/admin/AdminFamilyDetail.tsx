@@ -15,6 +15,7 @@ import {
   Pencil,
   KeyRound,
   UserCheck,
+  UserMinus,
 } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import { Card, Button, Badge, Avatar, EmptyState, PageHeader, statusTone, Modal } from '../../components/ui'
@@ -24,6 +25,7 @@ import type { FamilyFormValue } from '../../components/FamilyForm'
 import { useStore } from '../../store/useStore'
 import { money, fmtDate, ageLabel, invoiceBalance, invoiceStatus, sum } from '../../lib/helpers'
 import { consoleScheduleText } from '../../components/ScheduleSummary'
+import { CHILD_STATUS_LABELS, isFamilyUnenrolled } from '../../lib/childStatus'
 
 export default function AdminFamilyDetail() {
   const { id } = useParams()
@@ -31,6 +33,7 @@ export default function AdminFamilyDetail() {
   const children = useStore((s) => s.children)
   const invoices = useStore((s) => s.invoices)
   const updateFamily = useStore((s) => s.updateFamily)
+  const updateChild = useStore((s) => s.updateChild)
   const pushToast = useStore((s) => s.pushToast)
 
   const users = useStore((s) => s.users)
@@ -38,11 +41,15 @@ export default function AdminFamilyDetail() {
   const [editOpen, setEditOpen] = useState(false)
   const [draft, setDraft] = useState<FamilyFormValue | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [unenrollOpen, setUnenrollOpen] = useState(false)
   const threads = useStore((s) => s.threads)
 
   const family = families.find((f) => f.id === id)
 
   const kids = useMemo(() => children.filter((c) => c.familyId === id), [children, id])
+  const unenrolled = isFamilyUnenrolled(kids)
+  /** The children "Unenroll family" changes: everyone not already unenrolled. */
+  const stillEnrolled = useMemo(() => kids.filter((k) => k.status !== 'unenrolled'), [kids])
   const famInvoices = useMemo(
     () => invoices.filter((i) => i.familyId === id).sort((a, b) => (a.issuedAt < b.issuedAt ? 1 : -1)),
     [invoices, id],
@@ -83,6 +90,21 @@ export default function AdminFamilyDetail() {
     pushToast({ title: 'Family updated', description: `${draft.name.trim()} was saved.` })
   }
 
+  /**
+   * Sets every child in the family to Unenrolled. Each child is written through
+   * on its own, the same as changing their status on their page; a failed
+   * write raises its own toast. Nothing is deleted and parent logins stay.
+   */
+  const unenrollFamily = () => {
+    if (!family) return
+    stillEnrolled.forEach((k) => updateChild(k.id, { status: 'unenrolled' }))
+    setUnenrollOpen(false)
+    pushToast({
+      title: 'Family unenrolled',
+      description: `${family.name}: ${stillEnrolled.length} ${stillEnrolled.length === 1 ? 'child' : 'children'} set to Unenrolled.`,
+    })
+  }
+
   if (!family) {
     return (
       <PageTransition>
@@ -111,7 +133,7 @@ export default function AdminFamilyDetail() {
 
       <PageHeader
         title={family.name}
-        description={`${family.primaryContact} · ${family.relation} · enrolled since ${fmtDate(family.joinedAt)}`}
+        description={`${family.primaryContact} · ${family.relation} · ${unenrolled ? 'unenrolled · joined' : 'enrolled since'} ${fmtDate(family.joinedAt)}`}
         actions={
           <>
             <Button as="a" href={`tel:${family.phone.replace(/[^0-9]/g, '')}`} variant="outline">
@@ -133,10 +155,24 @@ export default function AdminFamilyDetail() {
           <Card className="p-5">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-lg font-bold text-slate-900">Children</h2>
-              <Badge tone="blue">
-                <UserRound size={12} /> {kids.length}
-              </Badge>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {unenrolled && <Badge tone={statusTone('unenrolled')}>Unenrolled</Badge>}
+                <Badge tone="blue">
+                  <UserRound size={12} /> {kids.length}
+                </Badge>
+                {stillEnrolled.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={() => setUnenrollOpen(true)}>
+                    <UserMinus size={14} /> Unenroll family
+                  </Button>
+                )}
+              </div>
             </div>
+            {unenrolled && (
+              <p className="mt-3 text-sm text-slate-500">
+                This family is unenrolled. To re-enroll a child, open their page, choose Edit details and set their
+                status back to Active or Summer Camp.
+              </p>
+            )}
             {kids.length === 0 ? (
               <p className="mt-4 text-sm text-slate-500">No children linked to this family yet.</p>
             ) : (
@@ -154,7 +190,7 @@ export default function AdminFamilyDetail() {
                           {k.ageGroup} · {ageLabel(k.dob)} · {consoleScheduleText(k)}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <Badge tone={statusTone(k.status)}>{k.status}</Badge>
+                          <Badge tone={statusTone(k.status)}>{CHILD_STATUS_LABELS[k.status]}</Badge>
                           {k.allergies.length > 0 && (
                             <Badge tone="rose">
                               <ShieldAlert size={11} /> Allergy
@@ -334,6 +370,38 @@ export default function AdminFamilyDetail() {
           </Card>
         </div>
       </div>
+
+      <Modal
+        open={unenrollOpen}
+        onClose={() => setUnenrollOpen(false)}
+        title="Unenroll this family?"
+        description={family.name}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setUnenrollOpen(false)}>
+              Keep them enrolled
+            </Button>
+            <Button variant="danger" onClick={unenrollFamily}>
+              <UserMinus size={16} /> Unenroll family
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3 text-sm text-slate-700">
+          <p>
+            {stillEnrolled.map((k) => k.name).join(', ')} will be set to <strong>Unenrolled</strong>.
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>They will no longer be expected on the attendance page or the dashboards.</li>
+            <li>They drop out of new daily reports and invoice prefill.</li>
+            <li>Past reports, attendance, invoices and any balance stay on file.</li>
+            <li>The family can still sign in to their portal. Nothing is sent to them.</li>
+          </ul>
+          <p className="text-slate-500">
+            You can re-enroll a child any time by setting their status back to Active or Summer Camp.
+          </p>
+        </div>
+      </Modal>
 
       <ParentAccountDialog open={acctOpen} onClose={() => setAcctOpen(false)} fixedFamilyId={family.id} />
 

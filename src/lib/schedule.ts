@@ -11,7 +11,7 @@
  * from the string itself.
  *
  * Precedence, first match wins:
- *   1. Child not active                         → not expected
+ *   1. Child not enrolled (see isEnrolled)      → not expected
  *   2. Date before the child's start date       → not expected
  *   3. A `closure` covers the date              → closed, nobody expected
  *   4. A `schedule_exception` for this child    → not expected
@@ -44,6 +44,18 @@ const HH_MM = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
 
 /** Same limit as `valid_schedule_blocks` in migration 0020. */
 export const MAX_BLOCKS_PER_DAY = 3
+
+/**
+ * The statuses that count as enrolled: on the attendance roster on their
+ * scheduled days, in daily reports, in invoice prefill and in Ro's lists.
+ * Summer Camp is enrolled exactly like Active; only its label differs. Every
+ * "is this child enrolled" check in the app and in Ro goes through here.
+ */
+export const ENROLLED_STATUSES: readonly ChildStatus[] = ['active', 'summer_camp']
+
+export function isEnrolled(status: ChildStatus): boolean {
+  return ENROLLED_STATUSES.includes(status)
+}
 
 /** The child fields the resolver reads. A domain `Child` satisfies this. */
 export interface ResolverChild {
@@ -200,7 +212,7 @@ export function resolveChildDay(
   const weekday = weekdayOf(date)
   if (weekday === null) throw new RangeError(`Not a yyyy-MM-dd date: ${date}`)
 
-  if (child.status !== 'active') return day('not_expected', 'inactive')
+  if (!isEnrolled(child.status)) return day('not_expected', 'inactive')
   if (child.startDate !== '' && date < child.startDate) return day('not_expected', 'not_started')
 
   const todays = events.filter((event) => covers(event, date))
@@ -549,7 +561,7 @@ export function buildDayRoster<C extends RosterChild, R extends RosterRecord>(
   }
 
   for (const child of children) {
-    if (child.status !== 'active') continue
+    if (!isEnrolled(child.status)) continue
     const day = resolveChildDay(child, date, changes, events, plans)
     const record = records.find((entry) => entry.childId === child.id && entry.date === date) ?? null
     const { phase, returnsAt } = phaseOf(day, record)

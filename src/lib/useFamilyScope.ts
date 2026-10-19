@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useStore } from '../store/useStore'
 import { invoiceBalance, invoiceStatus } from './helpers'
+import { isEnrolled } from './schedule'
 import type { Announcement, Child, DocumentRecord, Family, Invoice, SessionUser } from '../types'
 
 export interface FamilyScope {
@@ -52,7 +53,7 @@ export function useFamilyScope(): FamilyScope {
       familyId,
       family,
       kids,
-      activeKids: kids.filter((c) => c.status === 'active'),
+      activeKids: kids.filter((c) => isEnrolled(c.status)),
       invoices,
       outstanding: invoices.reduce((s, i) => s + invoiceBalance(i), 0),
       nextInvoice: open[0],

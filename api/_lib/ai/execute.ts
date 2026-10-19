@@ -36,6 +36,7 @@ import {
   familyUsingEmail,
   readChildChanges,
   readFamilyChanges,
+  readUnenrollPayload,
   type ChildChanges,
   type FamilyChanges,
 } from './tools/familyEdits.js'
@@ -1178,6 +1179,47 @@ const updateChildExecutor: Executor = {
 }
 
 /**
+ * Unenrolls a family, mirroring "Unenroll family" on the family page: every
+ * child on the card is set to 'unenrolled'. Each child must still be in this
+ * family with the status the card showed, or nothing is saved — a child
+ * re-enrolled or moved in the console while the card waited is not overwritten.
+ * Nothing is deleted; parent logins are untouched. Undo is per child, by
+ * setting the status back (child_update or the child's page).
+ */
+const unenrollFamilyExecutor: Executor = {
+  tool: 'family.unenroll',
+  run: async (ctx, proposal) => {
+    const card = readUnenrollPayload(proposal.arguments)
+    if (typeof card === 'string') return { ok: false, error: card }
+    const ids = card.children.map((child) => child.id)
+
+    const read = await ctx.caller.db.from('children').select('id, family_id, status').in('id', ids)
+    if (read.error !== null) return { ok: false, error: `Could not read their children: ${read.error.message}` }
+    const moved = card.children
+      .filter((child) => {
+        const now = read.data.find((row) => row.id === child.id)
+        return now === undefined || now.family_id !== card.familyId || now.status !== child.status
+      })
+      .map((child) => child.name)
+    if (moved.length > 0) return { ok: false, error: `${moved.join(', ')}: status ${MOVED}` }
+
+    const written = await ctx.caller.db
+      .from('children')
+      .update({ status: 'unenrolled' })
+      .in('id', ids)
+      .eq('family_id', card.familyId)
+      .select('id')
+    if (written.error !== null) return { ok: false, error: `Could not unenroll them: ${written.error.message}` }
+    if (written.data.length !== ids.length) {
+      return { ok: false, error: `Only ${String(written.data.length)} of ${String(ids.length)} children were changed — check the family page.` }
+    }
+
+    const count = ids.length === 1 ? '1 child' : `${String(ids.length)} children`
+    return { ok: true, summary: `${card.familyLabel} unenrolled (${count}).`, targets: ids }
+  },
+}
+
+/**
  * Creates one parent login, through the same `createParentAccount` the console's
  * endpoint uses — so the auth user, the profile and the roll-back between them
  * are one implementation, not two.
@@ -1408,6 +1450,7 @@ const executors: Executor[] = [
   addFamilyExecutor,
   updateFamilyExecutor,
   updateChildExecutor,
+  unenrollFamilyExecutor,
   createParentLoginExecutor,
   decideEnrollmentExecutor,
 ]

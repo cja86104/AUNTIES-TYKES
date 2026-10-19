@@ -15,6 +15,8 @@
  */
 
 import type { Contact, Incident, WeeklySchedule } from '../../../../src/types.js'
+import { CHILD_STATUSES } from '../../../../src/lib/childStatus.js'
+import { ENROLLED_STATUSES } from '../../../../src/lib/schedule.js'
 import { expectedWords, loadDays, MAX_DAYS, notExpectedWords, scheduleWords } from '../schedules.js'
 import { daysSince, prettyDate, shiftDays } from '../clock.js'
 import { AGE_GROUPS } from './families.js'
@@ -342,18 +344,22 @@ const familyGet: ToolSpec = {
   },
 }
 
+/** roster_list's filter: everyone enrolled, one status, or everyone. */
+const ROSTER_STATUSES = ['enrolled', ...CHILD_STATUSES, 'all'] as const
+
 const rosterList: ToolSpec = {
   name: 'roster_list',
   tier: 'read',
   description:
     'The children on the roster, with the family each belongs to. Use this for ' +
-    '"who is enrolled", age-group counts, or to resolve a child name to an id.',
+    '"who is enrolled", age-group counts, or to resolve a child name to an id. ' +
+    'status "enrolled" (the default) is everyone attending: active and summer_camp.',
   parameters: schema({
-    status: { type: 'string', enum: ['active', 'waitlist', 'all'] },
+    status: { type: 'string', enum: ROSTER_STATUSES },
     ageGroup: { type: 'string', enum: AGE_GROUPS },
   }),
   execute: async (args, ctx): Promise<ToolOutcome> => {
-    const status = readEnum(args, 'status', ['active', 'waitlist', 'all'] as const, 'active')
+    const status = readEnum(args, 'status', ROSTER_STATUSES, 'enrolled')
     const ageGroup = readEnum(
       args,
       'ageGroup',
@@ -362,7 +368,8 @@ const rosterList: ToolSpec = {
     )
 
     let query = ctx.caller.db.from('children').select(CHILD_COLUMNS).limit(MAX_ROWS)
-    if (status !== 'all') query = query.eq('status', status)
+    if (status === 'enrolled') query = query.in('status', ENROLLED_STATUSES)
+    else if (status !== 'all') query = query.eq('status', status)
     if (ageGroup !== 'any') query = query.eq('age_group', ageGroup)
 
     const children = await query

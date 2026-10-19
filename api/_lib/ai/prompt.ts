@@ -24,6 +24,7 @@
 import { prettyDate, timeInZone } from './clock.js'
 import { invoiceState, money } from './projection.js'
 import { loadDays } from './schedules.js'
+import { ENROLLED_STATUSES } from '../../../src/lib/schedule.js'
 import { activeRules, describeRule, openCommitments } from './rules.js'
 import type { TriggerSweep } from './triggers.js'
 import type { ToolContext } from './tools/kit.js'
@@ -331,7 +332,7 @@ export async function gatherPromptState(
   const children = await ctx.caller.db
     .from('children')
     .select('id', { count: 'exact', head: true })
-    .eq('status', 'active')
+    .in('status', ENROLLED_STATUSES)
   if (children.error !== null) failures.push(`children: ${children.error.message}`)
 
   const families = await ctx.caller.db
