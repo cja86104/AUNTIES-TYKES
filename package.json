@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.api.json && tsc --noEmit -p tsconfig.test.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.api.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.scripts.json",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\""
+    "test": "node --experimental-strip-types --test \"tests/**/*.test.ts\"",
+    "photos:shrink": "node --env-file=.env.local --experimental-strip-types scripts/shrink-stored-photos.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.0",
@@ -41,6 +42,7 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "globals": "^15.12.0",
     "postcss": "^8.4.47",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.15.0",

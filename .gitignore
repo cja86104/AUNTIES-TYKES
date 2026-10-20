@@ -135,5 +135,9 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+# Originals saved by scripts/shrink-stored-photos.ts. Children's photos:
+# must never be committed.
+photo-backups/
+
 # Artifacts the mounted filesystem leaves when a file is replaced while open.
 .fuse_hidden*
