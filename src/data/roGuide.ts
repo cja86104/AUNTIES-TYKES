@@ -15,7 +15,7 @@
  */
 
 /** When the guide last changed. ISO timestamp, in the past. */
-export const RO_GUIDE_UPDATED_AT = '2026-10-14T13:05:00.000Z'
+export const RO_GUIDE_UPDATED_AT = '2026-10-26T22:10:00.000Z'
 
 export interface GuideTopic {
   /** Anchor id, and the key the page uses to pick an icon. */
@@ -290,9 +290,18 @@ export const TOPICS: GuideTopic[] = [
   {
     id: 'documents',
     title: 'Documents',
-    intro: 'Show a document to parents, or hide it from them.',
-    examples: ['Show the handbook to parents.', 'Hide the old lunch menu.'],
-    notes: ['Uploading and deleting documents is done on the Documents page.'],
+    intro: 'Show a document to parents, or hide it from them — and keep a document on your Documents page every week.',
+    examples: [
+      'Show the handbook to parents.',
+      'Hide the old lunch menu.',
+      'Keep the handbook visible every week.',
+      'Stop keeping the October menu visible.',
+    ],
+    notes: [
+      'Your Documents page starts fresh every Monday. A document kept visible stays on it every week; the rest move to the week they were added, still there under past weeks and in search.',
+      'Keeping a document visible only changes your page. Families see their documents exactly as before.',
+      'Uploading and deleting documents is done on the Documents page.',
+    ],
   },
   {
     id: 'inquiries',

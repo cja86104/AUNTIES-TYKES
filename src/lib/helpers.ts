@@ -6,6 +6,7 @@ import {
   isValid,
 } from 'date-fns'
 import type { Invoice, InvoiceStatus } from '../types'
+import { shiftWeek, weekEndOf } from './weeks'
 
 export type ClassValue = string | false | null | undefined
 
@@ -71,6 +72,22 @@ export function nowTime(): string {
 export function todayISO(): string {
   const parts = DAYCARE_DATE.formatToParts(new Date())
   return `${zonePart(parts, 'year')}-${zonePart(parts, 'month')}-${zonePart(parts, 'day')}`
+}
+
+/**
+ * How the admin console names a week (see lib/weeks.ts): "This week",
+ * "Last week", else "Week of Oct 12" — with the year once it is not this one.
+ */
+export function weekLabel(weekStart: string, thisWeek: string): string {
+  if (weekStart === thisWeek) return 'This week'
+  if (weekStart === shiftWeek(thisWeek, -1)) return 'Last week'
+  const sameYear = weekStart.slice(0, 4) === thisWeek.slice(0, 4)
+  return `Week of ${fmtDate(weekStart, sameYear ? 'MMM d' : 'MMM d, yyyy')}`
+}
+
+/** "Oct 26 – Nov 1": the Monday-to-Sunday span of a week. */
+export function weekRange(weekStart: string): string {
+  return `${fmtDate(weekStart, 'MMM d')} – ${fmtDate(weekEndOf(weekStart), 'MMM d')}`
 }
 
 /**

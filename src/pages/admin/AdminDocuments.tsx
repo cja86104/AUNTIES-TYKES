@@ -10,6 +10,9 @@ import {
   Search,
   ShieldCheck,
   Users,
+  Pin,
+  PinOff,
+  CalendarDays,
 } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
@@ -25,8 +28,10 @@ import {
   StatCard,
 } from '../../components/ui'
 import FileUploader from '../../components/FileUploader'
+import WeekPicker from '../../components/WeekPicker'
 import { useStore } from '../../store/useStore'
-import { bytes, fmtDate } from '../../lib/helpers'
+import { DAYCARE_TIME_ZONE, bytes, fmtDate, todayISO, weekLabel } from '../../lib/helpers'
+import { weekOf, weekStartOf, weeksWithItems } from '../../lib/weeks'
 import { downloadDocument, removeDocumentFile } from '../../lib/storage'
 import { useSectionSeen } from '../../lib/unread'
 import type { DocumentRecord, UploadedFileMeta } from '../../types'
@@ -36,6 +41,7 @@ export default function AdminDocuments() {
   const addDocument = useStore((s) => s.addDocument)
   const deleteDocument = useStore((s) => s.deleteDocument)
   const toggleDocVisibility = useStore((s) => s.toggleDocVisibility)
+  const toggleDocPinned = useStore((s) => s.toggleDocPinned)
   const pushToast = useStore((s) => s.pushToast)
   const user = useStore((s) => s.user)
   const users = useStore((s) => s.users)
@@ -48,17 +54,53 @@ export default function AdminDocuments() {
   /** Settings applied to the next file dropped on the uploader. */
   const [uploadVisible, setUploadVisible] = useState(true)
   const [uploadRequiresAck, setUploadRequiresAck] = useState(false)
+  const [uploadPinned, setUploadPinned] = useState(false)
 
-  const rows = useMemo(() => {
+  /**
+   * The page starts fresh every Monday on the admin side only: it opens on
+   * this week (Mon–Sun, Eastern), earlier weeks are one step back, and search
+   * looks across every week. Pinned documents ("Keep visible") show on every
+   * week. Nothing is deleted, and families still see every shared document.
+   */
+  const thisWeek = weekStartOf(todayISO()) ?? todayISO()
+  const [week, setWeek] = useState(thisWeek)
+  const searching = query.trim() !== ''
+
+  /** A parent acknowledged it since she last opened this page. */
+  const hasNewAck = (docId: string) =>
+    acknowledgements.some((a) => a.documentId === docId && seen.isNew(a.acknowledgedAt))
+
+  const sorted = useMemo(
+    () =>
+      [...documents]
+        .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1))
+        .map((d) => ({ ...d, week: weekOf(d.uploadedAt, DAYCARE_TIME_ZONE) })),
+    [documents],
+  )
+  const weeks = useMemo(
+    () => weeksWithItems(sorted.filter((d) => !d.pinned).map((d) => d.week), thisWeek),
+    [sorted, thisWeek],
+  )
+
+  const searchRows = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return documents
-      .filter((d) => (q ? `${d.title} ${d.uploadedBy}`.toLowerCase().includes(q) : true))
-      .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1))
-  }, [documents, query])
+    if (!q) return []
+    return sorted.filter((d) => `${d.title} ${d.uploadedBy} ${d.fileName ?? ''}`.toLowerCase().includes(q))
+  }, [sorted, query])
 
-  const visibleCount = documents.filter((d) => d.visibleToParents).length
-  const ackCount = documents.filter((d) => d.requiresAck).length
-  const totalSize = documents.reduce((s, d) => s + (d.size ?? 0), 0)
+  const pinnedRows = sorted.filter((d) => d.pinned)
+  // A new acknowledgement on an older document keeps it on this week until she
+  // has seen it, so its "New" marker is never tucked away in a past week.
+  const weekRows = sorted.filter(
+    (d) => !d.pinned && (d.week === week || (week === thisWeek && hasNewAck(d.id))),
+  )
+  /** Everything on screen for the chosen week; the stat cards count these. */
+  const onScreen = searching ? searchRows : [...pinnedRows, ...weekRows]
+
+  const visibleCount = onScreen.filter((d) => d.visibleToParents).length
+  const ackCount = onScreen.filter((d) => d.requiresAck).length
+  const totalSize = onScreen.reduce((s, d) => s + (d.size ?? 0), 0)
+  const scopeLabel = searching ? 'Search results' : weekLabel(week, thisWeek)
 
   const onUploaded = (meta: UploadedFileMeta) => {
     addDocument({
@@ -68,7 +110,11 @@ export default function AdminDocuments() {
       storagePath: meta.storagePath,
       visibleToParents: uploadVisible,
       requiresAck: uploadRequiresAck,
+      pinned: uploadPinned,
     })
+    // A new upload belongs to this week; bring her back to it to see it land.
+    setWeek(thisWeek)
+    setQuery('')
     pushToast({
       title: 'Document added',
       description: `${meta.title} was added${uploadVisible ? ' and shared with parents.' : ' (staff only).'}`,
@@ -119,6 +165,120 @@ export default function AdminDocuments() {
       })
   }
 
+  const onTogglePinned = (doc: DocumentRecord) => {
+    toggleDocPinned(doc.id)
+    pushToast({
+      tone: 'info',
+      title: doc.pinned ? 'No longer kept visible' : 'Kept visible every week',
+      description: doc.pinned
+        ? `${doc.title} now sits in the week it was added. Families still see it as before.`
+        : `${doc.title} will show on this page every week. Families see no change.`,
+    })
+  }
+
+  /** One list of document rows. `showWeek` tags each row with its week (search results). */
+  const renderList = (list: (DocumentRecord & { week: string | null })[], showWeek: boolean) => (
+    <Card className="overflow-hidden">
+      <ul className="divide-y divide-slate-100">
+        {list.map((d, i) => (
+          <motion.li
+            key={d.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: Math.min(i * 0.04, 0.3) }}
+            className="flex flex-wrap items-center gap-3 px-5 py-4"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#3F8570]">
+              <FileText size={19} />
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-sm font-bold text-slate-900">{d.title}</p>
+              <p className="truncate text-xs text-slate-500">
+                {bytes(d.size)} · added {fmtDate(d.uploadedAt)} by {d.uploadedBy}
+              </p>
+              {d.requiresAck && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
+                  {acknowledgements.filter((a) => a.documentId === d.id).length === 0 ? (
+                    <span>No parent has acknowledged it yet.</span>
+                  ) : (
+                    <>
+                      <span className="font-semibold">Acknowledged by</span>
+                      {acknowledgements
+                        .filter((a) => a.documentId === d.id)
+                        .sort((a, b) => (a.acknowledgedAt < b.acknowledgedAt ? 1 : -1))
+                        .map((a) => (
+                          <span key={a.profileId} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
+                            {users.find((u) => u.id === a.profileId)?.name ?? 'a parent'} · {fmtDate(a.acknowledgedAt, 'MMM d')}
+                            {seen.isNew(a.acknowledgedAt) && <Badge tone="violet">New</Badge>}
+                          </span>
+                        ))}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {d.uploadedBy !== user?.name && seen.isNew(d.uploadedAt) && <Badge tone="violet">New</Badge>}
+              {showWeek && d.week && (
+                <Badge tone="neutral">
+                  <CalendarDays size={12} /> {weekLabel(d.week, thisWeek)}
+                </Badge>
+              )}
+              {d.pinned && (
+                <Badge tone="blue">
+                  <Pin size={12} /> Kept visible
+                </Badge>
+              )}
+              {d.requiresAck && (
+                <Badge tone="amber">
+                  <ShieldCheck size={12} /> Ack required
+                </Badge>
+              )}
+              <Badge tone={d.visibleToParents ? 'green' : 'neutral'}>
+                {d.visibleToParents ? 'Parents' : 'Staff only'}
+              </Badge>
+            </div>
+
+            <div className="flex gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  toggleDocVisibility(d.id)
+                  pushToast({
+                    tone: 'info',
+                    title: d.visibleToParents ? 'Hidden from parents' : 'Shared with parents',
+                    description: `${d.title} is now ${d.visibleToParents ? 'staff only' : 'visible in the parent portal'}.`,
+                  })
+                }}
+              >
+                {d.visibleToParents ? <EyeOff size={14} /> : <Eye size={14} />}
+                {d.visibleToParents ? 'Hide' : 'Share'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onTogglePinned(d)}
+                aria-label={d.pinned ? `Stop keeping ${d.title} visible every week` : `Keep ${d.title} visible every week`}
+                title={d.pinned ? 'Stop keeping visible' : 'Keep visible every week'}
+              >
+                {d.pinned ? <PinOff size={15} /> : <Pin size={15} />}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => onDownload(d)} aria-label={`Download ${d.title}`}>
+                <Download size={15} />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(d)} aria-label={`Delete ${d.title}`}>
+                <Trash2 size={15} />
+              </Button>
+            </div>
+          </motion.li>
+        ))}
+      </ul>
+    </Card>
+  )
+
   return (
     <PageTransition>
       <PageHeader
@@ -130,7 +290,7 @@ export default function AdminDocuments() {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search documents…"
+              placeholder="Search all weeks…"
               className="w-full pl-9 sm:w-56"
               aria-label="Search documents"
             />
@@ -139,8 +299,14 @@ export default function AdminDocuments() {
       />
 
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard icon={FolderOpen} label="Documents" value={documents.length} sub={bytes(totalSize)} tone="blue" />
-        <StatCard icon={Users} label="Shared with parents" value={visibleCount} sub={`${documents.length - visibleCount} staff-only`} tone="green" />
+        <StatCard
+          icon={FolderOpen}
+          label={`Documents · ${scopeLabel}`}
+          value={onScreen.length}
+          sub={searching ? bytes(totalSize) : `${bytes(totalSize)} · ${pinnedRows.length} kept visible`}
+          tone="blue"
+        />
+        <StatCard icon={Users} label="Shared with parents" value={visibleCount} sub={`${onScreen.length - visibleCount} staff-only`} tone="green" />
         <StatCard icon={ShieldCheck} label="Need acknowledgement" value={ackCount} sub="Parents must confirm they read these" tone="amber" />
       </div>
 
@@ -150,7 +316,7 @@ export default function AdminDocuments() {
           Choose who sees it, then drop the file. Files are stored privately — only a signed-in account with permission can open one.
         </p>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <Field label="Visible to parents">
             <Select value={uploadVisible ? 'yes' : 'no'} onChange={(e) => setUploadVisible(e.target.value === 'yes')}>
               <option value="yes">Yes — show in the parent portal</option>
@@ -163,6 +329,12 @@ export default function AdminDocuments() {
               <option value="yes">Parents must confirm they read it</option>
             </Select>
           </Field>
+          <Field label="Keep visible every week">
+            <Select value={uploadPinned ? 'yes' : 'no'} onChange={(e) => setUploadPinned(e.target.value === 'yes')}>
+              <option value="no">No — moves to past weeks next Monday</option>
+              <option value="yes">Yes — handbook, policies, forms</option>
+            </Select>
+          </Field>
         </div>
 
         <div className="mt-4">
@@ -170,104 +342,73 @@ export default function AdminDocuments() {
         </div>
       </Card>
 
-      {rows.length === 0 ? (
+      {documents.length > 0 && (
+        <div className="mb-5">
+          {searching ? (
+            <p className="text-sm text-slate-500">Searching every week · {searchRows.length} found</p>
+          ) : (
+            <WeekPicker week={week} thisWeek={thisWeek} weeks={weeks} onChange={setWeek} noun={['document', 'documents']} />
+          )}
+        </div>
+      )}
+
+      {documents.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
-          title={query ? 'Nothing filed here yet' : 'No documents yet'}
-          description={
-            query
-              ? 'Nothing matches that search.'
-              : 'Upload your handbook and enrollment packet so families can find them without emailing you.'
-          }
-          action={
-            query ? (
-              <Button variant="outline" onClick={() => setQuery('')}>
-                Show everything
-              </Button>
-            ) : undefined
-          }
+          title="No documents yet"
+          description="Upload your handbook and enrollment packet so families can find them without emailing you."
         />
+      ) : searching ? (
+        searchRows.length === 0 ? (
+          <EmptyState
+            icon={Search}
+            title="Nothing matches that search"
+            description="Search looks through every week's documents, including the ones kept visible."
+            action={
+              <Button variant="outline" onClick={() => setQuery('')}>
+                Clear search
+              </Button>
+            }
+          />
+        ) : (
+          renderList(searchRows, true)
+        )
       ) : (
-        <Card className="overflow-hidden">
-          <ul className="divide-y divide-slate-100">
-            {rows.map((d, i) => (
-              <motion.li
-                key={d.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.04, 0.3) }}
-                className="flex flex-wrap items-center gap-3 px-5 py-4"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#E8F3EE] text-[#3F8570]">
-                  <FileText size={19} />
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-sm font-bold text-slate-900">{d.title}</p>
-                  <p className="truncate text-xs text-slate-500">
-                    {bytes(d.size)} · added {fmtDate(d.uploadedAt)} by {d.uploadedBy}
-                  </p>
-                  {d.requiresAck && (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
-                      {acknowledgements.filter((a) => a.documentId === d.id).length === 0 ? (
-                        <span>No parent has acknowledged it yet.</span>
-                      ) : (
-                        <>
-                          <span className="font-semibold">Acknowledged by</span>
-                          {acknowledgements
-                            .filter((a) => a.documentId === d.id)
-                            .sort((a, b) => (a.acknowledgedAt < b.acknowledgedAt ? 1 : -1))
-                            .map((a) => (
-                              <span key={a.profileId} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
-                                {users.find((u) => u.id === a.profileId)?.name ?? 'a parent'} · {fmtDate(a.acknowledgedAt, 'MMM d')}
-                                {seen.isNew(a.acknowledgedAt) && <Badge tone="violet">New</Badge>}
-                              </span>
-                            ))}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {d.uploadedBy !== user?.name && seen.isNew(d.uploadedAt) && <Badge tone="violet">New</Badge>}
-                  {d.requiresAck && (
-                    <Badge tone="amber">
-                      <ShieldCheck size={12} /> Ack required
-                    </Badge>
-                  )}
-                  <Badge tone={d.visibleToParents ? 'green' : 'neutral'}>
-                    {d.visibleToParents ? 'Parents' : 'Staff only'}
-                  </Badge>
-                </div>
-
-                <div className="flex gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      toggleDocVisibility(d.id)
-                      pushToast({
-                        tone: 'info',
-                        title: d.visibleToParents ? 'Hidden from parents' : 'Shared with parents',
-                        description: `${d.title} is now ${d.visibleToParents ? 'staff only' : 'visible in the parent portal'}.`,
-                      })
-                    }}
-                  >
-                    {d.visibleToParents ? <EyeOff size={14} /> : <Eye size={14} />}
-                    {d.visibleToParents ? 'Hide' : 'Share'}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onDownload(d)} aria-label={`Download ${d.title}`}>
-                    <Download size={15} />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(d)} aria-label={`Delete ${d.title}`}>
-                    <Trash2 size={15} />
-                  </Button>
-                </div>
-              </motion.li>
-            ))}
-          </ul>
-        </Card>
+        <>
+          {pinnedRows.length > 0 && (
+            <section className="mb-6">
+              <h2 className="mb-2.5 flex items-center gap-1.5 font-display text-sm font-bold text-slate-700">
+                <Pin size={14} /> Kept visible every week
+              </h2>
+              {renderList(pinnedRows, false)}
+            </section>
+          )}
+          <section>
+            <h2 className="mb-2.5 flex items-center gap-1.5 font-display text-sm font-bold text-slate-700">
+              <CalendarDays size={14} /> {week === thisWeek ? 'Added this week' : `Added · ${weekLabel(week, thisWeek)}`}
+            </h2>
+            {weekRows.length === 0 ? (
+              <EmptyState
+                icon={CalendarDays}
+                title={week === thisWeek ? 'A fresh week' : 'Nothing added that week'}
+                description={
+                  week === thisWeek
+                    ? 'Nothing added yet this week. Earlier weeks are one step back with the arrow, or search finds anything.'
+                    : 'Step to another week, or search to find a document by name.'
+                }
+                action={
+                  week === thisWeek ? undefined : (
+                    <Button variant="outline" onClick={() => setWeek(thisWeek)}>
+                      Back to this week
+                    </Button>
+                  )
+                }
+              />
+            ) : (
+              renderList(weekRows, false)
+            )}
+          </section>
+        </>
       )}
 
       <Modal

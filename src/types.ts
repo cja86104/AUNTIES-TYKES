@@ -318,6 +318,11 @@ export interface DocumentRecord {
   uploadedAt: string
   url: string
   requiresAck: boolean
+  /**
+   * "Keep visible" on the admin Documents page: shown on every week instead of
+   * only the week it was added. Admin view only — parents' access is unchanged.
+   */
+  pinned: boolean
 }
 
 /** Metadata handed back by FileUploader once a file is stored. */

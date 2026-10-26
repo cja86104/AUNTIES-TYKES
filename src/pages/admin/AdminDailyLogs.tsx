@@ -16,8 +16,10 @@ import {
 } from '../../components/ui'
 import DailyLogCard from '../../components/DailyLogCard'
 import FileUploader from '../../components/FileUploader'
+import WeekPicker from '../../components/WeekPicker'
 import { useStore } from '../../store/useStore'
-import { bytes, todayISO, fmtDate, isFilled, nowISO, nowTime } from '../../lib/helpers'
+import { bytes, todayISO, fmtDate, isFilled, nowISO, nowTime, weekLabel } from '../../lib/helpers'
+import { weekStartOf, weeksWithItems } from '../../lib/weeks'
 import { removeDocumentFile } from '../../lib/storage'
 import { useSectionSeen } from '../../lib/unread'
 import type { DailyLog, Incident, LogAttachment, UploadedFileMeta } from '../../types'
@@ -194,18 +196,51 @@ export default function AdminDailyLogs() {
     }
   }
 
-  const logs = useMemo(() => {
+  /**
+   * The page starts fresh every Monday on the admin side only: it opens on
+   * this week (Mon–Sun, Eastern), earlier weeks are one step back, and search
+   * or a picked date looks across every week. Nothing is deleted, and families
+   * still see every report in their portal. `daily_logs.date` is already a
+   * daycare day, so its week is read straight from it.
+   */
+  const thisWeek = weekStartOf(todayISO()) ?? todayISO()
+  const [week, setWeek] = useState(thisWeek)
+  const searching = query.trim() !== ''
+
+  /**
+   * Reports in the current scope before the child tabs narrow it: every week
+   * when searching, the picked date if there is one, else the chosen week. A
+   * parent's new incident confirmation keeps an older report on this week
+   * until she has seen it, so that "New" marker is never tucked away.
+   */
+  const inScope = ((): DailyLog[] => {
     const q = query.trim().toLowerCase()
-    return dailyLogs
-      .filter((l) => (childFilter === 'all' ? true : l.childId === childFilter))
-      .filter((l) => (dateFilter ? l.date === dateFilter : true))
-      .filter((l) => {
-        if (!q) return true
+    if (q) {
+      return dailyLogs.filter((l) => {
         const text = `${l.meals} ${l.naps} ${l.potty} ${l.mood} ${l.notes} ${l.activities.join(' ')} ${l.incident?.description ?? ''}`.toLowerCase()
-        return text.includes(q)
+        return text.includes(q) && (dateFilter ? l.date === dateFilter : true)
       })
-      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-  }, [dailyLogs, childFilter, dateFilter, query])
+    }
+    if (dateFilter) return dailyLogs.filter((l) => l.date === dateFilter)
+    return dailyLogs.filter(
+      (l) =>
+        weekStartOf(l.date) === week ||
+        (week === thisWeek && incidentAcks.some((a) => a.logId === l.id && seen.isNew(a.acknowledgedAt))),
+    )
+  })()
+
+  const logs = inScope
+    .filter((l) => (childFilter === 'all' ? true : l.childId === childFilter))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+
+  const weeks = useMemo(() => weeksWithItems(dailyLogs.map((l) => weekStartOf(l.date)), thisWeek), [dailyLogs, thisWeek])
+
+  /** Picking a date also moves the week, so clearing the date lands on that week. */
+  const pickDate = (value: string) => {
+    setDateFilter(value)
+    const start = value ? weekStartOf(value) : null
+    if (start) setWeek(start)
+  }
 
   const openNew = () => {
     startDraft()
@@ -343,6 +378,8 @@ export default function AdminDailyLogs() {
       addDailyLog(payload)
       pushToast({ title: 'Report posted', description: `${childName}'s report is now visible to their family.` })
     }
+    // Show the week the report belongs to — a backdated one lands in its own week.
+    setWeek(weekStartOf(form.date) ?? thisWeek)
     // The staged files are now on the saved report, so they are kept; the ones
     // she took off are no longer referenced and go.
     removed.current.forEach(discardFile)
@@ -366,19 +403,21 @@ export default function AdminDailyLogs() {
     pushToast({ tone: 'info', title: 'Report deleted' })
   }
 
-  const tabs = useMemo(
-    () => [
-      { value: 'all', label: 'All children', count: dailyLogs.length },
-      ...active.map((c) => ({
-        value: c.id,
-        label: c.name.split(' ')[0] ?? c.name,
-        count: dailyLogs.filter((l) => l.childId === c.id).length,
-      })),
-    ],
-    [active, dailyLogs],
-  )
+  const tabs = [
+    { value: 'all', label: 'All children', count: inScope.length },
+    ...active.map((c) => ({
+      value: c.id,
+      label: c.name.split(' ')[0] ?? c.name,
+      count: inScope.filter((l) => l.childId === c.id).length,
+    })),
+  ]
 
   const filtersActive = Boolean(query || dateFilter || childFilter !== 'all')
+  const clearFilters = () => {
+    setQuery('')
+    setDateFilter('')
+    setChildFilter('all')
+  }
 
   return (
     <PageTransition>
@@ -392,7 +431,7 @@ export default function AdminDailyLogs() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search reports…"
+                placeholder="Search all weeks…"
                 className="w-full pl-9 sm:w-56"
                 aria-label="Search daily logs"
               />
@@ -403,7 +442,7 @@ export default function AdminDailyLogs() {
                 type="date"
                 value={dateFilter}
                 max={todayISO()}
-                onChange={(e) => setDateFilter(e.target.value)}
+                onChange={(e) => pickDate(e.target.value)}
                 className="w-full pl-9 sm:w-44"
                 aria-label="Filter by date"
               />
@@ -415,15 +454,27 @@ export default function AdminDailyLogs() {
         }
       />
 
+      {dailyLogs.length > 0 && (
+        <div className="mb-4">
+          {searching ? (
+            <p className="text-sm text-slate-500">
+              Searching every week{dateFilter ? ` · ${fmtDate(dateFilter)}` : ''} · {inScope.length} found
+            </p>
+          ) : dateFilter ? (
+            <p className="text-sm text-slate-500">
+              Showing {fmtDate(dateFilter, 'EEEE, MMM d, yyyy')} · clear the date to browse by week
+            </p>
+          ) : (
+            <WeekPicker week={week} thisWeek={thisWeek} weeks={weeks} onChange={setWeek} noun={['report', 'reports']} />
+          )}
+        </div>
+      )}
+
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Tabs tabs={tabs} value={childFilter} onChange={setChildFilter} />
         {filtersActive && (
           <button
-            onClick={() => {
-              setQuery('')
-              setDateFilter('')
-              setChildFilter('all')
-            }}
+            onClick={clearFilters}
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
           >
             <X size={13} /> Clear filters
@@ -435,33 +486,50 @@ export default function AdminDailyLogs() {
       </div>
 
       {logs.length === 0 ? (
-        <EmptyState
-          icon={NotebookPen}
-          title={filtersActive ? 'No reports match those filters' : 'No daily reports yet'}
-          description={
-            filtersActive
-              ? 'Try a different child or clear the date filter to see the full history.'
-              : 'Write the first report of the day and it will appear in the family’s portal right away.'
-          }
-          action={
-            filtersActive ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setQuery('')
-                  setDateFilter('')
-                  setChildFilter('all')
-                }}
-              >
-                Clear filters
-              </Button>
-            ) : (
+        dailyLogs.length === 0 ? (
+          <EmptyState
+            icon={NotebookPen}
+            title="No daily reports yet"
+            description="Write the first report of the day and it will appear in the family’s portal right away."
+            action={
               <Button onClick={openNew}>
                 <Plus size={16} /> Write a report
               </Button>
-            )
-          }
-        />
+            }
+          />
+        ) : searching || dateFilter ? (
+          <EmptyState
+            icon={NotebookPen}
+            title="No reports match those filters"
+            description="Search looks through every week. Try a different child, other words, or clear the date."
+            action={
+              <Button variant="outline" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={CalendarDays}
+            title={week === thisWeek ? 'A fresh week' : 'No reports that week'}
+            description={
+              week === thisWeek
+                ? 'No reports yet this week. Earlier weeks are one step back with the arrow, or search finds anything.'
+                : 'Step to another week, search, or pick a date to find a report.'
+            }
+            action={
+              week === thisWeek ? (
+                <Button onClick={openNew}>
+                  <Plus size={16} /> Write a report
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => setWeek(thisWeek)}>
+                  Back to this week
+                </Button>
+              )
+            }
+          />
+        )
       ) : (
         <div className="grid gap-5 xl:grid-cols-2">
           {logs.map((log, i) => (
@@ -472,7 +540,12 @@ export default function AdminDailyLogs() {
               index={i}
               incidentFooter={incidentFooter(log)}
               actions={
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
+                  {searching && (
+                    <Badge tone="neutral">
+                      <CalendarDays size={12} /> {weekLabel(weekStartOf(log.date) ?? thisWeek, thisWeek)}
+                    </Badge>
+                  )}
                   <button
                     onClick={() => openEdit(log)}
                     aria-label={`Edit report from ${fmtDate(log.date)}`}

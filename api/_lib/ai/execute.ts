@@ -870,6 +870,33 @@ const documentExecutor: Executor = {
   },
 }
 
+/** "Keep visible" on the admin Documents page, mirroring `toggleDocPinned`. */
+const documentPinExecutor: Executor = {
+  tool: 'document.pin',
+  run: async (ctx, proposal) => {
+    const documentId = readString(proposal.arguments, 'documentId')
+    const rawKeep = proposal.arguments.keepVisible
+    if (documentId === null || typeof rawKeep !== 'boolean') {
+      return { ok: false, error: 'That change is missing the document or what to do with it' }
+    }
+    const done = await ctx.caller.db
+      .from('documents')
+      .update({ pinned: rawKeep })
+      .eq('id', documentId)
+      .select('id, title')
+    if (done.error !== null) return { ok: false, error: `Could not change that: ${done.error.message}` }
+    const row = done.data[0]
+    if (row === undefined) return { ok: false, error: 'That document no longer exists' }
+    return {
+      ok: true,
+      summary: rawKeep
+        ? `"${row.title}" stays on your Documents page every week.`
+        : `"${row.title}" is back in the week it was added.`,
+      targets: [documentId],
+    }
+  },
+}
+
 /**
  * Records one payment, mirroring `recordPayment` in useStore.ts.
  *
@@ -1403,6 +1430,7 @@ const executors: Executor[] = [
   schedulePlanExecutor,
   leadExecutor,
   documentExecutor,
+  documentPinExecutor,
   recordPaymentExecutor,
   createInvoiceExecutor,
   addFamilyExecutor,

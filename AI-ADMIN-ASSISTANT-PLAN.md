@@ -258,6 +258,7 @@ have not been written; the path they plug into has been.
 | `checkIn` / `checkOut` / `markAbsent` | `attendance.set` | Low | **Built 2026-09-28** — one visit per arrival/departure since 2026-10-08; marking absent is refused once times are recorded |
 | `addDailyLog` / `updateDailyLog` / ~~`deleteDailyLog`~~ | `dailyLog.write` | Low | **Built 2026-09-28** — write/update only, no delete |
 | ~~`addDocument`~~ / `toggleDocVisibility` / ~~`deleteDocument`~~ | `document.manage` | Low | **Built 2026-09-28** — visibility only; upload needs a file Ro doesn't have |
+| `toggleDocPinned` | `document.pin` | Low | **Built 2026-10-26** — "keep visible" on the admin Documents page's weekly view (migration 0025); admin view only, parents unaffected |
 | `addCalendarEvent` / `updateCalendarEvent` / ~~`deleteCalendarEvent`~~ | `calendar.mutate` | Low | **Built 2026-09-28** — add/update only |
 | `addLead` / `updateLead` | `lead.mutate` | Low | **Built 2026-09-28** |
 | ~~`setWaitlist`~~ | ~~`waitlist.mutate`~~ | — | **Cancelled 2026-09-28 — see below** |

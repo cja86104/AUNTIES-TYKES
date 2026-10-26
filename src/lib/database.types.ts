@@ -193,6 +193,8 @@ export type DocumentRow = {
   url: string
   visible_to_parents: boolean
   requires_ack: boolean
+  /** Admin view only (0025): stays on every week's Documents page. */
+  pinned: boolean
   uploaded_by: string
   uploaded_by_id: string | null
   uploaded_at: string

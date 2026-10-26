@@ -217,6 +217,7 @@ export function toDocument(row: DocumentRow): DocumentRecord {
     uploadedAt: row.uploaded_at,
     url: row.url,
     requiresAck: row.requires_ack,
+    pinned: row.pinned,
   }
 }
 
@@ -485,6 +486,7 @@ export function fromDocument(doc: DocumentRecord, uploadedById: string | null): 
     url: doc.url,
     visible_to_parents: doc.visibleToParents,
     requires_ack: doc.requiresAck,
+    pinned: doc.pinned,
     uploaded_by: doc.uploadedBy,
     uploaded_by_id: uploadedById,
   }

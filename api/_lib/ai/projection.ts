@@ -195,6 +195,8 @@ export interface DocumentBrief {
   category: string
   visibleToParents: boolean
   requiresAck: boolean
+  /** "Keep visible": shown on every week of the admin Documents page (0025). Admin view only. */
+  keptVisible: boolean
   uploadedAt: string
 }
 

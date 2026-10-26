@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Megaphone, MessageSquare, Paperclip, Plus, Send, Users, Inbox, ArrowLeft, X } from 'lucide-react'
+import { Megaphone, MessageSquare, Paperclip, Plus, Send, Users, Inbox, ArrowLeft, X, Search, CalendarDays } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
   Avatar,
@@ -18,8 +18,10 @@ import {
   Textarea,
 } from '../../components/ui'
 import FileUploader from '../../components/FileUploader'
+import WeekPicker from '../../components/WeekPicker'
 import { useStore } from '../../store/useStore'
-import { bytes, cx, fmtDate, nowISO, uid } from '../../lib/helpers'
+import { DAYCARE_TIME_ZONE, bytes, cx, fmtDate, nowISO, todayISO, uid, weekLabel } from '../../lib/helpers'
+import { weekOf, weekStartOf, weeksWithItems } from '../../lib/weeks'
 import { downloadDocument, isInlineImage, removeDocumentFile } from '../../lib/storage'
 import { AttachmentPhoto } from '../../components/DailyLogCard'
 import { useSectionSeen } from '../../lib/unread'
@@ -88,10 +90,37 @@ export default function AdminMessages() {
 
   const familyName = (id: string) => families.find((f) => f.id === id)?.name ?? 'Unknown family'
 
+  /**
+   * Announcements start fresh every Monday on the admin side only: the tab
+   * opens on this week (Mon–Sun, Eastern), earlier weeks are one step back,
+   * and search looks across every week. Nothing is deleted, and families still
+   * see every announcement in their portal.
+   */
+  const thisWeek = weekStartOf(todayISO()) ?? todayISO()
+  const [week, setWeek] = useState(thisWeek)
+  const [announcementQuery, setAnnouncementQuery] = useState('')
+
   const sortedAnnouncements = useMemo(
-    () => [...announcements].sort((a, b) => (a.date < b.date ? 1 : -1)),
+    () =>
+      [...announcements]
+        .sort((a, b) => (a.date < b.date ? 1 : -1))
+        .map((a) => ({ ...a, week: weekOf(a.date, DAYCARE_TIME_ZONE) })),
     [announcements],
   )
+  const announcementWeeks = useMemo(
+    () => weeksWithItems(sortedAnnouncements.map((a) => a.week), thisWeek),
+    [sortedAnnouncements, thisWeek],
+  )
+  const searchingAnnouncements = announcementQuery.trim() !== ''
+  const shownAnnouncements = useMemo(() => {
+    const q = announcementQuery.trim().toLowerCase()
+    if (!q) return sortedAnnouncements.filter((a) => a.week === week)
+    return sortedAnnouncements.filter((a) => {
+      const audienceName = a.audience === 'all' ? 'all families' : (families.find((f) => f.id === a.audience)?.name ?? '')
+      return `${a.title} ${a.body} ${audienceName} ${a.attachmentFileName ?? ''}`.toLowerCase().includes(q)
+    })
+  }, [sortedAnnouncements, announcementQuery, week, families])
+  const thisWeekAnnouncementCount = announcementWeeks.find((w) => w.start === thisWeek)?.count ?? 0
   const sortedThreads = useMemo(
     () => [...threads].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
     [threads],
@@ -169,6 +198,9 @@ export default function AdminMessages() {
       attachmentStoragePath: attachment?.storagePath,
     })
     resetAnnouncementForm()
+    // A new post belongs to this week; bring her back to it if she was looking at an older one.
+    setWeek(thisWeek)
+    setAnnouncementQuery('')
     pushToast({
       title: 'Announcement posted',
       description: audience === 'all' ? 'Every family can see it now.' : `Sent to ${familyName(audience)}.`,
@@ -255,13 +287,41 @@ export default function AdminMessages() {
       <div className="mb-6">
         <Tabs
           tabs={[
-            { value: 'announcements', label: 'Announcements', count: announcements.length },
+            { value: 'announcements', label: 'Announcements', count: thisWeekAnnouncementCount },
             { value: 'threads', label: 'Messages', count: threads.length },
           ]}
           value={tab}
           onChange={(v) => setTab(v as 'announcements' | 'threads')}
         />
       </div>
+
+      {tab === 'announcements' && sortedAnnouncements.length > 0 && (
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {searchingAnnouncements ? (
+            <p className="text-sm text-slate-500">
+              Searching every week · {shownAnnouncements.length} found
+            </p>
+          ) : (
+            <WeekPicker
+              week={week}
+              thisWeek={thisWeek}
+              weeks={announcementWeeks}
+              onChange={setWeek}
+              noun={['post', 'posts']}
+            />
+          )}
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={announcementQuery}
+              onChange={(e) => setAnnouncementQuery(e.target.value)}
+              placeholder="Search all weeks…"
+              className="w-full pl-9 sm:w-64"
+              aria-label="Search announcements"
+            />
+          </div>
+        </div>
+      )}
 
       {tab === 'announcements' ? (
         sortedAnnouncements.length === 0 ? (
@@ -275,9 +335,44 @@ export default function AdminMessages() {
               </Button>
             }
           />
+        ) : shownAnnouncements.length === 0 ? (
+          searchingAnnouncements ? (
+            <EmptyState
+              icon={Search}
+              title="Nothing matches that search"
+              description="Search looks through every week's announcements — titles, messages and attachments."
+              action={
+                <Button variant="outline" onClick={() => setAnnouncementQuery('')}>
+                  Clear search
+                </Button>
+              }
+            />
+          ) : week === thisWeek ? (
+            <EmptyState
+              icon={CalendarDays}
+              title="A fresh week"
+              description="Nothing posted yet this week. Earlier weeks are one step back with the arrow, or search finds anything."
+              action={
+                <Button onClick={() => setOpen(true)}>
+                  <Plus size={16} /> New announcement
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={CalendarDays}
+              title="Nothing posted that week"
+              description="Step to another week, or search to find an announcement by what it said."
+              action={
+                <Button variant="outline" onClick={() => setWeek(thisWeek)}>
+                  Back to this week
+                </Button>
+              }
+            />
+          )
         ) : (
           <div className="grid gap-5 lg:grid-cols-2">
-            {sortedAnnouncements.map((a, i) => (
+            {shownAnnouncements.map((a, i) => (
               <motion.div
                 key={a.id}
                 initial={{ opacity: 0, y: 16 }}
@@ -290,9 +385,16 @@ export default function AdminMessages() {
                       <h3 className="font-display text-base font-bold text-slate-900">{a.title}</h3>
                       <p className="mt-0.5 text-xs text-slate-500">{fmtDate(a.date, 'EEEE, MMMM d')}</p>
                     </div>
-                    <Badge tone={a.audience === 'all' ? 'blue' : 'violet'}>
-                      <Users size={12} /> {a.audience === 'all' ? 'All families' : familyName(a.audience)}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {searchingAnnouncements && a.week && (
+                        <Badge tone="neutral">
+                          <CalendarDays size={12} /> {weekLabel(a.week, thisWeek)}
+                        </Badge>
+                      )}
+                      <Badge tone={a.audience === 'all' ? 'blue' : 'violet'}>
+                        <Users size={12} /> {a.audience === 'all' ? 'All families' : familyName(a.audience)}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="md px-5 py-4 text-sm">
                     <ReactMarkdown>{a.body}</ReactMarkdown>

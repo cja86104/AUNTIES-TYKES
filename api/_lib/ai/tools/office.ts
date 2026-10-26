@@ -1,6 +1,6 @@
 /**
  * The office-side mutations — the calendar, leads, the waitlist, and document
- * visibility. Plan §3's remaining Low tier.
+ * visibility and "keep visible". Plan §3's remaining Low tier.
  *
  * NOTHING HERE DELETES, and that is the section's one deliberate line. §3 already
  * flags deletions as gated regardless of tier because this app has no trash, and
@@ -24,7 +24,7 @@
  * `family_contacts` / `pickup_authorizations` / `pickup_events`.)
  *
  * Document upload is absent for a simpler reason: it needs a file, and Ro has no
- * file. Only visibility is reachable.
+ * file. Only visibility and "keep visible" (document_pin) are reachable.
  */
 
 import type { WeeklySchedule } from '../../../../src/types.js'
@@ -366,4 +366,75 @@ const documentManage: ToolSpec = {
   },
 }
 
-export const officeTools: ToolSpec[] = [calendarMutate, leadMutate, documentManage]
+/* ------------------------------ document.pin ------------------------------ */
+
+/**
+ * "Keep visible": the admin Documents page starts fresh every Monday, and a
+ * pinned document stays on it every week (migration 0025). Admin view only —
+ * it changes nothing about who can see the document, so the card says so.
+ */
+const documentPin: ToolSpec = {
+  name: 'document_pin',
+  tier: 'low',
+  description:
+    'Keep a document visible on the owner\'s Documents page every week, or let it ' +
+    'move back to the week it was added. The Documents page starts fresh each ' +
+    'Monday; a kept-visible document (the handbook, policies) stays on it. This ' +
+    'changes only the owner\'s page — what parents can see is not affected. Call ' +
+    'document_list first for the id. Nothing happens until the owner taps.',
+  parameters: schema(
+    {
+      documentId: { type: 'string', description: 'From document_list' },
+      keepVisible: { type: 'boolean', description: 'true keeps it on every week, false lets it move to its own week' },
+    },
+    ['documentId', 'keepVisible'],
+  ),
+  execute: async (args, ctx): Promise<ToolOutcome> => {
+    const documentId = readString(args, 'documentId')
+    if (documentId === null) return { ok: false, error: 'A documentId is required' }
+    const keep = args.keepVisible
+    if (typeof keep !== 'boolean') {
+      return { ok: false, error: 'Say whether to keep it visible every week: true or false' }
+    }
+
+    const document = await ctx.caller.db
+      .from('documents')
+      .select('id, title, pinned')
+      .eq('id', documentId)
+      .maybeSingle()
+    if (document.error !== null) return dbFailure('that document', document.error)
+    if (document.data === null) {
+      return { ok: true, data: { changed: false, reason: 'no document has that id', documentId } }
+    }
+    if (document.data.pinned === keep) {
+      return {
+        ok: true,
+        data: {
+          changed: false,
+          reason: keep ? 'it is already kept visible every week' : 'it is not kept visible already',
+          title: document.data.title,
+        },
+      }
+    }
+
+    return offer(
+      ctx,
+      'document.pin',
+      { documentId, keepVisible: keep },
+      {
+        kind: 'document.pin',
+        title: keep ? 'Keep a document visible every week' : 'Stop keeping a document visible',
+        summary: `${document.data.title} — ${keep ? 'on every week' : 'back in the week it was added'}`,
+        detail: [
+          { label: 'Document', value: document.data.title },
+          { label: 'Becomes', value: keep ? 'On your Documents page every week' : 'In the week it was added' },
+          { label: 'Note', value: 'Only your Documents page changes. Families see it exactly as before.' },
+        ],
+        confirmLabel: keep ? 'Keep it visible' : 'Stop keeping it',
+      },
+      { targets: [documentId] },
+    )
+  },
+}
+
+export const officeTools: ToolSpec[] = [calendarMutate, leadMutate, documentManage, documentPin]

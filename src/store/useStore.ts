@@ -176,6 +176,8 @@ export interface StoreState extends DataSlice {
   addDocument: (doc: NewDocument) => void
   deleteDocument: (id: string) => void
   toggleDocVisibility: (id: string) => void
+  /** "Keep visible": pins a document to every week on the admin Documents page. */
+  toggleDocPinned: (id: string) => void
   acknowledgeDocument: (docId: string) => void
   /** The signed-in parent confirms they read the current version of a report's incident. */
   acknowledgeIncident: (logId: string) => void
@@ -636,6 +638,7 @@ export const useStore = create<StoreState>()((set, get) => {
             uploadedAt: nowISO(),
             url: '#',
             requiresAck: false,
+            pinned: false,
             ...doc,
             id: uid('doc'),
           },
@@ -656,6 +659,16 @@ export const useStore = create<StoreState>()((set, get) => {
       commit(
         (s) => ({
           documents: s.documents.map((d) => (d.id === id ? { ...d, visibleToParents: !d.visibleToParents } : d)),
+        }),
+        (s) => {
+          const doc = s.documents.find((d) => d.id === id)
+          return doc ? persist.document(doc, authorId(s)) : Promise.resolve()
+        },
+      ),
+    toggleDocPinned: (id) =>
+      commit(
+        (s) => ({
+          documents: s.documents.map((d) => (d.id === id ? { ...d, pinned: !d.pinned } : d)),
         }),
         (s) => {
           const doc = s.documents.find((d) => d.id === id)

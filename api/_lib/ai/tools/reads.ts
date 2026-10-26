@@ -67,7 +67,7 @@ const INVOICE_COLUMNS = 'id, family_id, period, issued_at, due_date, amount, mem
 const PAYMENT_COLUMNS = 'invoice_id, date, amount, method, ref'
 const THREAD_COLUMNS = 'id, family_id, subject, updated_at'
 const MESSAGE_COLUMNS = 'thread_id, from_role, author_name, at, body'
-const DOCUMENT_COLUMNS = 'id, title, category, visible_to_parents, requires_ack, uploaded_at'
+const DOCUMENT_COLUMNS = 'id, title, category, visible_to_parents, requires_ack, pinned, uploaded_at'
 // prettier-ignore
 const ENROLLMENT_COLUMNS = 'id, submitted_at, status, family_name, primary_contact, relation, email, phone, address, secondary, emergency, children, notes, acknowledged_handbook'
 const CALENDAR_COLUMNS =
@@ -902,6 +902,7 @@ const documentList: ToolSpec = {
         category: row.category,
         visibleToParents: row.visible_to_parents,
         requiresAck: row.requires_ack,
+        keptVisible: row.pinned,
         uploadedAt: row.uploaded_at,
         acknowledgedBy: ackCounts.get(row.id) ?? 0,
       }
