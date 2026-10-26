@@ -198,6 +198,12 @@ export default function AdminDailyLogs() {
   }
 
   /**
+   * The page starts fresh every Monday on the admin side only: it opens on
+   * this week (Mon–Sun, Eastern), earlier weeks are one step back, and search
+   * or a picked date looks across every week. Nothing is deleted, and families
+   * still see every report in their portal. `daily_logs.date` is already a
+   * daycare day, so its week is read straight from it.
+   */
   const thisWeek = weekStartOf(todayISO()) ?? todayISO()
   const [week, setWeek] = useState(thisWeek)
   const searching = query.trim() !== ''
@@ -212,6 +218,7 @@ export default function AdminDailyLogs() {
     const q = query.trim().toLowerCase()
     if (q) {
       return dailyLogs.filter((l) => {
+        // The child's name is searchable so "Ellie" brings up Ellie's earlier reports.
         const childName = children.find((c) => c.id === l.childId)?.name ?? ''
         const text = `${childName} ${l.meals} ${l.naps} ${l.potty} ${l.mood} ${l.notes} ${l.activities.join(' ')} ${l.incident?.description ?? ''}`.toLowerCase()
         return text.includes(q) && (dateFilter ? l.date === dateFilter : true)
@@ -409,7 +416,6 @@ export default function AdminDailyLogs() {
   ]
 
   const filtersActive = Boolean(query || dateFilter || childFilter !== 'all')
-  const filteredChildName = children.find((c) => c.id === childFilter)?.name.split(' ')[0]
   const clearFilters = () => {
     setQuery('')
     setDateFilter('')
@@ -428,7 +434,7 @@ export default function AdminDailyLogs() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search all reports…"
+                placeholder="Search all weeks…"
                 className="w-full pl-9 sm:w-56"
                 aria-label="Search daily logs"
               />
@@ -479,17 +485,9 @@ export default function AdminDailyLogs() {
         )}
         <Badge tone="neutral">
           {logs.length} {logs.length === 1 ? 'report' : 'reports'}
-          {searching ? '' : ' today'}
         </Badge>
       </div>
 
-      {!searching && (
-        <p className="-mt-3 mb-5 text-sm text-slate-500">
-          Showing today’s reports. Search or pick a date to look up an earlier day.
-        </p>
-      )}
-
-      {logs.length === 0 ? (
       {logs.length === 0 ? (
         dailyLogs.length === 0 ? (
           <EmptyState
@@ -497,47 +495,6 @@ export default function AdminDailyLogs() {
             title="No daily reports yet"
             description="Write the first report of the day and it will appear in the family’s portal right away."
             action={
-              <Button onClick={openNew}>
-                <Plus size={16} /> Write a report
-              </Button>
-            }
-          />
-        ) : (
-          <EmptyState
-            icon={NotebookPen}
-            title={
-              searching
-                ? 'No reports match that search'
-                : filteredChildName
-                  ? `No report for ${filteredChildName} yet today`
-                  : 'No reports yet today'
-            }
-            description={
-              searching
-                ? 'Try different words, another date, or clear the search.'
-                : 'Write today’s report and it will appear in the family’s portal right away. Search or pick a date to look up an earlier day.'
-            }
-            action={
-              searching ? (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setQuery('')
-                    setDateFilter('')
-                    setChildFilter('all')
-                  }}
-                >
-                  Clear filters
-                </Button>
-              ) : (
-                <Button onClick={openNew}>
-                  <Plus size={16} /> Write a report
-                </Button>
-              )
-            }
-          />
-        )
-      ) : (
               <Button onClick={openNew}>
                 <Plus size={16} /> Write a report
               </Button>
