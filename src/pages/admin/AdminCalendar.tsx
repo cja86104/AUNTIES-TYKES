@@ -19,7 +19,7 @@ import {
 import type { Tone } from '../../components/ui'
 import { useStore } from '../../store/useStore'
 import { buildCalendar } from '../../lib/calendar'
-import { formatDayBlocks, formatWeeklySchedule } from '../../lib/schedule'
+import { formatDayBlocks, formatWeeklySchedule, isEnrolled } from '../../lib/schedule'
 import type { CalendarEntry, CalendarEntryKind } from '../../lib/calendar'
 import { fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 import type { CalendarEvent, CalendarEventKind } from '../../types'
@@ -360,7 +360,7 @@ export default function AdminCalendar() {
               <Select value={draft.childId} onChange={(e) => set('childId', e.target.value)}>
                 <option value="">Choose a child…</option>
                 {children
-                  .filter((c) => c.status === 'active')
+                  .filter((c) => isEnrolled(c.status))
                   .map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}

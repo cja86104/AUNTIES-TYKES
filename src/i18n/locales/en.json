@@ -27,7 +27,9 @@
     "unpaid": "Open",
     "overdue": "Overdue",
     "active": "Active",
+    "summer_camp": "Summer Camp",
     "waitlist": "Waitlist",
+    "unenrolled": "Unenrolled",
     "notScheduled": "Not scheduled today",
     "closedToday": "Closed today",
     "backAt": "Back at {{time}}"

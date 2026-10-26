@@ -1,6 +1,7 @@
 import { Field, Input, Select, Textarea } from './ui'
 import ScheduleGrid, { scheduleIsValid } from './ScheduleGrid'
 import { scheduleForSaving } from '../lib/schedule'
+import { CHILD_STATUSES, CHILD_STATUS_LABELS } from '../lib/childStatus'
 import type { AgeGroup, Child, ChildStatus, Family, WeeklySchedule } from '../types'
 
 /** Child fields as the admin edits them — lists are comma-separated text here. */
@@ -142,8 +143,11 @@ export default function ChildForm({ value, onChange, errors = {}, families }: Ch
       </Field>
       <Field label="Status">
         <Select value={value.status} onChange={(e) => set('status', e.target.value as ChildStatus)}>
-          <option value="active">Active</option>
-          <option value="waitlist">Waitlist</option>
+          {CHILD_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {CHILD_STATUS_LABELS[s]}
+            </option>
+          ))}
         </Select>
       </Field>
 

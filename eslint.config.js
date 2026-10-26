@@ -57,4 +57,17 @@ export default tseslint.config(
       },
     },
   },
+  {
+    // One-off maintenance scripts run by hand on Node (see scripts/), with
+    // their own tsconfig, kept out of the app and the serverless functions.
+    files: ['scripts/**/*.ts'],
+    languageOptions: {
+      globals: globals.node,
+      parserOptions: {
+        projectService: false,
+        project: './tsconfig.scripts.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
 )

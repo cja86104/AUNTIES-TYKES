@@ -177,7 +177,7 @@ export function notExpectedWords(day: ChildDay): string {
   if (day.source === 'exception') return day.reason !== '' ? `not coming — ${day.reason}` : 'not coming (on the calendar)'
   if (day.source === 'change') return day.reason !== '' ? `off that day by a one-off change — ${day.reason}` : 'off that day by a one-off change'
   if (day.source === 'not_started') return 'has not started at the daycare yet'
-  if (day.source === 'inactive') return 'not active (waitlist)'
+  if (day.source === 'inactive') return 'not enrolled (waitlist or unenrolled)'
   if (day.closesAt !== undefined) return `the early close (${day.closesAt}) comes before their time`
   return 'not a day they come'
 }

@@ -21,6 +21,7 @@ import type { ChildFormValue } from '../../components/ChildForm'
 import { useStore } from '../../store/useStore'
 import { ageLabel, fmtDate, fmtTime, todayISO } from '../../lib/helpers'
 import { ConsoleSchedule, consoleScheduleText } from '../../components/ScheduleSummary'
+import { isEnrolled } from '../../lib/schedule'
 
 export default function AdminChildren() {
   // Real readiness, not a timer: the store flips `ready` once bootstrap has
@@ -59,10 +60,14 @@ export default function AdminChildren() {
   const today = todayISO()
 
   const tabs = useMemo(() => {
+    // Unenrolled children have their own tab and stay out of All and the age groups.
+    const current = children.filter((c) => c.status !== 'unenrolled')
     return [
-      { value: 'all', label: 'All', count: children.length },
-      ...AGE_GROUPS.map((g) => ({ value: g, label: g, count: children.filter((c) => c.ageGroup === g).length })),
+      { value: 'all', label: 'All', count: current.length },
+      ...AGE_GROUPS.map((g) => ({ value: g, label: g, count: current.filter((c) => c.ageGroup === g).length })),
+      { value: 'summer_camp', label: 'Summer Camp', count: children.filter((c) => c.status === 'summer_camp').length },
       { value: 'waitlist', label: 'Waitlist', count: children.filter((c) => c.status === 'waitlist').length },
+      { value: 'unenrolled', label: 'Unenrolled', count: children.filter((c) => c.status === 'unenrolled').length },
     ]
   }, [children])
 
@@ -70,7 +75,9 @@ export default function AdminChildren() {
     const q = query.trim().toLowerCase()
     return children.filter((c) => {
       const matchGroup =
-        group === 'all' ? true : group === 'waitlist' ? c.status === 'waitlist' : c.ageGroup === group
+        group === 'summer_camp' || group === 'waitlist' || group === 'unenrolled'
+          ? c.status === group
+          : c.status !== 'unenrolled' && (group === 'all' || c.ageGroup === group)
       const matchQuery =
         !q ||
         c.name.toLowerCase().includes(q) ||
@@ -136,7 +143,7 @@ export default function AdminChildren() {
           {filtered.map((c, i) => {
             const family = families.find((f) => f.id === c.familyId)
             const record = attendance.find((a) => a.childId === c.id && a.date === today)
-            const status = c.status === 'waitlist' ? 'waitlist' : record?.status || 'expected'
+            const status = isEnrolled(c.status) ? record?.status || 'expected' : c.status
             return (
               <motion.div
                 key={c.id}
@@ -154,6 +161,7 @@ export default function AdminChildren() {
                       </p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <Badge tone={statusTone(status)}>{status}</Badge>
+                        {c.status === 'summer_camp' && <Badge tone={statusTone(c.status)}>Summer Camp</Badge>}
                         {c.allergies.length > 0 && (
                           <Badge tone="rose">
                             <ShieldAlert size={11} /> {c.allergies.length} allergy

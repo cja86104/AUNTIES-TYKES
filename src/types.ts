@@ -67,7 +67,12 @@ export interface Family {
 /* -------------------------------- children -------------------------------- */
 
 export type AgeGroup = 'Infant' | 'Toddler' | 'Preschool' | 'Elementary' | 'Middle School'
-export type ChildStatus = 'active' | 'waitlist'
+/**
+ * 'summer_camp' is enrolled exactly like 'active' (see `isEnrolled` in
+ * src/lib/schedule.ts); only the label differs. 'waitlist' and 'unenrolled'
+ * are not enrolled. 'unenrolled' keeps the child and their history on file.
+ */
+export type ChildStatus = 'active' | 'summer_camp' | 'waitlist' | 'unenrolled'
 
 /**
  * A day of the week. Weekend care is real (the owner also runs a camp). The

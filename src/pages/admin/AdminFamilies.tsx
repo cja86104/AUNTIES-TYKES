@@ -15,6 +15,7 @@ import {
   Avatar,
   SkeletonCard,
   Modal,
+  statusTone,
 } from '../../components/ui'
 import FamilyForm, { emptyFamilyForm, validateFamilyForm } from '../../components/FamilyForm'
 import type { FamilyFormValue } from '../../components/FamilyForm'
@@ -26,6 +27,7 @@ import { useStore } from '../../store/useStore'
 import { money, fmtDate, invoiceBalance, sum } from '../../lib/helpers'
 import { newLeads } from '../../lib/unread'
 import { formatWeeklySchedule } from '../../lib/schedule'
+import { isFamilyUnenrolled } from '../../lib/childStatus'
 
 const leadStatuses = ['New inquiry', 'Tour scheduled', 'Waitlisted', 'Enrolled', 'Not a fit']
 
@@ -107,10 +109,13 @@ export default function AdminFamilies() {
         return {
           ...f,
           kids,
+          unenrolled: isFamilyUnenrolled(kids),
           balance: sum(fInvoices, (i) => invoiceBalance(i)),
           invoiceCount: fInvoices.length,
         }
-      }),
+      })
+        // Unenrolled families stay on file but sort after the current ones (stable sort keeps the rest in order).
+        .sort((a, b) => Number(a.unenrolled) - Number(b.unenrolled)),
     [families, children, invoices],
   )
 
@@ -225,6 +230,11 @@ export default function AdminFamilies() {
                   <div className="mt-3 min-w-0">
                     {f.kids.length > 0 && (
                       <p className="truncate text-sm font-semibold text-slate-600">{f.name} family</p>
+                    )}
+                    {f.unenrolled && (
+                      <Badge tone={statusTone('unenrolled')} className="mt-1">
+                        Unenrolled
+                      </Badge>
                     )}
                     <p className="truncate text-sm text-slate-500">
                       {f.primaryContact} · {f.relation}

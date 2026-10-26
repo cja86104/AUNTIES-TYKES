@@ -23,7 +23,7 @@ import type {
 export type UserRoleDb = 'admin' | 'parent'
 export type LanguageDb = 'en' | 'vi' | 'es'
 export type AgeGroupDb = 'Infant' | 'Toddler' | 'Preschool' | 'Elementary' | 'Middle School'
-export type ChildStatusDb = 'active' | 'waitlist'
+export type ChildStatusDb = 'active' | 'summer_camp' | 'waitlist' | 'unenrolled'
 export type AttendanceStatusDb = 'present' | 'absent' | 'expected' | 'checked-out'
 export type DocumentCategoryDb = 'Handbooks' | 'Policies' | 'Forms' | 'Menus' | 'Calendars'
 export type EnrollmentStatusDb = 'pending' | 'approved' | 'declined'

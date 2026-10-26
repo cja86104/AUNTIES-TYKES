@@ -30,6 +30,7 @@ import {
   withAmounts,
   type DraftLineItem,
 } from '../../../../src/lib/invoiceLines.js'
+import { ENROLLED_STATUSES } from '../../../../src/lib/schedule.js'
 import { propose } from '../audit.js'
 import { prettyDate } from '../clock.js'
 import { money } from '../projection.js'
@@ -392,7 +393,7 @@ const invoiceCreate: ToolSpec = {
         .from('children')
         .select('name')
         .eq('family_id', familyId)
-        .eq('status', 'active')
+        .in('status', ENROLLED_STATUSES)
         .order('name', { ascending: true })
       if (kids.error !== null) return dbFailure('their children', kids.error)
       if (kids.data.length === 0) {

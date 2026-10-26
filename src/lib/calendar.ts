@@ -23,6 +23,7 @@ import type {
   WeeklySchedule,
 } from '../types'
 import { invoiceBalance } from './helpers'
+import { isEnrolled } from './schedule'
 
 export type CalendarEntryKind = CalendarEventKind | 'schedule_change' | 'schedule_plan' | 'birthday' | 'payment_due'
 
@@ -159,7 +160,7 @@ export function buildCalendar(options: BuildCalendarOptions): CalendarEntry[] {
   }
 
   for (const child of children) {
-    if (child.status !== 'active') continue
+    if (!isEnrolled(child.status)) continue
     if (familyChildIds && !familyChildIds.includes(child.id)) continue
     for (const date of birthdaysInRange(child, from, to)) {
       entries.push({

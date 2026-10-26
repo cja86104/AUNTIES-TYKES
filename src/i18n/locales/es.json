@@ -27,7 +27,9 @@
     "unpaid": "Pendiente",
     "overdue": "Vencido",
     "active": "Activo",
+    "summer_camp": "Campamento de verano",
     "waitlist": "Lista de espera",
+    "unenrolled": "Dado de baja",
     "notScheduled": "Sin horario hoy",
     "closedToday": "Cerrado hoy",
     "backAt": "Regresa a las {{time}}"
