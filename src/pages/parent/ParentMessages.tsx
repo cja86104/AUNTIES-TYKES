@@ -48,7 +48,7 @@ export default function ParentMessages() {
     [allThreads, familyId],
   )
 
-  const [tab, setTab] = useState<'announcements' | 'threads'>('announcements')
+  const [tab, setTab] = useState<'announcements' | 'threads'>('threads')
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   /**
    * Below lg the list and thread stack and the thread lands off the fold, so on
@@ -121,8 +121,8 @@ export default function ParentMessages() {
       <div className="mb-6">
         <Tabs
           tabs={[
-            { value: 'announcements', label: t('messages.tabAnnouncements'), count: announcements.length },
             { value: 'threads', label: t('messages.tabConversations'), count: threads.length },
+            { value: 'announcements', label: t('messages.tabAnnouncements'), count: announcements.length },
           ]}
           value={tab}
           onChange={(v) => setTab(v as 'announcements' | 'threads')}

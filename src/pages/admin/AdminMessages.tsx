@@ -49,7 +49,7 @@ export default function AdminMessages() {
   const pushToast = useStore((s) => s.pushToast)
   const seen = useSectionSeen('messages')
 
-  const [tab, setTab] = useState<'announcements' | 'threads'>('announcements')
+  const [tab, setTab] = useState<'announcements' | 'threads'>('threads')
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -287,8 +287,8 @@ export default function AdminMessages() {
       <div className="mb-6">
         <Tabs
           tabs={[
-            { value: 'announcements', label: 'Announcements', count: thisWeekAnnouncementCount },
             { value: 'threads', label: 'Messages', count: threads.length },
+            { value: 'announcements', label: 'Announcements', count: thisWeekAnnouncementCount },
           ]}
           value={tab}
           onChange={(v) => setTab(v as 'announcements' | 'threads')}
