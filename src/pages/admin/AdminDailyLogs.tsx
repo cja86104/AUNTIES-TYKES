@@ -204,13 +204,15 @@ export default function AdminDailyLogs() {
    * still see every report in their portal. `daily_logs.date` is already a
    * daycare day, so its week is read straight from it.
    */
-  const thisWeek = weekStartOf(todayISO()) ?? todayISO()
+  const today = todayISO()
+  const thisWeek = weekStartOf(today) ?? today
   const [week, setWeek] = useState(thisWeek)
   const searching = query.trim() !== ''
 
   /**
    * Reports in the current scope before the child tabs narrow it: every week
-   * when searching, the picked date if there is one, else the chosen week. A
+   * when searching, the picked date if there is one, today's reports on the
+   * current week, else the chosen earlier week. A
    * parent's new incident confirmation keeps an older report on this week
    * until she has seen it, so that "New" marker is never tucked away.
    */
@@ -227,7 +229,7 @@ export default function AdminDailyLogs() {
     if (dateFilter) return dailyLogs.filter((l) => l.date === dateFilter)
     return dailyLogs.filter(
       (l) =>
-        weekStartOf(l.date) === week ||
+        (week === thisWeek ? l.date === today : weekStartOf(l.date) === week) ||
         (week === thisWeek && incidentAcks.some((a) => a.logId === l.id && seen.isNew(a.acknowledgedAt))),
     )
   })()
@@ -514,10 +516,10 @@ export default function AdminDailyLogs() {
         ) : (
           <EmptyState
             icon={CalendarDays}
-            title={week === thisWeek ? 'A fresh week' : 'No reports that week'}
+            title={week === thisWeek ? 'No reports yet today' : 'No reports that week'}
             description={
               week === thisWeek
-                ? 'No reports yet this week. Earlier weeks are one step back with the arrow, or search finds anything.'
+                ? 'Write today’s report and it will appear in the family’s portal right away. Pick a date, step back a week, or search to find an earlier report.'
                 : 'Step to another week, search, or pick a date to find a report.'
             }
             action={
