@@ -1,5 +1,6 @@
 /**
- * The deletions pass — the first deletion Ro can make: an announcement.
+ * The deletions pass — the deletions Ro can make: an announcement, and a whole
+ * conversation with a family.
  *
  * Plan §3 gates every deletion regardless of tier, because this app has no trash
  * and §8's undo window covers sends rather than deletes. So, like the send tools,
@@ -7,9 +8,10 @@
  * proposal and stops; the delete lives in `announcement.delete` in `../execute.ts`
  * behind `api/ai/confirm.ts` and her tap.
  *
- * The card says plainly that it cannot be taken back. It does the same as the
- * Delete button on the admin Messages page: the row goes, then its attached file.
- * Nothing is sent to any family.
+ * The card says plainly that it cannot be taken back. Each does the same as the
+ * Delete button on the admin Messages page: an announcement's row goes, then its
+ * attached file; a conversation goes with every message in it (the database
+ * cascades them). Nothing is sent to any family.
  */
 
 import { propose } from '../audit.js'
@@ -126,4 +128,96 @@ const announcementDelete: ToolSpec = {
   },
 }
 
-export const deletionTools: ToolSpec[] = [announcementDelete]
+/* ------------------------------ thread.delete ------------------------------ */
+
+const threadDelete: ToolSpec = {
+  name: 'thread_delete',
+  tier: 'medium',
+  description:
+    'Put the deletion of ONE whole conversation with a family in front of the owner — ' +
+    'the thread and every message in it, hers and theirs. This does NOT delete ' +
+    'anything on its own: she sees which conversation it is and taps once. A delete ' +
+    'cannot be taken back — there is no trash and no Undo — and the family loses the ' +
+    'conversation from their portal. Get the threadId from thread_list, and if more ' +
+    'than one could be what she meant, ask her which before calling this.',
+  parameters: schema({ threadId: { type: 'string', description: 'From thread_list' } }, ['threadId']),
+  execute: async (args, ctx): Promise<ToolOutcome> => {
+    const threadId = readString(args, 'threadId')
+    if (threadId === null) return { ok: false, error: 'Which conversation? Give the threadId from thread_list' }
+
+    const found = await ctx.caller.db
+      .from('threads')
+      .select('id, family_id, subject, updated_at')
+      .eq('id', threadId)
+      .maybeSingle()
+    if (found.error !== null) return dbFailure('that conversation', found.error)
+    if (found.data === null) {
+      return {
+        ok: true,
+        data: { deleted: false, reason: 'no conversation has that id — look it up with thread_list', threadId },
+      }
+    }
+    const row = found.data
+
+    const family = await ctx.caller.db.from('families').select('name').eq('id', row.family_id).maybeSingle()
+    if (family.error !== null) return dbFailure('that family', family.error)
+    const familyName = family.data?.name ?? 'the family'
+
+    const messages = await ctx.caller.db
+      .from('thread_messages')
+      .select('from_role, body, at')
+      .eq('thread_id', row.id)
+      .order('at', { ascending: false })
+    if (messages.error !== null) return dbFailure('its messages', messages.error)
+    const count = messages.data.length
+    const last = messages.data[0]
+
+    const payload = { threadId: row.id, subject: row.subject, familyName, messageCount: count }
+    const key = `thread.delete:${JSON.stringify(payload)}`
+    const existing = alreadyProposed(ctx, key)
+    if (existing !== undefined) return proposed(existing)
+
+    const logged = await propose(ctx, {
+      instruction: ctx.instruction,
+      tool: 'thread.delete',
+      riskTier: 'medium',
+      arguments: payload,
+      subject: { familyId: row.family_id, familyLabel: familyName, targets: [row.id] },
+      model: ctx.model,
+    })
+    if (!logged.ok) return { ok: false, error: logged.error }
+
+    const detail: { label: string; value: string }[] = [
+      { label: 'Conversation', value: row.subject },
+      { label: 'With', value: familyName },
+      { label: 'Messages', value: `${String(count)} — all of them are deleted` },
+    ]
+    if (last !== undefined) {
+      detail.push({
+        label: 'Last message',
+        value: `${last.from_role === 'parent' ? familyName : 'You'}, ${prettyDate(todayInZone(new Date(last.at)))}: ${last.body.slice(0, 200)}`,
+      })
+    }
+    detail.push({
+      label: 'Careful',
+      value: 'This cannot be undone. There is no trash and no Undo for a delete.',
+    })
+    detail.push({
+      label: 'What happens',
+      value: `The whole conversation disappears from ${familyName}’s parent portal right away. Nothing is sent to anyone.`,
+    })
+
+    const preview: ActionPreview = {
+      id: logged.value,
+      kind: 'thread.delete',
+      title: 'Delete a conversation',
+      summary: `${row.subject} — ${familyName}`,
+      detail,
+      confirmLabel: 'Delete it for good',
+    }
+    rememberProposal(ctx, key, preview)
+    return proposed(preview)
+  },
+}
+
+export const deletionTools: ToolSpec[] = [announcementDelete, threadDelete]

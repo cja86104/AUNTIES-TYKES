@@ -404,6 +404,9 @@ export const persist = {
 
   thread: (thread: Thread) => run(supabase.from('threads').upsert(fromThread(thread)).select()),
 
+  /** The messages go with it: thread_messages.thread_id is `on delete cascade`. */
+  deleteThread: (id: string) => run(supabase.from('threads').delete().eq('id', id).select()),
+
   threadMessage: (message: ThreadMessage, threadId: string, authorId: string | null) =>
     run(supabase.from('thread_messages').upsert(fromThreadMessage(message, threadId, authorId)).select()),
 

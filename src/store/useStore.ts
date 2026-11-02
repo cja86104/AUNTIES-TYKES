@@ -193,6 +193,7 @@ export interface StoreState extends DataSlice {
   deleteAnnouncement: (id: string) => void
   sendThreadMessage: (threadId: string, message: NewThreadMessage) => void
   startThread: (thread: NewThread) => void
+  deleteThread: (id: string) => void
 
   addFamily: (family: NewFamily) => string
   updateFamily: (id: string, patch: Partial<Family>) => void
@@ -796,6 +797,12 @@ export const useStore = create<StoreState>()((set, get) => {
             await persist.threadMessage(message, created.id, authorId(s))
           }
         },
+      ),
+
+    deleteThread: (id) =>
+      commit(
+        (s) => ({ threads: s.threads.filter((t) => t.id !== id) }),
+        () => persist.deleteThread(id),
       ),
 
     /* ------------------------- families & children ------------------------ */

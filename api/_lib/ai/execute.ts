@@ -376,6 +376,43 @@ const deleteAnnouncementExecutor: Executor = {
 }
 
 /**
+ * Deletes one whole conversation, mirroring `deleteThread` in useStore.ts.
+ *
+ * The messages go with the thread: `thread_messages.thread_id` is
+ * `on delete cascade`. No undo, and none is offered; the card said so before she
+ * tapped. Re-read at execution, in case she deleted it from the Messages page
+ * while the card waited.
+ */
+const deleteThreadExecutor: Executor = {
+  tool: 'thread.delete',
+  run: async (ctx, proposal) => {
+    const id = readString(proposal.arguments, 'threadId')
+    if (id === null) return { ok: false, error: 'That delete is missing which conversation it was for' }
+
+    const existing = await ctx.caller.db.from('threads').select('id, subject').eq('id', id).maybeSingle()
+    if (existing.error !== null) {
+      return { ok: false, error: `Could not check that conversation: ${existing.error.message}` }
+    }
+    if (existing.data === null) {
+      return { ok: true, summary: 'That conversation was already gone, so nothing was changed.', targets: [id] }
+    }
+
+    const removed = await ctx.caller.db.from('threads').delete().eq('id', id).select('id')
+    if (removed.error !== null) {
+      return { ok: false, error: `Could not delete that conversation: ${removed.error.message}` }
+    }
+    if (removed.data.length === 0) {
+      return { ok: false, error: 'That conversation could not be deleted, so it is still there.' }
+    }
+    return {
+      ok: true,
+      summary: `Deleted "${existing.data.subject}". It is gone from their portal.`,
+      targets: [id],
+    }
+  },
+}
+
+/**
  * Sets attendance, mirroring `checkIn` / `checkOut` / `markAbsent` in useStore.ts.
  *
  * Each arrival and departure is its own row in `attendance_visits` (migration
@@ -1521,6 +1558,7 @@ const executors: Executor[] = [
   sendMessageExecutor,
   sendAnnouncementExecutor,
   deleteAnnouncementExecutor,
+  deleteThreadExecutor,
   attendanceExecutor,
   dailyLogExecutor,
   calendarExecutor,

@@ -25,7 +25,7 @@ import { weekOf, weekStartOf, weeksWithItems } from '../../lib/weeks'
 import { downloadDocument, isInlineImage, removeDocumentFile } from '../../lib/storage'
 import { AttachmentPhoto } from '../../components/DailyLogCard'
 import { useSectionSeen } from '../../lib/unread'
-import type { Announcement, UploadedFileMeta } from '../../types'
+import type { Announcement, Thread, UploadedFileMeta } from '../../types'
 
 interface AnnouncementErrors {
   title?: string
@@ -47,6 +47,7 @@ export default function AdminMessages() {
   const deleteAnnouncement = useStore((s) => s.deleteAnnouncement)
   const sendThreadMessage = useStore((s) => s.sendThreadMessage)
   const startThread = useStore((s) => s.startThread)
+  const deleteThread = useStore((s) => s.deleteThread)
   const pushToast = useStore((s) => s.pushToast)
   const seen = useSectionSeen('messages')
 
@@ -57,6 +58,7 @@ export default function AdminMessages() {
   const [audience, setAudience] = useState('all')
   const [errors, setErrors] = useState<AnnouncementErrors>({})
   const [confirmDelete, setConfirmDelete] = useState<Announcement | null>(null)
+  const [confirmDeleteThread, setConfirmDeleteThread] = useState<Thread | null>(null)
   const [attachment, setAttachment] = useState<UploadedFileMeta | null>(null)
   /** True while the attachment is still uploading, so Post cannot go without it. */
   const [uploading, setUploading] = useState(false)
@@ -264,6 +266,18 @@ export default function AdminMessages() {
     // Clearing the selection lets the list fall through to the newest thread.
     setActiveThreadId(null)
     pushToast({ title: 'Message sent', description: `${recipient} will see it in their portal.` })
+  }
+
+  const doDeleteThread = () => {
+    if (!confirmDeleteThread) return
+    const { id, subject } = confirmDeleteThread
+    deleteThread(id)
+    // Clearing the selection lets the list fall through to the newest thread,
+    // and the phone view goes back to the list rather than into a different one.
+    setActiveThreadId(null)
+    setMobilePane('list')
+    pushToast({ tone: 'info', title: 'Conversation deleted', description: `${subject} is gone from the portal.` })
+    setConfirmDeleteThread(null)
   }
 
   const sendReply = () => {
@@ -507,9 +521,19 @@ export default function AdminMessages() {
                     {familyName(activeThread.familyId)} · updated {fmtDate(activeThread.updatedAt)}
                   </p>
                 </div>
-                <Badge tone="neutral">
-                  <MessageSquare size={12} /> {activeThread.messages.length}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge tone="neutral">
+                    <MessageSquare size={12} /> {activeThread.messages.length}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setConfirmDeleteThread(activeThread)}
+                    aria-label={`Delete conversation ${activeThread.subject}`}
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </div>
               </div>
 
               <div className="flex-1 space-y-4 px-5 py-5">
@@ -614,6 +638,30 @@ export default function AdminMessages() {
             />
           </Field>
         </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(confirmDeleteThread)}
+        onClose={() => setConfirmDeleteThread(null)}
+        title="Delete this conversation?"
+        description={confirmDeleteThread?.subject}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmDeleteThread(null)}>
+              Keep it
+            </Button>
+            <Button variant="danger" onClick={doDeleteThread}>
+              <Trash2 size={16} /> Delete
+            </Button>
+          </>
+        }
+      >
+        <Card className="bg-rose-50/60 p-4 text-sm text-rose-900">
+          {confirmDeleteThread
+            ? `All ${String(confirmDeleteThread.messages.length)} message${confirmDeleteThread.messages.length === 1 ? '' : 's'} in it, yours and ${familyName(confirmDeleteThread.familyId)}’s, are deleted, and they lose the conversation from their portal immediately.`
+            : ''}{' '}
+          This cannot be undone.
+        </Card>
       </Modal>
 
       <Modal
