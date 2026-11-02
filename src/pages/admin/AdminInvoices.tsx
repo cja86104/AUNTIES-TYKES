@@ -16,8 +16,11 @@ import {
   Tabs,
   statusTone,
 } from '../../components/ui'
+import WeekPicker from '../../components/WeekPicker'
 import { useStore } from '../../store/useStore'
-import { fmtDate, invoiceBalance, invoiceStatus, money, todayISO, uid } from '../../lib/helpers'
+import { DAYCARE_TIME_ZONE, fmtDate, invoiceBalance, invoiceStatus, money, todayISO, uid } from '../../lib/helpers'
+import { weekOf, weekStartOf, weeksWithItems } from '../../lib/weeks'
+import { invoiceInView, tabIsWeekly } from '../../lib/invoiceView'
 import type { InvoiceStatus, LineItem } from '../../types'
 import { invoicePeriod, tuitionLines } from '../../lib/invoiceLines'
 import { isEnrolled } from '../../lib/schedule'
@@ -49,6 +52,15 @@ export default function AdminInvoices() {
 
   const [tab, setTab] = useState<'all' | InvoiceStatus>('all')
   const [query, setQuery] = useState('')
+  /**
+   * Invoices start fresh every Monday on the admin side only: the page opens on
+   * this week (Mon-Sun, Eastern) by the day they were ISSUED, earlier weeks are
+   * one step back, and search looks across every week. Open and Overdue ignore
+   * the week so nothing still owed is ever hidden (see src/lib/invoiceView.ts).
+   * Nothing is deleted, and families still see every invoice in their portal.
+   */
+  const thisWeek = weekStartOf(todayISO()) ?? todayISO()
+  const [week, setWeek] = useState(thisWeek)
   const [open, setOpen] = useState(false)
   const [familyId, setFamilyId] = useState('')
   const [dueDate, setDueDate] = useState('')
@@ -61,21 +73,40 @@ export default function AdminInvoices() {
   const familyName = (id: string) => families.find((f) => f.id === id)?.name ?? 'Unknown family'
 
   const decorated = useMemo(
-    () => invoices.map((inv) => ({ inv, status: invoiceStatus(inv), balance: invoiceBalance(inv) })),
+    () =>
+      invoices.map((inv) => ({
+        inv,
+        status: invoiceStatus(inv),
+        balance: invoiceBalance(inv),
+        week: weekOf(inv.issuedAt, DAYCARE_TIME_ZONE),
+      })),
     [invoices],
   )
+
+  const searching = query.trim() !== ''
+  const weeklyTab = tabIsWeekly(tab)
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     const nameOf = (id: string) => families.find((f) => f.id === id)?.name ?? ''
     return decorated
-      .filter((r) => (tab === 'all' ? true : r.status === tab))
+      .filter((r) => invoiceInView({ tab, status: r.status, week: r.week, viewWeek: week, searching: q !== '' }))
       .filter((r) => {
         if (!q) return true
         return `${r.inv.id} ${r.inv.period} ${nameOf(r.inv.familyId)}`.toLowerCase().includes(q)
       })
       .sort((a, b) => (a.inv.dueDate < b.inv.dueDate ? 1 : -1))
-  }, [decorated, tab, query, families])
+  }, [decorated, tab, query, week, families])
+
+  /** The weeks the picker lists: those with an invoice the current tab would show. */
+  const weeks = useMemo(
+    () =>
+      weeksWithItems(
+        decorated.filter((r) => tab === 'all' || r.status === tab).map((r) => r.week),
+        thisWeek,
+      ),
+    [decorated, tab, thisWeek],
+  )
 
   const tabs = useMemo(
     () => [
@@ -179,6 +210,9 @@ export default function AdminInvoices() {
     if (id === null) return
 
     setOpen(false)
+    // A new invoice belongs to this week; bring her back to it if she was looking at an older one.
+    setWeek(thisWeek)
+    setQuery('')
     pushToast({ title: 'Invoice created', description: `${id} — ${money(amount)} billed to ${familyName(familyId)}.` })
   }
 
@@ -186,7 +220,7 @@ export default function AdminInvoices() {
     <PageTransition>
       <PageHeader
         title="Invoices"
-        description="Every statement you have issued, with what is still owed on each."
+        description="Every statement you have issued, a week at a time, with what is still owed on each."
         actions={
           <>
             <div className="relative">
@@ -194,7 +228,7 @@ export default function AdminInvoices() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search invoices…"
+                placeholder="Search all weeks…"
                 className="w-full pl-9 sm:w-56"
                 aria-label="Search invoices"
               />
@@ -210,33 +244,72 @@ export default function AdminInvoices() {
         <Tabs tabs={tabs} value={tab} onChange={(v) => setTab(v as 'all' | InvoiceStatus)} />
       </div>
 
+      {invoices.length > 0 && (
+        <div className="mb-5">
+          {searching ? (
+            <p className="text-sm text-slate-500">Searching every week · {rows.length} found</p>
+          ) : weeklyTab ? (
+            <WeekPicker week={week} thisWeek={thisWeek} weeks={weeks} onChange={setWeek} noun={['invoice', 'invoices']} />
+          ) : (
+            <p className="text-sm text-slate-500">
+              Every week · {rows.length} {tab === 'overdue' ? 'overdue' : 'open'}
+            </p>
+          )}
+        </div>
+      )}
+
       {rows.length === 0 ? (
-        <EmptyState
-          icon={ReceiptText}
-          title={query || tab !== 'all' ? 'Nothing matches that view' : 'No invoices yet'}
-          description={
-            query || tab !== 'all'
-              ? 'Try another tab, or clear the search to see every statement.'
-              : 'Create the first statement and it will appear in the family’s portal immediately.'
-          }
-          action={
-            query || tab !== 'all' ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setQuery('')
-                  setTab('all')
-                }}
-              >
-                Show all invoices
-              </Button>
-            ) : (
+        invoices.length === 0 ? (
+          <EmptyState
+            icon={ReceiptText}
+            title="No invoices yet"
+            description="Create the first statement and it will appear in the family’s portal immediately."
+            action={
               <Button onClick={openNew}>
                 <Plus size={16} /> Create an invoice
               </Button>
-            )
-          }
-        />
+            }
+          />
+        ) : searching ? (
+          <EmptyState
+            icon={ReceiptText}
+            title="Nothing matches that search"
+            description="Search looks through every week. Try other words, or another tab."
+            action={
+              <Button variant="outline" onClick={() => setQuery('')}>
+                Clear the search
+              </Button>
+            }
+          />
+        ) : weeklyTab ? (
+          <EmptyState
+            icon={ReceiptText}
+            title={week === thisWeek ? 'No invoices issued this week' : 'No invoices that week'}
+            description="Step to another week, or search to find an invoice."
+            action={
+              week === thisWeek ? (
+                <Button onClick={openNew}>
+                  <Plus size={16} /> Create an invoice
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => setWeek(thisWeek)}>
+                  Back to this week
+                </Button>
+              )
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={ReceiptText}
+            title={tab === 'overdue' ? 'Nothing overdue' : 'Nothing open'}
+            description="Every invoice in this view has been paid."
+            action={
+              <Button variant="outline" onClick={() => setTab('all')}>
+                Show all invoices
+              </Button>
+            }
+          />
+        )
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
@@ -245,6 +318,7 @@ export default function AdminInvoices() {
                 <tr className="border-b border-slate-200 bg-slate-50/70 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                   <th className="px-5 py-3">Invoice</th>
                   <th className="px-5 py-3">Family</th>
+                  <th className="px-5 py-3">Issued</th>
                   <th className="px-5 py-3">Due</th>
                   <th className="px-5 py-3 text-right">Amount</th>
                   <th className="px-5 py-3 text-right">Balance</th>
@@ -272,6 +346,7 @@ export default function AdminInvoices() {
                         {familyName(inv.familyId)}
                       </Link>
                     </td>
+                    <td className="px-5 py-3.5 text-slate-600">{fmtDate(inv.issuedAt)}</td>
                     <td className="px-5 py-3.5 text-slate-600">{fmtDate(inv.dueDate)}</td>
                     <td className="px-5 py-3.5 text-right font-semibold text-slate-900">{money(inv.amount)}</td>
                     <td className="px-5 py-3.5 text-right font-semibold text-slate-900">
