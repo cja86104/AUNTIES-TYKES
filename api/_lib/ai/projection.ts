@@ -189,6 +189,19 @@ export interface ThreadMessageBrief {
   body: string
 }
 
+export interface AnnouncementBrief {
+  id: string
+  title: string
+  body: string
+  /** The literal 'all', or the id of the one family it went to. */
+  audience: string
+  /** Who it went to, in words: 'Every family' or the family's name. */
+  audienceName: string
+  /** The day it was posted, in the daycare's time zone (yyyy-MM-dd). */
+  postedOn: string
+  attachmentFileName: string | null
+}
+
 export interface DocumentBrief {
   id: string
   title: string

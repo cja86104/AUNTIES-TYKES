@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Megaphone, MessageSquare, Paperclip, Plus, Send, Users, Inbox, ArrowLeft, X, Search, CalendarDays } from 'lucide-react'
+import { Megaphone, MessageSquare, Paperclip, Plus, Send, Users, Inbox, ArrowLeft, X, Search, CalendarDays, Trash2 } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
   Avatar,
@@ -25,7 +25,7 @@ import { weekOf, weekStartOf, weeksWithItems } from '../../lib/weeks'
 import { downloadDocument, isInlineImage, removeDocumentFile } from '../../lib/storage'
 import { AttachmentPhoto } from '../../components/DailyLogCard'
 import { useSectionSeen } from '../../lib/unread'
-import type { UploadedFileMeta } from '../../types'
+import type { Announcement, UploadedFileMeta } from '../../types'
 
 interface AnnouncementErrors {
   title?: string
@@ -44,6 +44,7 @@ export default function AdminMessages() {
   const families = useStore((s) => s.families)
   const user = useStore((s) => s.user)
   const addAnnouncement = useStore((s) => s.addAnnouncement)
+  const deleteAnnouncement = useStore((s) => s.deleteAnnouncement)
   const sendThreadMessage = useStore((s) => s.sendThreadMessage)
   const startThread = useStore((s) => s.startThread)
   const pushToast = useStore((s) => s.pushToast)
@@ -55,6 +56,7 @@ export default function AdminMessages() {
   const [body, setBody] = useState('')
   const [audience, setAudience] = useState('all')
   const [errors, setErrors] = useState<AnnouncementErrors>({})
+  const [confirmDelete, setConfirmDelete] = useState<Announcement | null>(null)
   const [attachment, setAttachment] = useState<UploadedFileMeta | null>(null)
   /** True while the attachment is still uploading, so Post cannot go without it. */
   const [uploading, setUploading] = useState(false)
@@ -93,8 +95,8 @@ export default function AdminMessages() {
   /**
    * Announcements start fresh every Monday on the admin side only: the tab
    * opens on this week (Mon–Sun, Eastern), earlier weeks are one step back,
-   * and search looks across every week. Nothing is deleted, and families still
-   * see every announcement in their portal.
+   * and search looks across every week. Stepping back a week deletes nothing;
+   * only the delete button on a card (with its confirmation) removes one.
    */
   const thisWeek = weekStartOf(todayISO()) ?? todayISO()
   const [week, setWeek] = useState(thisWeek)
@@ -205,6 +207,14 @@ export default function AdminMessages() {
       title: 'Announcement posted',
       description: audience === 'all' ? 'Every family can see it now.' : `Sent to ${familyName(audience)}.`,
     })
+  }
+
+  const doDeleteAnnouncement = () => {
+    if (!confirmDelete) return
+    const { id, title: deletedTitle } = confirmDelete
+    deleteAnnouncement(id)
+    pushToast({ tone: 'info', title: 'Announcement deleted', description: `${deletedTitle} is gone from the portals.` })
+    setConfirmDelete(null)
   }
 
   const onDownloadAttachment = (a: { attachmentStoragePath?: string; attachmentFileName?: string; title: string }) => {
@@ -394,6 +404,14 @@ export default function AdminMessages() {
                       <Badge tone={a.audience === 'all' ? 'blue' : 'violet'}>
                         <Users size={12} /> {a.audience === 'all' ? 'All families' : familyName(a.audience)}
                       </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setConfirmDelete(a)}
+                        aria-label={`Delete announcement ${a.title}`}
+                      >
+                        <Trash2 size={15} />
+                      </Button>
                     </div>
                   </div>
                   <div className="md px-5 py-4 text-sm">
@@ -596,6 +614,30 @@ export default function AdminMessages() {
             />
           </Field>
         </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(confirmDelete)}
+        onClose={() => setConfirmDelete(null)}
+        title="Delete this announcement?"
+        description={confirmDelete?.title}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmDelete(null)}>
+              Keep it
+            </Button>
+            <Button variant="danger" onClick={doDeleteAnnouncement}>
+              <Trash2 size={16} /> Delete
+            </Button>
+          </>
+        }
+      >
+        <Card className="bg-rose-50/60 p-4 text-sm text-rose-900">
+          {confirmDelete?.audience === 'all'
+            ? 'Every family will immediately lose it from their portal.'
+            : `${confirmDelete ? familyName(confirmDelete.audience) : 'The family'} will immediately lose it from their portal.`}
+          {confirmDelete?.attachmentStoragePath ? ' Its attached file is deleted too.' : ''} This cannot be undone.
+        </Card>
       </Modal>
 
       <Modal

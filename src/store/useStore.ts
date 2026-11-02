@@ -13,7 +13,7 @@ import {
 import type { SectionName } from '../lib/database.types'
 import { sanitizeWeeklySchedule, sortedBlocks } from '../lib/schedule'
 import { openVisit, visitsOn } from '../lib/visits'
-import { clearViewUrls } from '../lib/storage'
+import { clearViewUrls, removeDocumentFile } from '../lib/storage'
 import type {
   Announcement,
   ApprovalResult,
@@ -190,6 +190,7 @@ export interface StoreState extends DataSlice {
   markSectionSeen: (section: SectionName) => void
 
   addAnnouncement: (announcement: NewAnnouncement) => void
+  deleteAnnouncement: (id: string) => void
   sendThreadMessage: (threadId: string, message: NewThreadMessage) => void
   startThread: (thread: NewThread) => void
 
@@ -737,6 +738,26 @@ export const useStore = create<StoreState>()((set, get) => {
           return created ? persist.announcement(created) : Promise.resolve()
         },
       ),
+    deleteAnnouncement: (id) => {
+      const attachmentPath = get().announcements.find((a) => a.id === id)?.attachmentStoragePath
+      commit(
+        (s) => ({ announcements: s.announcements.filter((a) => a.id !== id) }),
+        async () => {
+          await persist.deleteAnnouncement(id)
+          if (!attachmentPath) return
+          // Row first, file second: once the row is gone the storage read policy
+          // (migration 0011) lets no family reach the object, so a file that
+          // fails to delete here is an orphan nobody can open, not a leak.
+          await removeDocumentFile(attachmentPath).catch((error: unknown) => {
+            get().pushToast({
+              tone: 'error',
+              title: 'The announcement went, its file stayed',
+              description: error instanceof Error ? error.message : 'The stored file could not be removed.',
+            })
+          })
+        },
+      )
+    },
     sendThreadMessage: (threadId, message) =>
       commit(
         (s) => ({

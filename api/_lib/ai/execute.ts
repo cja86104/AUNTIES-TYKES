@@ -320,6 +320,61 @@ const sendAnnouncementExecutor: Executor = {
   },
 }
 
+/** The private bucket announcement attachments live in; see migration 0011. */
+const ATTACHMENT_BUCKET = 'documents'
+
+/**
+ * Deletes one announcement, mirroring `deleteAnnouncement` in useStore.ts: the row
+ * first, then its attached file.
+ *
+ * No undo, and none is offered: this app has no trash, and the card told her so
+ * before she tapped. Re-read at execution rather than trusted from the proposal —
+ * she may have deleted it from the Messages page while the card waited. With the
+ * row gone, the storage read policy lets no family reach the file, so a file that
+ * fails to delete is reported but is an orphan nobody can open, not a leak.
+ */
+const deleteAnnouncementExecutor: Executor = {
+  tool: 'announcement.delete',
+  run: async (ctx, proposal) => {
+    const id = readString(proposal.arguments, 'announcementId')
+    if (id === null) return { ok: false, error: 'That delete is missing which announcement it was for' }
+
+    const existing = await ctx.caller.db
+      .from('announcements')
+      .select('id, title, attachment_storage_path')
+      .eq('id', id)
+      .maybeSingle()
+    if (existing.error !== null) {
+      return { ok: false, error: `Could not check that announcement: ${existing.error.message}` }
+    }
+    if (existing.data === null) {
+      return { ok: true, summary: 'That announcement was already gone, so nothing was changed.', targets: [id] }
+    }
+
+    const removed = await ctx.caller.db.from('announcements').delete().eq('id', id).select('id')
+    if (removed.error !== null) {
+      return { ok: false, error: `Could not delete that announcement: ${removed.error.message}` }
+    }
+    if (removed.data.length === 0) {
+      return { ok: false, error: 'That announcement could not be deleted, so it is still there.' }
+    }
+
+    const path = existing.data.attachment_storage_path
+    let fileNote = ''
+    if (typeof path === 'string' && path.length > 0) {
+      const file = await ctx.caller.db.storage.from(ATTACHMENT_BUCKET).remove([path])
+      if (file.error !== null) {
+        fileNote = ' Its attached file could not be removed, but no family can open it any more.'
+      }
+    }
+    return {
+      ok: true,
+      summary: `Deleted "${existing.data.title}". It is gone from the portals.${fileNote}`,
+      targets: [id],
+    }
+  },
+}
+
 /**
  * Sets attendance, mirroring `checkIn` / `checkOut` / `markAbsent` in useStore.ts.
  *
@@ -1465,6 +1520,7 @@ const executors: Executor[] = [
   retireRuleExecutor,
   sendMessageExecutor,
   sendAnnouncementExecutor,
+  deleteAnnouncementExecutor,
   attendanceExecutor,
   dailyLogExecutor,
   calendarExecutor,

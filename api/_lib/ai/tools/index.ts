@@ -23,6 +23,7 @@ import { accountTools } from './accounts.js'
 import { billingTools } from './billing.js'
 import { familyTools } from './families.js'
 import { familyEditTools } from './familyEdits.js'
+import { deletionTools } from './deletions.js'
 import { draftTools } from './drafts.js'
 import { enrollmentTools } from './enrollments.js'
 import { readTools } from './reads.js'
@@ -41,6 +42,7 @@ export const roTools: ToolSpec[] = [
   ...draftTools,
   ...ruleTools,
   ...sendTools,
+  ...deletionTools,
   ...recordTools,
   ...officeTools,
   ...scheduleTools,

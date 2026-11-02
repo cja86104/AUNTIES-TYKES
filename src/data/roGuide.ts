@@ -15,7 +15,7 @@
  */
 
 /** When the guide last changed. ISO timestamp, in the past. */
-export const RO_GUIDE_UPDATED_AT = '2026-10-26T22:10:00.000Z'
+export const RO_GUIDE_UPDATED_AT = '2026-11-02T12:58:00.000Z'
 
 export interface GuideTopic {
   /** Anchor id, and the key the page uses to pick an icon. */
@@ -184,10 +184,12 @@ export const TOPICS: GuideTopic[] = [
       'Message the Brooks family that pickup is at 4 tomorrow.',
       'Reply to the Chens and tell them Friday works.',
       'Send an announcement to everyone: we are closed Monday for the holiday.',
+      'Delete the announcement about the holiday closure.',
     ],
     notes: [
       'Messages land in the family\'s parent portal. Nothing is emailed or texted — if someone needs to know right away, give them a call.',
       'You have 5 minutes to Undo after sending.',
+      'Ro can delete an announcement, but only after you tap Delete on her card. It disappears from every family\'s portal right away, along with any file attached to it, and it cannot be undone — Undo only covers sending.',
       'If one of your standing instructions says not to contact a family, Ro will not send it and will tell you which instruction stopped it.',
       'For safety, Ro sends at most 20 times, or to 120 families, in any hour.',
     ],
@@ -348,7 +350,7 @@ export const TOPICS: GuideTopic[] = [
 /* --------------------------------- limits ----------------------------------- */
 
 export const CANNOT_DO: string[] = [
-  'Delete anything — daily logs, calendar events, invoices, documents, families or inquiries. Use the console pages for that.',
+  'Delete anything except an announcement — daily logs, calendar events, invoices, documents, families or inquiries. Use the console pages for that.',
   'Change or delete an invoice once it is created.',
   'Change your business settings, hours, rates or policies.',
   'Upload files or photos.',

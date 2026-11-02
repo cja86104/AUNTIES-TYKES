@@ -18,10 +18,11 @@ import type { Contact, Incident, WeeklySchedule } from '../../../../src/types.js
 import { CHILD_STATUSES } from '../../../../src/lib/childStatus.js'
 import { ENROLLED_STATUSES } from '../../../../src/lib/schedule.js'
 import { expectedWords, loadDays, MAX_DAYS, notExpectedWords, scheduleWords } from '../schedules.js'
-import { daysSince, prettyDate, shiftDays } from '../clock.js'
+import { daysSince, prettyDate, shiftDays, todayInZone } from '../clock.js'
 import { AGE_GROUPS } from './families.js'
 import {
   invoiceState,
+  type AnnouncementBrief,
   type AttendanceBrief,
   type CalendarEventBrief,
   type ChildBrief,
@@ -70,6 +71,7 @@ const PAYMENT_COLUMNS = 'invoice_id, date, amount, method, ref'
 const THREAD_COLUMNS = 'id, family_id, subject, updated_at'
 const MESSAGE_COLUMNS = 'thread_id, from_role, author_name, at, body'
 const DOCUMENT_COLUMNS = 'id, title, category, visible_to_parents, requires_ack, pinned, uploaded_at'
+const ANNOUNCEMENT_COLUMNS = 'id, title, body, audience_family_id, date, attachment_file_name'
 // prettier-ignore
 const ENROLLMENT_COLUMNS = 'id, submitted_at, status, family_name, primary_contact, relation, email, phone, address, secondary, emergency, children, notes, acknowledged_handbook'
 const CALENDAR_COLUMNS =
@@ -81,6 +83,7 @@ const SETTINGS_COLUMNS = 'business_name, director, address, phone, email, hours,
 
 const MAX_ROWS = 200
 const MAX_THREADS = 50
+const MAX_ANNOUNCEMENTS = 30
 
 /* --------------------------------- mappers -------------------------------- */
 
@@ -919,6 +922,45 @@ const documentList: ToolSpec = {
   },
 }
 
+const announcementList: ToolSpec = {
+  name: 'announcement_list',
+  tier: 'read',
+  description:
+    'Announcements already posted to families, newest first, each with the id you ' +
+    'need to delete one. audience is "all" or the one family it went to, and ' +
+    'audienceName says so in words. Pass search to narrow by words in the title or ' +
+    'wording. Only the newest matches are returned — count says how many matched.',
+  parameters: schema({ search: { type: 'string', description: 'Words from the title or wording' } }),
+  execute: async (args, ctx): Promise<ToolOutcome> => {
+    const search = readSearchTerm(args, 'search')?.toLowerCase() ?? null
+
+    const rows = await ctx.caller.db
+      .from('announcements')
+      .select(ANNOUNCEMENT_COLUMNS)
+      .order('date', { ascending: false })
+      .limit(MAX_ROWS)
+    if (rows.error !== null) return dbFailure('announcements', rows.error)
+
+    const familyNames = await familyLabels(ctx)
+    const all = rows.data.map((row): AnnouncementBrief => ({
+      id: row.id,
+      title: row.title,
+      body: row.body,
+      audience: row.audience_family_id ?? 'all',
+      audienceName:
+        row.audience_family_id === null
+          ? 'Every family'
+          : (familyNames.get(row.audience_family_id) ?? 'One family'),
+      postedOn: todayInZone(new Date(row.date)),
+      attachmentFileName: row.attachment_file_name ?? null,
+    }))
+    const matched =
+      search === null ? all : all.filter((entry) => `${entry.title} ${entry.body}`.toLowerCase().includes(search))
+    const shown = matched.slice(0, MAX_ANNOUNCEMENTS)
+    return { ok: true, data: { count: matched.length, shown: shown.length, announcements: shown } }
+  },
+}
+
 const enrollmentList: ToolSpec = {
   name: 'enrollment_list',
   tier: 'read',
@@ -1068,6 +1110,7 @@ export const readTools: ToolSpec[] = [
   threadList,
   threadGet,
   documentList,
+  announcementList,
   enrollmentList,
   calendarUpcoming,
   settingsGet,

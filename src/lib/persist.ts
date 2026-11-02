@@ -400,6 +400,8 @@ export const persist = {
   announcement: (announcement: Announcement) =>
     run(supabase.from('announcements').upsert(fromAnnouncement(announcement)).select()),
 
+  deleteAnnouncement: (id: string) => run(supabase.from('announcements').delete().eq('id', id).select()),
+
   thread: (thread: Thread) => run(supabase.from('threads').upsert(fromThread(thread)).select()),
 
   threadMessage: (message: ThreadMessage, threadId: string, authorId: string | null) =>
