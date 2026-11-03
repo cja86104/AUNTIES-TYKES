@@ -15,7 +15,7 @@
  */
 
 /** When the guide last changed. ISO timestamp, in the past. */
-export const RO_GUIDE_UPDATED_AT = '2026-11-02T13:23:00.000Z'
+export const RO_GUIDE_UPDATED_AT = '2026-11-03T14:19:00.000Z'
 
 export interface GuideTopic {
   /** Anchor id, and the key the page uses to pick an icon. */
@@ -166,9 +166,12 @@ export const TOPICS: GuideTopic[] = [
       'Write Ellie\'s log: ate all her lunch, napped 1 to 2:30, a happy day, painted with the big kids.',
       'Add to Sam\'s log that he went down for his nap easily.',
       'Write an incident report for Ava: bumped her knee on the slide at 10:15, ice applied, she was fine after.',
+      'Show me this week\'s daily logs.',
+      'Find the log where Ellie had a fever.',
     ],
     notes: [
       'Ro writes only what you tell her. She never fills in a meal, nap or mood on her own.',
+      'Ro can read a whole week of logs, Monday to Sunday — the same weeks as the Daily Logs page — or search every week by words in the log or a child\'s name.',
       'If a log already exists for that day, Ro adds to it — anything you do not mention stays as it was.',
       'Families only see the parts that were filled in.',
       'Photos and PDFs are added from the Daily Logs page. Ro cannot delete a log.',
@@ -186,8 +189,13 @@ export const TOPICS: GuideTopic[] = [
       'Send an announcement to everyone: we are closed Monday for the holiday.',
       'Delete the announcement about the holiday closure.',
       'Delete the pickup conversation with the Brooks family.',
+      'What messages came in last week?',
+      'Find the conversation where the Chens asked about pickup.',
+      'What announcements did I post this week?',
     ],
     notes: [
+      'Ro uses the same Monday-to-Sunday weeks as the Messages page. A conversation counts in the week of its latest message, so an old one with a new reply shows up in this week.',
+      'Ro can search every week of conversations — subjects, family names and every message — and every announcement, including attached file names.',
       'Messages land in the family\'s parent portal. Nothing is emailed or texted — if someone needs to know right away, give them a call.',
       'You have 5 minutes to Undo after sending.',
       'Ro can delete an announcement or a whole conversation, but only after you tap Delete on her card. An announcement disappears from every family\'s portal right away, along with any file attached to it. A conversation goes with every message in it, yours and theirs. Neither can be undone — Undo only covers sending.',

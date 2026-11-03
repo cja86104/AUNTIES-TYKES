@@ -18,7 +18,8 @@ import type { Contact, Incident, WeeklySchedule } from '../../../../src/types.js
 import { CHILD_STATUSES } from '../../../../src/lib/childStatus.js'
 import { ENROLLED_STATUSES } from '../../../../src/lib/schedule.js'
 import { expectedWords, loadDays, MAX_DAYS, notExpectedWords, scheduleWords } from '../schedules.js'
-import { daysSince, prettyDate, shiftDays, todayInZone } from '../clock.js'
+import { weekEndOf, weekOf, weekStartOf } from '../../../../src/lib/weeks.js'
+import { DAYCARE_TIME_ZONE, daysSince, prettyDate, shiftDays, todayInZone } from '../clock.js'
 import { AGE_GROUPS } from './families.js'
 import {
   invoiceState,
@@ -84,6 +85,9 @@ const SETTINGS_COLUMNS = 'business_name, director, address, phone, email, hours,
 const MAX_ROWS = 200
 const MAX_THREADS = 50
 const MAX_ANNOUNCEMENTS = 30
+/** How far back a daily-log search reads, newest first, and how many matches it returns. */
+const LOG_SEARCH_ROWS = 1000
+const MAX_LOG_MATCHES = 30
 
 /* --------------------------------- mappers -------------------------------- */
 
@@ -582,36 +586,59 @@ const dailyLogList: ToolSpec = {
   name: 'dailyLog_list',
   tier: 'read',
   description:
-    'Daily logs, by date or by child. Use to check whether a log was written, or ' +
-    "to read what went into one before drafting a parent's message. Includes any " +
-    'incident / injury report and whether the family has confirmed reading it, and ' +
-    'the names of attached photos and PDFs.',
+    'Daily logs, by date, by week or by child, or found by search. Use to check ' +
+    "whether a log was written, or to read what went into one before drafting a parent's " +
+    'message. Includes any incident / injury report and whether the family has ' +
+    'confirmed reading it, and the names of attached photos and PDFs. Pass week (any ' +
+    'date in it) for every log from that Monday-to-Sunday week, as the Daily Logs page ' +
+    'shows a week — "this week" is the week containing today. Pass search to find logs ' +
+    "by words in what was written, the incident, or the child's name, across every week; " +
+    'combine it with week, date or childId to narrow. A search returns only the newest ' +
+    'matches — count says how many matched.',
   parameters: schema({
-    date: { type: 'string', description: 'yyyy-MM-dd. Defaults to today when no childId is given' },
+    date: { type: 'string', description: 'yyyy-MM-dd. Defaults to today when no childId, week or search is given' },
+    week: { type: 'string', description: 'yyyy-MM-dd, any day in the week wanted. Returns the whole Monday-Sunday week' },
     childId: { type: 'string' },
-    days: { type: 'integer', description: 'With childId: how far back, 1-60. Default 14' },
+    days: { type: 'integer', description: 'With childId alone: how far back, 1-60. Default 14' },
+    search: { type: 'string', description: "Words from the log or the child's name. Searches every week unless narrowed" },
   }),
   execute: async (args, ctx): Promise<ToolOutcome> => {
     const childId = readString(args, 'childId')
     const date = readDate(args, 'date')
     const days = readInt(args, 'days', 1, 60, 14)
+    const week = readDate(args, 'week')
+    const weekStart = week === null ? null : weekStartOf(week)
+    const search = readSearchTerm(args, 'search')?.toLowerCase() ?? null
 
     let query = ctx.caller.db.from('daily_logs').select(LOG_COLUMNS)
-    if (childId !== null) {
-      query = query.eq('child_id', childId)
-      if (date !== null) query = query.eq('date', date)
-      else query = query.gte('date', shiftDays(ctx.today, -days)).lte('date', ctx.today)
-    } else {
-      query = query.eq('date', date ?? ctx.today)
-    }
+    if (childId !== null) query = query.eq('child_id', childId)
+    if (weekStart !== null) query = query.gte('date', weekStart).lte('date', weekEndOf(weekStart))
+    else if (date !== null) query = query.eq('date', date)
+    else if (search !== null) {
+      // A search with nothing else to narrow it looks across every week.
+    } else if (childId !== null) query = query.gte('date', shiftDays(ctx.today, -days)).lte('date', ctx.today)
+    else query = query.eq('date', ctx.today)
 
-    const logs = await query.order('date', { ascending: false }).limit(MAX_ROWS)
+    const readLimit = search === null ? MAX_ROWS : LOG_SEARCH_ROWS
+    const logs = await query.order('date', { ascending: false }).limit(readLimit)
     if (logs.error !== null) return dbFailure('daily logs', logs.error)
 
     const childNames = await childLabels(ctx)
 
+    // The same words the Daily Logs page searches: the child's name, every
+    // section of the log, the activities and the incident description.
+    const matched =
+      search === null
+        ? logs.data
+        : logs.data.filter((row) =>
+            `${childNames.get(row.child_id) ?? ''} ${row.meals} ${row.naps} ${row.potty} ${row.mood} ${row.notes} ${row.activities.join(' ')} ${row.incident?.description ?? ''}`
+              .toLowerCase()
+              .includes(search),
+          )
+    const rows = search === null ? matched : matched.slice(0, MAX_LOG_MATCHES)
+
     // Who has confirmed each incident, only for logs that have one.
-    const incidentLogIds = logs.data.filter((row) => row.incident !== null).map((row) => row.id)
+    const incidentLogIds = rows.filter((row) => row.incident !== null).map((row) => row.id)
     const acksByLog = new Map<string, { profileId: string; version: string; at: string }[]>()
     const names = new Map<string, string>()
     if (incidentLogIds.length > 0) {
@@ -648,7 +675,7 @@ const dailyLogList: ToolSpec = {
       }
     }
 
-    const list: DailyLogBrief[] = logs.data.map((row) => ({
+    const list: DailyLogBrief[] = rows.map((row) => ({
       id: row.id,
       childId: row.child_id,
       childName: childNames.get(row.child_id) ?? '',
@@ -663,7 +690,17 @@ const dailyLogList: ToolSpec = {
       attachments: row.attachments.map((a) => a.fileName),
       incident: row.incident === null ? null : briefIncident(row.id, row.incident),
     }))
-    return { ok: true, data: { count: list.length, logs: list } }
+    if (search === null) return { ok: true, data: { count: list.length, logs: list } }
+    return {
+      ok: true,
+      data: {
+        count: matched.length,
+        shown: list.length,
+        // True when the search read as far back as it goes; older logs were not looked at.
+        searchReachedLimit: logs.data.length === readLimit,
+        logs: list,
+      },
+    }
   },
 }
 
@@ -768,25 +805,61 @@ const threadList: ToolSpec = {
     '"owner" means the PARENT sent the last message and is waiting on a reply from ' +
     'her; "family" means she sent the last message and the parent has not written ' +
     'back. Never describe it the other way round — check waitingOn before saying ' +
-    'who owes whom. awaitingReplyOnly filters to the threads where she owes a reply.',
-  parameters: schema({ awaitingReplyOnly: { type: 'boolean' } }),
+    'who owes whom. awaitingReplyOnly filters to the threads where she owes a reply. ' +
+    'Pass week (any date in it) for the conversations whose latest message falls in ' +
+    'that Monday-to-Sunday week — the way the Messages page groups them, so a new reply ' +
+    'brings an older conversation into the current week. Pass search to find ' +
+    "conversations by words in the subject, the family's name, or any message from " +
+    'either side, across every week.',
+  parameters: schema({
+    awaitingReplyOnly: { type: 'boolean' },
+    week: { type: 'string', description: 'yyyy-MM-dd, any day in the week wanted' },
+    search: { type: 'string', description: "Words from the subject, the family's name or any message" },
+  }),
   execute: async (args, ctx): Promise<ToolOutcome> => {
     const awaitingOnly = readBoolean(args, 'awaitingReplyOnly', false)
+    const week = readDate(args, 'week')
+    const weekStart = week === null ? null : weekStartOf(week)
+    const search = readSearchTerm(args, 'search')
+    const narrowing = weekStart !== null || search !== null
 
     const threads = await ctx.caller.db
       .from('threads')
       .select(THREAD_COLUMNS)
       .order('updated_at', { ascending: false })
-      .limit(MAX_THREADS)
+      .limit(narrowing ? MAX_ROWS : MAX_THREADS)
     if (threads.error !== null) return dbFailure('message threads', threads.error)
-    if (threads.data.length === 0) return { ok: true, data: { count: 0, threads: [] } }
+
+    const familyNames = await familyLabels(ctx)
+    let rows = threads.data
+    if (weekStart !== null) rows = rows.filter((row) => weekOf(row.updated_at, DAYCARE_TIME_ZONE) === weekStart)
+    if (search !== null) {
+      // readSearchTerm leaves only letters, digits, spaces and ' . - so the
+      // pattern carries no wildcard or filter syntax of its own.
+      const hits = await ctx.caller.db
+        .from('thread_messages')
+        .select('thread_id')
+        .ilike('body', `%${search}%`)
+        .limit(LOG_SEARCH_ROWS)
+      if (hits.error !== null) return dbFailure('message search', hits.error)
+      const hitIds = new Set(hits.data.map((row) => row.thread_id))
+      const q = search.toLowerCase()
+      rows = rows.filter(
+        (row) =>
+          hitIds.has(row.id) ||
+          row.subject.toLowerCase().includes(q) ||
+          (familyNames.get(row.family_id) ?? '').toLowerCase().includes(q),
+      )
+    }
+    rows = rows.slice(0, MAX_THREADS)
+    if (rows.length === 0) return { ok: true, data: { count: 0, threads: [] } }
 
     const messages = await ctx.caller.db
       .from('thread_messages')
       .select('thread_id, from_role, at')
       .in(
         'thread_id',
-        threads.data.map((row) => row.id),
+        rows.map((row) => row.id),
       )
       .order('at', { ascending: false })
     if (messages.error !== null) return dbFailure('their messages', messages.error)
@@ -797,8 +870,7 @@ const threadList: ToolSpec = {
       if (!latest.has(row.thread_id)) latest.set(row.thread_id, { role: row.from_role, at: row.at })
     }
 
-    const familyNames = await familyLabels(ctx)
-    const all: ThreadBrief[] = threads.data.map((row) => {
+    const all: ThreadBrief[] = rows.map((row) => {
       const last = latest.get(row.id)
       return {
         id: row.id,
@@ -928,11 +1000,18 @@ const announcementList: ToolSpec = {
   description:
     'Announcements already posted to families, newest first, each with the id you ' +
     'need to delete one. audience is "all" or the one family it went to, and ' +
-    'audienceName says so in words. Pass search to narrow by words in the title or ' +
-    'wording. Only the newest matches are returned — count says how many matched.',
-  parameters: schema({ search: { type: 'string', description: 'Words from the title or wording' } }),
+    'audienceName says so in words. Pass search to narrow by words in the title, ' +
+    'wording or attached file name, across every week. Pass week (any date in it) for ' +
+    'the announcements posted that Monday-to-Sunday week, as the Messages page shows a ' +
+    'week. Only the newest matches are returned — count says how many matched.',
+  parameters: schema({
+    search: { type: 'string', description: 'Words from the title, wording or attached file name' },
+    week: { type: 'string', description: 'yyyy-MM-dd, any day in the week wanted' },
+  }),
   execute: async (args, ctx): Promise<ToolOutcome> => {
     const search = readSearchTerm(args, 'search')?.toLowerCase() ?? null
+    const week = readDate(args, 'week')
+    const weekStart = week === null ? null : weekStartOf(week)
 
     const rows = await ctx.caller.db
       .from('announcements')
@@ -954,8 +1033,12 @@ const announcementList: ToolSpec = {
       postedOn: todayInZone(new Date(row.date)),
       attachmentFileName: row.attachment_file_name ?? null,
     }))
-    const matched =
-      search === null ? all : all.filter((entry) => `${entry.title} ${entry.body}`.toLowerCase().includes(search))
+    const matched = all.filter(
+      (entry) =>
+        (search === null ||
+          `${entry.title} ${entry.body} ${entry.attachmentFileName ?? ''}`.toLowerCase().includes(search)) &&
+        (weekStart === null || weekStartOf(entry.postedOn) === weekStart),
+    )
     const shown = matched.slice(0, MAX_ANNOUNCEMENTS)
     return { ok: true, data: { count: matched.length, shown: shown.length, announcements: shown } }
   },

@@ -187,6 +187,12 @@ below, and the audit is the reason it is worth trusting: it was derived from
 back. Since 2026-10-08 `attendance.today` and `schedule_for_date` are built on
 the shared schedule resolver: who is expected, still to come, coming back
 later, or has no schedule entered (reported as unknown, never as "off").
+Since 2026-11-03 `dailyLog.list`, `thread.list` and `announcement.list` take a
+`week` (any date in it → that Monday–Sunday week, Eastern, via
+`src/lib/weeks.ts`, the same weeks the console pages use), and `dailyLog.list`
+and `thread.list` take a `search` across every week (`announcement.list`
+already had one; it now also matches the attached file name). A conversation's
+week is that of its latest message, as on the Messages page.
 
 **Drafts (1).** `dailyLog.draft` — prepares wording and stops. It is the only
 one left: `message.draft` and `announcement.draft` were **removed** on
