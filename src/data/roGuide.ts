@@ -15,7 +15,7 @@
  */
 
 /** When the guide last changed. ISO timestamp, in the past. */
-export const RO_GUIDE_UPDATED_AT = '2026-11-03T14:19:00.000Z'
+export const RO_GUIDE_UPDATED_AT = '2026-11-03T14:35:00.000Z'
 
 export interface GuideTopic {
   /** Anchor id, and the key the page uses to pick an icon. */
@@ -190,11 +190,12 @@ export const TOPICS: GuideTopic[] = [
       'Delete the announcement about the holiday closure.',
       'Delete the pickup conversation with the Brooks family.',
       'What messages came in last week?',
+      'What did the Brooks family say last week?',
       'Find the conversation where the Chens asked about pickup.',
       'What announcements did I post this week?',
     ],
     notes: [
-      'Ro uses the same Monday-to-Sunday weeks as the Messages page. A conversation counts in the week of its latest message, so an old one with a new reply shows up in this week.',
+      'Ro uses the same Monday-to-Sunday weeks as the Messages page. A conversation counts in every week it had a message, so you can ask what a family said last week even if you have talked since.',
       'Ro can search every week of conversations — subjects, family names and every message — and every announcement, including attached file names.',
       'Messages land in the family\'s parent portal. Nothing is emailed or texted — if someone needs to know right away, give them a call.',
       'You have 5 minutes to Undo after sending.',

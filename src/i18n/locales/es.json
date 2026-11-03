@@ -321,7 +321,13 @@
     "earlierUnreadDesc": "Aún no hay nada esta semana — pero una semana anterior tiene algo que no has leído. Está marcada como Nuevo en la lista de semanas.",
     "emptyConversationsWeekTitle": "No hay mensajes esa semana",
     "emptyAnnouncementsWeekTitle": "No hay avisos esa semana",
-    "emptyWeekDesc": "Pasa a otra semana, o busca para encontrar algo por lo que decía."
+    "emptyWeekDesc": "Pasa a otra semana, o busca para encontrar algo por lo que decía.",
+    "weekOnly_one": "{{week}} solamente · {{shown}} de {{count}} mensaje",
+    "weekOnly_other": "{{week}} solamente · {{shown}} de {{count}} mensajes",
+    "wholeConversation_one": "Toda la conversación · {{count}} mensaje",
+    "wholeConversation_other": "Toda la conversación · {{count}} mensajes",
+    "showFullConversation": "Ver toda la conversación",
+    "showWeekOnly": "Ver solo esa semana"
   },
   "invoiceView": {
     "backToInvoices": "Volver a las facturas",

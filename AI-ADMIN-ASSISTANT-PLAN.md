@@ -191,8 +191,9 @@ Since 2026-11-03 `dailyLog.list`, `thread.list` and `announcement.list` take a
 `week` (any date in it → that Monday–Sunday week, Eastern, via
 `src/lib/weeks.ts`, the same weeks the console pages use), and `dailyLog.list`
 and `thread.list` take a `search` across every week (`announcement.list`
-already had one; it now also matches the attached file name). A conversation's
-week is that of its latest message, as on the Messages page.
+already had one; it now also matches the attached file name). A conversation
+counts in every week it had a message, as on the Messages page, and
+`thread.get` takes a `week` to read only that week's messages.
 
 **Drafts (1).** `dailyLog.draft` — prepares wording and stops. It is the only
 one left: `message.draft` and `announcement.draft` were **removed** on

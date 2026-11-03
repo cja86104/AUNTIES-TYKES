@@ -321,7 +321,13 @@
     "earlierUnreadDesc": "Nothing this week yet — but an earlier week has something you have not read. It is marked New in the week list.",
     "emptyConversationsWeekTitle": "No messages that week",
     "emptyAnnouncementsWeekTitle": "No announcements that week",
-    "emptyWeekDesc": "Step to another week, or search to find something by what it said."
+    "emptyWeekDesc": "Step to another week, or search to find something by what it said.",
+    "weekOnly_one": "{{week}} only · {{shown}} of {{count}} message",
+    "weekOnly_other": "{{week}} only · {{shown}} of {{count}} messages",
+    "wholeConversation_one": "The whole conversation · {{count}} message",
+    "wholeConversation_other": "The whole conversation · {{count}} messages",
+    "showFullConversation": "Show full conversation",
+    "showWeekOnly": "Show that week only"
   },
   "invoiceView": {
     "backToInvoices": "Back to invoices",

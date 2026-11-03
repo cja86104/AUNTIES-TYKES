@@ -321,7 +321,13 @@
     "earlierUnreadDesc": "Tuần này chưa có gì — nhưng một tuần trước có mục bạn chưa đọc. Tuần đó được đánh dấu Mới trong danh sách tuần.",
     "emptyConversationsWeekTitle": "Không có tin nhắn trong tuần đó",
     "emptyAnnouncementsWeekTitle": "Không có thông báo trong tuần đó",
-    "emptyWeekDesc": "Chuyển sang tuần khác, hoặc tìm kiếm để thấy nội dung bạn cần."
+    "emptyWeekDesc": "Chuyển sang tuần khác, hoặc tìm kiếm để thấy nội dung bạn cần.",
+    "weekOnly_one": "{{week}} · chỉ {{shown}} trên {{count}} tin nhắn",
+    "weekOnly_other": "{{week}} · chỉ {{shown}} trên {{count}} tin nhắn",
+    "wholeConversation_one": "Toàn bộ cuộc trò chuyện · {{count}} tin nhắn",
+    "wholeConversation_other": "Toàn bộ cuộc trò chuyện · {{count}} tin nhắn",
+    "showFullConversation": "Xem toàn bộ cuộc trò chuyện",
+    "showWeekOnly": "Chỉ xem tuần đó"
   },
   "invoiceView": {
     "backToInvoices": "Quay lại danh sách hóa đơn",

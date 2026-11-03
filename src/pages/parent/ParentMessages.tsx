@@ -49,9 +49,13 @@ export default function ParentMessages() {
    * Eastern) and show everything from the whole week so far. Earlier weeks are
    * one step back, and search looks across every week. Nothing is deleted.
    *
-   * A conversation belongs to the week of its latest message, so when Auntie
-   * Melissa replies to an older conversation it comes back into this week with
-   * its New pill. An announcement belongs to the week it was posted.
+   * A conversation shows in EVERY week it had a message in, so picking an
+   * earlier week shows what was said that week, and a new reply from Auntie
+   * Melissa puts the conversation in this week with its New pill. Opening it
+   * from an earlier week shows that week's messages, with the full
+   * conversation one tap away; this week and search show it in full. `week` is
+   * the week of its latest message, used to label search results. An
+   * announcement belongs to the week it was posted.
    */
   const thisWeek = weekStartOf(todayISO()) ?? todayISO()
 
@@ -60,23 +64,42 @@ export default function ParentMessages() {
       allThreads
         .filter((t) => t.familyId === familyId)
         .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
-        .map((t) => ({ ...t, week: weekOf(t.updatedAt, DAYCARE_TIME_ZONE) })),
+        .map((t) => {
+          const latest = weekOf(t.updatedAt, DAYCARE_TIME_ZONE)
+          const messages = t.messages.map((m) => ({ ...m, week: weekOf(m.at, DAYCARE_TIME_ZONE) }))
+          const weeks = new Set(messages.flatMap((m) => (m.week === null ? [] : [m.week])))
+          // A conversation with no readable message dates still belongs somewhere.
+          if (weeks.size === 0 && latest !== null) weeks.add(latest)
+          return { ...t, messages, week: latest, weeks }
+        }),
     [allThreads, familyId],
   )
   const [threadWeek, setThreadWeek] = useState(thisWeek)
   const [threadQuery, setThreadQuery] = useState('')
+  /** `${threadId}|${week}` when they asked to see that conversation in full from an earlier week. */
+  const [expandedThread, setExpandedThread] = useState<string | null>(null)
   const searchingThreads = threadQuery.trim() !== ''
-  const threadWeeks = useMemo(() => weeksWithItems(threads.map((t) => t.week), thisWeek), [threads, thisWeek])
+  /** An earlier week is on screen, so a conversation opens on that week's messages. */
+  const pastWeekView = !searchingThreads && threadWeek !== thisWeek
+  const threadWeeks = useMemo(
+    () => weeksWithItems(threads.flatMap((t) => [...t.weeks]), thisWeek),
+    [threads, thisWeek],
+  )
   const shownThreads = useMemo(() => {
     const q = threadQuery.trim().toLowerCase()
-    if (!q) return threads.filter((t) => t.week === threadWeek)
+    if (!q) return threads.filter((t) => t.weeks.has(threadWeek))
     return threads.filter((t) =>
       `${t.subject} ${t.messages.map((m) => `${m.authorName} ${m.body}`).join(' ')}`.toLowerCase().includes(q),
     )
   }, [threads, threadQuery, threadWeek])
   /** A reply from Auntie's Tykes this parent has not seen yet — the list's New pill. */
   const hasUnread = (thread: Thread) => thread.messages.some((m) => m.from === 'admin' && seen.isNew(m.at))
-  const unreadThreadWeeks = new Set(threads.flatMap((t) => (t.week !== null && hasUnread(t) ? [t.week] : [])))
+  /** The weeks the unread replies themselves were sent in. */
+  const unreadThreadWeeks = new Set(
+    threads.flatMap((t) =>
+      t.messages.flatMap((m) => (m.week !== null && m.from === 'admin' && seen.isNew(m.at) ? [m.week] : [])),
+    ),
+  )
   const thisWeekThreadCount = threadWeeks.find((w) => w.start === thisWeek)?.count ?? 0
 
   const datedAnnouncements = useMemo(
@@ -120,6 +143,13 @@ export default function ParentMessages() {
   const [errors, setErrors] = useState<NewThreadErrors>({})
 
   const activeThread = shownThreads.find((t) => t.id === activeThreadId) ?? shownThreads[0]
+  const activeThreadWeekMessages = activeThread
+    ? pastWeekView
+      ? activeThread.messages.filter((m) => m.week === threadWeek)
+      : activeThread.messages
+    : []
+  const showFullThread =
+    !pastWeekView || (activeThread !== undefined && expandedThread === `${activeThread.id}|${threadWeek}`)
   const authorName = user?.name ?? family?.primaryContact ?? 'Parent'
 
   const onDownloadAttachment = (storagePath: string, fileName?: string) => {
@@ -400,7 +430,8 @@ export default function ParentMessages() {
             <ul className="divide-y divide-slate-100">
               {shownThreads.map((t) => {
                 const isActive = activeThread?.id === t.id
-                const last = t.messages[t.messages.length - 1]
+                const inView = pastWeekView ? t.messages.filter((m) => m.week === threadWeek) : t.messages
+                const last = inView[inView.length - 1]
                 const unread = hasUnread(t)
                 return (
                   <li key={t.id}>
@@ -445,8 +476,29 @@ export default function ParentMessages() {
                 </Badge>
               </div>
 
+              {pastWeekView && activeThreadWeekMessages.length < activeThread.messages.length && (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-xs text-slate-500">
+                  <span>
+                    {showFullThread
+                      ? t('messages.wholeConversation', { count: activeThread.messages.length })
+                      : t('messages.weekOnly', {
+                          week: conversationWeekText.label(threadWeek),
+                          shown: activeThreadWeekMessages.length,
+                          count: activeThread.messages.length,
+                        })}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setExpandedThread(showFullThread ? null : `${activeThread.id}|${threadWeek}`)}
+                  >
+                    {showFullThread ? t('messages.showWeekOnly') : t('messages.showFullConversation')}
+                  </Button>
+                </div>
+              )}
+
               <div className="flex-1 space-y-4 px-5 py-5">
-                {activeThread.messages.map((m, i) => {
+                {(showFullThread ? activeThread.messages : activeThreadWeekMessages).map((m, i) => {
                   const mine = m.from === 'parent'
                   return (
                     <motion.div

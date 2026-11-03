@@ -806,9 +806,10 @@ const threadList: ToolSpec = {
     'her; "family" means she sent the last message and the parent has not written ' +
     'back. Never describe it the other way round — check waitingOn before saying ' +
     'who owes whom. awaitingReplyOnly filters to the threads where she owes a reply. ' +
-    'Pass week (any date in it) for the conversations whose latest message falls in ' +
-    'that Monday-to-Sunday week — the way the Messages page groups them, so a new reply ' +
-    'brings an older conversation into the current week. Pass search to find ' +
+    'Pass week (any date in it) for the conversations that had at least one message, ' +
+    'from either side, in that Monday-to-Sunday week — the way the Messages page groups ' +
+    'them; messagesThatWeek says how many. A conversation that went on for weeks shows ' +
+    'in each of them. Read what was said with thread_get and the same week. Pass search to find ' +
     "conversations by words in the subject, the family's name, or any message from " +
     'either side, across every week.',
   parameters: schema({
@@ -832,7 +833,24 @@ const threadList: ToolSpec = {
 
     const familyNames = await familyLabels(ctx)
     let rows = threads.data
-    if (weekStart !== null) rows = rows.filter((row) => weekOf(row.updated_at, DAYCARE_TIME_ZONE) === weekStart)
+    /** With a week: how many messages each conversation had in it. */
+    const weekCounts = new Map<string, number>()
+    if (weekStart !== null) {
+      // A day of slack on each side of the UTC bounds, then the exact daycare
+      // week from each message's own time.
+      const inWeek = await ctx.caller.db
+        .from('thread_messages')
+        .select('thread_id, at')
+        .gte('at', `${shiftDays(weekStart, -1)}T00:00:00Z`)
+        .lt('at', `${shiftDays(weekEndOf(weekStart), 2)}T00:00:00Z`)
+        .limit(LOG_SEARCH_ROWS)
+      if (inWeek.error !== null) return dbFailure("that week's messages", inWeek.error)
+      for (const row of inWeek.data) {
+        if (weekOf(row.at, DAYCARE_TIME_ZONE) !== weekStart) continue
+        weekCounts.set(row.thread_id, (weekCounts.get(row.thread_id) ?? 0) + 1)
+      }
+      rows = rows.filter((row) => weekCounts.has(row.id))
+    }
     if (search !== null) {
       // readSearchTerm leaves only letters, digits, spaces and ' . - so the
       // pattern carries no wildcard or filter syntax of its own.
@@ -885,7 +903,15 @@ const threadList: ToolSpec = {
       }
     })
     const filtered = awaitingOnly ? all.filter((thread) => thread.awaitingReply) : all
-    return { ok: true, data: { count: filtered.length, threads: filtered } }
+    if (weekStart === null) return { ok: true, data: { count: filtered.length, threads: filtered } }
+    return {
+      ok: true,
+      data: {
+        week: { from: weekStart, to: weekEndOf(weekStart) },
+        count: filtered.length,
+        threads: filtered.map((thread) => ({ ...thread, messagesThatWeek: weekCounts.get(thread.id) ?? 0 })),
+      },
+    }
   },
 }
 
@@ -896,11 +922,14 @@ const threadGet: ToolSpec = {
     'The messages in one thread, oldest first — so the LAST entry is the most ' +
     'recent. On each message, from: "admin" is her and from: "parent" is the ' +
     'family. Read this before drafting a reply so the draft answers what was ' +
-    'actually asked, and check the last message before saying who spoke last.',
+    'actually asked, and check the last message before saying who spoke last. Pass ' +
+    'week (any date in it) to read only the messages sent that Monday-to-Sunday week — ' +
+    'use it for "what did they say last week".',
   parameters: schema(
     {
       threadId: { type: 'string' },
       limit: { type: 'integer', description: 'Most recent N messages, 1-50. Default 20' },
+      week: { type: 'string', description: 'yyyy-MM-dd, any day in the week wanted' },
     },
     ['threadId'],
   ),
@@ -908,6 +937,8 @@ const threadGet: ToolSpec = {
     const threadId = readString(args, 'threadId')
     if (threadId === null) return { ok: false, error: 'A threadId is required' }
     const limit = readInt(args, 'limit', 1, 50, 20)
+    const week = readDate(args, 'week')
+    const weekStart = week === null ? null : weekStartOf(week)
 
     const thread = await ctx.caller.db
       .from('threads')
@@ -917,15 +948,21 @@ const threadGet: ToolSpec = {
     if (thread.error !== null) return dbFailure('that thread', thread.error)
     if (thread.data === null) return { ok: true, data: { found: false, threadId } }
 
-    const messages = await ctx.caller.db
-      .from('thread_messages')
-      .select(MESSAGE_COLUMNS)
-      .eq('thread_id', threadId)
-      .order('at', { ascending: false })
-      .limit(limit)
+    let messageQuery = ctx.caller.db.from('thread_messages').select(MESSAGE_COLUMNS).eq('thread_id', threadId)
+    if (weekStart !== null) {
+      // A day of slack on each side of the UTC bounds; the exact week is checked below.
+      messageQuery = messageQuery
+        .gte('at', `${shiftDays(weekStart, -1)}T00:00:00Z`)
+        .lt('at', `${shiftDays(weekEndOf(weekStart), 2)}T00:00:00Z`)
+    }
+    const messages = await messageQuery.order('at', { ascending: false }).limit(weekStart === null ? limit : MAX_ROWS)
     if (messages.error !== null) return dbFailure('its messages', messages.error)
 
-    const ordered: ThreadMessageBrief[] = messages.data
+    const inScope =
+      weekStart === null
+        ? messages.data
+        : messages.data.filter((row) => weekOf(row.at, DAYCARE_TIME_ZONE) === weekStart).slice(0, limit)
+    const ordered: ThreadMessageBrief[] = inScope
       .map((row) => ({
         from: row.from_role,
         authorName: row.author_name,

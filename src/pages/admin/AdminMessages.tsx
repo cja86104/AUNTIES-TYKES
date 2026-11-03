@@ -127,33 +127,51 @@ export default function AdminMessages() {
   const thisWeekAnnouncementCount = announcementWeeks.find((w) => w.start === thisWeek)?.count ?? 0
 
   /**
-   * Conversations get the same weekly view. A conversation belongs to the week
-   * of its latest message (updatedAt), so a new reply from either side brings
-   * an older conversation back into this week. Search looks across every week
-   * — subject, family, and every message in it. Nothing is moved or deleted.
+   * Conversations get the same weekly view. A conversation shows in EVERY week
+   * it had a message in, so picking an earlier week shows what was said that
+   * week — even when the same conversation carried on into this one. Opening
+   * it from an earlier week shows that week's messages, with the full
+   * conversation one tap away; this week and search show it in full. `week`
+   * is the week of its latest message, used to label search results. Search
+   * looks across every week — subject, family, and every message in it.
+   * Nothing is moved or deleted.
    */
   const [threadWeek, setThreadWeek] = useState(thisWeek)
   const [threadQuery, setThreadQuery] = useState('')
+  /** `${threadId}|${week}` when she asked to see that conversation in full from an earlier week. */
+  const [expandedThread, setExpandedThread] = useState<string | null>(null)
   const sortedThreads = useMemo(
     () =>
       [...threads]
         .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
-        .map((t) => ({ ...t, week: weekOf(t.updatedAt, DAYCARE_TIME_ZONE) })),
+        .map((t) => {
+          const latest = weekOf(t.updatedAt, DAYCARE_TIME_ZONE)
+          const messages = t.messages.map((m) => ({ ...m, week: weekOf(m.at, DAYCARE_TIME_ZONE) }))
+          const weeks = new Set(messages.flatMap((m) => (m.week === null ? [] : [m.week])))
+          // A conversation with no readable message dates still belongs somewhere.
+          if (weeks.size === 0 && latest !== null) weeks.add(latest)
+          return { ...t, messages, week: latest, weeks }
+        }),
     [threads],
   )
   const threadWeeks = useMemo(
-    () => weeksWithItems(sortedThreads.map((t) => t.week), thisWeek),
+    () => weeksWithItems(sortedThreads.flatMap((t) => [...t.weeks]), thisWeek),
     [sortedThreads, thisWeek],
   )
   /** A parent message she has not seen yet — the same rule the list's "New" pill uses. */
   const hasUnread = (t: Thread) => t.messages.some((m) => m.from === 'parent' && seen.isNew(m.at))
+  /** The weeks the unread parent messages themselves were sent in. */
   const unreadThreadWeeks = new Set(
-    sortedThreads.flatMap((t) => (t.week !== null && hasUnread(t) ? [t.week] : [])),
+    sortedThreads.flatMap((t) =>
+      t.messages.flatMap((m) => (m.week !== null && m.from === 'parent' && seen.isNew(m.at) ? [m.week] : [])),
+    ),
   )
   const searchingThreads = threadQuery.trim() !== ''
+  /** An earlier week is on screen, so a conversation opens on that week's messages. */
+  const pastWeekView = !searchingThreads && threadWeek !== thisWeek
   const shownThreads = useMemo(() => {
     const q = threadQuery.trim().toLowerCase()
-    if (!q) return sortedThreads.filter((t) => t.week === threadWeek)
+    if (!q) return sortedThreads.filter((t) => t.weeks.has(threadWeek))
     return sortedThreads.filter((t) => {
       const family = families.find((f) => f.id === t.familyId)?.name ?? ''
       const text = t.messages.map((m) => `${m.authorName} ${m.body}`).join(' ')
@@ -162,6 +180,13 @@ export default function AdminMessages() {
   }, [sortedThreads, threadQuery, threadWeek, families])
   const thisWeekThreadCount = threadWeeks.find((w) => w.start === thisWeek)?.count ?? 0
   const activeThread = shownThreads.find((t) => t.id === activeThreadId) ?? shownThreads[0]
+  const activeThreadWeekMessages = activeThread
+    ? pastWeekView
+      ? activeThread.messages.filter((m) => m.week === threadWeek)
+      : activeThread.messages
+    : []
+  const showFullThread =
+    !pastWeekView || (activeThread !== undefined && expandedThread === `${activeThread.id}|${threadWeek}`)
 
   /** A file already sitting in storage that no announcement row points at yet. */
   const discardStagedAttachment = (meta: UploadedFileMeta | null) => {
@@ -584,7 +609,8 @@ export default function AdminMessages() {
             <ul className="divide-y divide-slate-100">
               {shownThreads.map((t) => {
                 const isActive = activeThread?.id === t.id
-                const last = t.messages[t.messages.length - 1]
+                const inView = pastWeekView ? t.messages.filter((m) => m.week === threadWeek) : t.messages
+                const last = inView[inView.length - 1]
                 const unread = hasUnread(t)
                 return (
                   <li key={t.id}>
@@ -646,8 +672,25 @@ export default function AdminMessages() {
                 </div>
               </div>
 
+              {pastWeekView && activeThreadWeekMessages.length < activeThread.messages.length && (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/70 px-5 py-2.5 text-xs text-slate-500">
+                  <span>
+                    {showFullThread
+                      ? `The whole conversation · ${activeThread.messages.length} messages`
+                      : `${weekLabel(threadWeek, thisWeek)} only · ${activeThreadWeekMessages.length} of ${activeThread.messages.length} messages`}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setExpandedThread(showFullThread ? null : `${activeThread.id}|${threadWeek}`)}
+                  >
+                    {showFullThread ? 'Show that week only' : 'Show full conversation'}
+                  </Button>
+                </div>
+              )}
+
               <div className="flex-1 space-y-4 px-5 py-5">
-                {activeThread.messages.map((m, i) => {
+                {(showFullThread ? activeThread.messages : activeThreadWeekMessages).map((m, i) => {
                   const mine = m.from === 'admin'
                   return (
                     <motion.div
