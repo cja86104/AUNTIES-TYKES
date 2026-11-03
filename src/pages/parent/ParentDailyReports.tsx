@@ -5,11 +5,12 @@ import { useTranslation } from 'react-i18next'
 import PageTransition from '../../components/PageTransition'
 import { Badge, Button, EmptyState, Input, PageHeader, Tabs } from '../../components/ui'
 import DailyLogCard from '../../components/DailyLogCard'
-import WeekPicker, { type WeekPickerText } from '../../components/WeekPicker'
+import WeekPicker from '../../components/WeekPicker'
 import { useStore } from '../../store/useStore'
 import { useFamilyScope } from '../../lib/useFamilyScope'
 import { todayISO } from '../../lib/helpers'
-import { formatDayLong, formatDayShort, formatWeekRange, shiftWeek, weekStartOf, weeksWithItems } from '../../lib/weeks'
+import { formatDayLong, weekStartOf, weeksWithItems } from '../../lib/weeks'
+import { usePortalWeekText } from '../../lib/usePortalWeekText'
 import { incidentsAwaitingAck, useSectionSeen } from '../../lib/unread'
 import IncidentAckStrip from '../../components/IncidentAckStrip'
 import type { DailyLog } from '../../types'
@@ -92,23 +93,7 @@ export default function ParentDailyReports() {
     }),
   )
 
-  const weekText = useMemo<WeekPickerText>(
-    () => ({
-      label: (start) => {
-        if (start === thisWeek) return t('weeks.thisWeek')
-        if (start === shiftWeek(thisWeek, -1)) return t('weeks.lastWeek')
-        return t('weeks.weekOf', { date: formatDayShort(start, lang, start.slice(0, 4) !== thisWeek.slice(0, 4)) })
-      },
-      range: (start) => formatWeekRange(start, lang),
-      count: (n) => t('dailyReports.reportCount', { count: n }),
-      newMark: t('common.new'),
-      previous: t('weeks.previous'),
-      next: t('weeks.next'),
-      choose: t('weeks.choose'),
-      backToThisWeek: t('weeks.backToThisWeek'),
-    }),
-    [t, lang, thisWeek],
-  )
+  const weekText = usePortalWeekText(thisWeek, 'dailyReports.reportCount')
 
   const tabs = useMemo(
     () => [
