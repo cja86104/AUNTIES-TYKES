@@ -13,6 +13,12 @@ export interface WeekPickerProps {
   onChange: (week: string) => void
   /** What is being counted, singular and plural — "post", "posts". */
   noun: [string, string]
+  /**
+   * Weeks holding something unread. Their option reads "· New", so an unread
+   * item in an earlier week is not hidden behind the arrow while the nav badge
+   * says something is waiting.
+   */
+  newWeeks?: ReadonlySet<string>
 }
 
 /**
@@ -20,7 +26,7 @@ export interface WeekPickerProps {
  * and a list of every week that has something in it. Admin side only — the
  * family portal keeps its full history on one page.
  */
-export default function WeekPicker({ week, thisWeek, weeks, onChange, noun }: WeekPickerProps) {
+export default function WeekPicker({ week, thisWeek, weeks, onChange, noun, newWeeks }: WeekPickerProps) {
   const oldest = weeks.length ? weeks[weeks.length - 1].start : thisWeek
   // Stepping with the arrows can land on an empty week; it still needs an option.
   const options = weeks.some((w) => w.start === week) ? weeks : [...weeks, { start: week, count: 0 }].sort((a, b) => (a.start < b.start ? 1 : -1))
@@ -45,7 +51,7 @@ export default function WeekPicker({ week, thisWeek, weeks, onChange, noun }: We
       >
         {options.map((w) => (
           <option key={w.start} value={w.start}>
-            {weekLabel(w.start, thisWeek)} · {weekRange(w.start)} ({countText(w.count)})
+            {weekLabel(w.start, thisWeek)} · {weekRange(w.start)} ({countText(w.count)}){newWeeks?.has(w.start) ? ' · New' : ''}
           </option>
         ))}
       </Select>

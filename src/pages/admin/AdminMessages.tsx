@@ -125,11 +125,43 @@ export default function AdminMessages() {
     })
   }, [sortedAnnouncements, announcementQuery, week, families])
   const thisWeekAnnouncementCount = announcementWeeks.find((w) => w.start === thisWeek)?.count ?? 0
+
+  /**
+   * Conversations get the same weekly view. A conversation belongs to the week
+   * of its latest message (updatedAt), so a new reply from either side brings
+   * an older conversation back into this week. Search looks across every week
+   * — subject, family, and every message in it. Nothing is moved or deleted.
+   */
+  const [threadWeek, setThreadWeek] = useState(thisWeek)
+  const [threadQuery, setThreadQuery] = useState('')
   const sortedThreads = useMemo(
-    () => [...threads].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1)),
+    () =>
+      [...threads]
+        .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+        .map((t) => ({ ...t, week: weekOf(t.updatedAt, DAYCARE_TIME_ZONE) })),
     [threads],
   )
-  const activeThread = sortedThreads.find((t) => t.id === activeThreadId) ?? sortedThreads[0]
+  const threadWeeks = useMemo(
+    () => weeksWithItems(sortedThreads.map((t) => t.week), thisWeek),
+    [sortedThreads, thisWeek],
+  )
+  /** A parent message she has not seen yet — the same rule the list's "New" pill uses. */
+  const hasUnread = (t: Thread) => t.messages.some((m) => m.from === 'parent' && seen.isNew(m.at))
+  const unreadThreadWeeks = new Set(
+    sortedThreads.flatMap((t) => (t.week !== null && hasUnread(t) ? [t.week] : [])),
+  )
+  const searchingThreads = threadQuery.trim() !== ''
+  const shownThreads = useMemo(() => {
+    const q = threadQuery.trim().toLowerCase()
+    if (!q) return sortedThreads.filter((t) => t.week === threadWeek)
+    return sortedThreads.filter((t) => {
+      const family = families.find((f) => f.id === t.familyId)?.name ?? ''
+      const text = t.messages.map((m) => `${m.authorName} ${m.body}`).join(' ')
+      return `${t.subject} ${family} ${text}`.toLowerCase().includes(q)
+    })
+  }, [sortedThreads, threadQuery, threadWeek, families])
+  const thisWeekThreadCount = threadWeeks.find((w) => w.start === thisWeek)?.count ?? 0
+  const activeThread = shownThreads.find((t) => t.id === activeThreadId) ?? shownThreads[0]
 
   /** A file already sitting in storage that no announcement row points at yet. */
   const discardStagedAttachment = (meta: UploadedFileMeta | null) => {
@@ -263,6 +295,9 @@ export default function AdminMessages() {
     setThreadBody('')
     setThreadErrors({})
     setTab('threads')
+    // A new conversation belongs to this week; bring her back to it.
+    setThreadWeek(thisWeek)
+    setThreadQuery('')
     // Clearing the selection lets the list fall through to the newest thread.
     setActiveThreadId(null)
     pushToast({ title: 'Message sent', description: `${recipient} will see it in their portal.` })
@@ -288,6 +323,10 @@ export default function AdminMessages() {
       body: reply.trim(),
     })
     setReply('')
+    // The reply moves this conversation into this week. Follow it there and keep
+    // it open, rather than letting it vanish from an earlier week's list.
+    setActiveThreadId(activeThread.id)
+    if (!searchingThreads) setThreadWeek(thisWeek)
     pushToast({ title: 'Reply sent', description: `${familyName(activeThread.familyId)} will see it in their portal.` })
   }
 
@@ -311,13 +350,42 @@ export default function AdminMessages() {
       <div className="mb-6">
         <Tabs
           tabs={[
-            { value: 'threads', label: 'Messages', count: threads.length },
+            { value: 'threads', label: 'Messages', count: thisWeekThreadCount },
             { value: 'announcements', label: 'Announcements', count: thisWeekAnnouncementCount },
           ]}
           value={tab}
           onChange={(v) => setTab(v as 'announcements' | 'threads')}
         />
       </div>
+
+      {tab === 'threads' && sortedThreads.length > 0 && (
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {searchingThreads ? (
+            <p className="text-sm text-slate-500">
+              Searching every week · {shownThreads.length} found
+            </p>
+          ) : (
+            <WeekPicker
+              week={threadWeek}
+              thisWeek={thisWeek}
+              weeks={threadWeeks}
+              onChange={setThreadWeek}
+              noun={['conversation', 'conversations']}
+              newWeeks={unreadThreadWeeks}
+            />
+          )}
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={threadQuery}
+              onChange={(e) => setThreadQuery(e.target.value)}
+              placeholder="Search all weeks…"
+              className="w-full pl-9 sm:w-64"
+              aria-label="Search messages"
+            />
+          </div>
+        </div>
+      )}
 
       {tab === 'announcements' && sortedAnnouncements.length > 0 && (
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -468,6 +536,45 @@ export default function AdminMessages() {
             </Button>
           }
         />
+      ) : shownThreads.length === 0 ? (
+        searchingThreads ? (
+          <EmptyState
+            icon={Search}
+            title="Nothing matches that search"
+            description="Search looks through every week's conversations — subjects, families and every message."
+            action={
+              <Button variant="outline" onClick={() => setThreadQuery('')}>
+                Clear search
+              </Button>
+            }
+          />
+        ) : threadWeek === thisWeek ? (
+          <EmptyState
+            icon={CalendarDays}
+            title="A fresh week"
+            description={
+              unreadThreadWeeks.size > 0
+                ? 'No conversations this week yet — but an earlier week has a message you have not read. It is marked New in the week list.'
+                : 'No conversations this week yet. Earlier weeks are one step back with the arrow, or search finds anything.'
+            }
+            action={
+              <Button onClick={() => setComposeOpen(true)}>
+                <Plus size={16} /> New message
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={CalendarDays}
+            title="No conversations that week"
+            description="Step to another week, or search to find a conversation by what it said."
+            action={
+              <Button variant="outline" onClick={() => setThreadWeek(thisWeek)}>
+                Back to this week
+              </Button>
+            }
+          />
+        )
       ) : (
         <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
           <Card className={cx('overflow-hidden', mobilePane === 'thread' && 'hidden lg:block')}>
@@ -475,10 +582,10 @@ export default function AdminMessages() {
               <h2 className="font-display text-sm font-bold text-slate-900">Conversations</h2>
             </div>
             <ul className="divide-y divide-slate-100">
-              {sortedThreads.map((t) => {
+              {shownThreads.map((t) => {
                 const isActive = activeThread?.id === t.id
                 const last = t.messages[t.messages.length - 1]
-                const unread = t.messages.some((m) => m.from === 'parent' && seen.isNew(m.at))
+                const unread = hasUnread(t)
                 return (
                   <li key={t.id}>
                     <button
@@ -496,7 +603,10 @@ export default function AdminMessages() {
                           <span className="min-w-0 flex-1 truncate font-display text-sm font-bold text-slate-900">{t.subject}</span>
                           {unread && <Badge tone="violet">New</Badge>}
                         </span>
-                        <span className="block truncate text-xs text-slate-500">{familyName(t.familyId)}</span>
+                        <span className="block truncate text-xs text-slate-500">
+                          {familyName(t.familyId)}
+                          {searchingThreads && t.week ? ` · ${weekLabel(t.week, thisWeek)}` : ''}
+                        </span>
                         {last && <span className="mt-0.5 block truncate text-xs text-slate-400">{last.body}</span>}
                       </span>
                     </button>
