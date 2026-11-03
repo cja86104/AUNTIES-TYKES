@@ -2,6 +2,15 @@
   "common": {
     "new": "New"
   },
+  "weeks": {
+    "thisWeek": "This week",
+    "lastWeek": "Last week",
+    "weekOf": "Week of {{date}}",
+    "previous": "Previous week",
+    "next": "Next week",
+    "choose": "Choose a week",
+    "backToThisWeek": "Back to this week"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "myChildren": "My Children",
@@ -198,7 +207,7 @@
   "dailyReports": {
     "title": "Daily reports",
     "description": "Meals, naps, diapers, mood, and a note from the day — posted before pickup.",
-    "searchPlaceholder": "Search reports…",
+    "searchPlaceholder": "Search all weeks…",
     "searchAria": "Search daily reports",
     "filterByDate": "Filter by date",
     "allChildren": "All children",
@@ -207,8 +216,14 @@
     "reportCount_other": "{{count}} reports",
     "noMatchTitle": "No reports match those filters",
     "noReportsTitle": "No reports yet",
-    "noMatchDesc": "Try a different child or clear the date to see everything.",
-    "noReportsDesc": "A full report is posted before pickup each day — check back this afternoon."
+    "noMatchDesc": "Search looks through every week. Try a different child, other words, or clear the date.",
+    "noReportsDesc": "A full report is posted before pickup each day — check back this afternoon.",
+    "searchingAll": "Searching every week · {{count}} found",
+    "showingDate": "Showing {{date}} · clear the date to browse by week",
+    "freshWeekTitle": "A fresh week",
+    "freshWeekDesc": "No reports yet this week — a full report is posted before pickup each day. Earlier weeks are one step back with the arrow, or search finds any report.",
+    "emptyWeekTitle": "No reports that week",
+    "emptyWeekDesc": "Step to another week, search, or pick a date to find a report."
   },
   "documents": {
     "title": "Documents",

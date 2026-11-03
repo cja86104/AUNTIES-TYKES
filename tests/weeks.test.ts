@@ -5,7 +5,17 @@
  */
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { dayInZone, shiftWeek, weekEndOf, weekOf, weekStartOf, weeksWithItems } from '../src/lib/weeks.ts'
+import {
+  dayInZone,
+  formatDayLong,
+  formatDayShort,
+  formatWeekRange,
+  shiftWeek,
+  weekEndOf,
+  weekOf,
+  weekStartOf,
+  weeksWithItems,
+} from '../src/lib/weeks.ts'
 
 const ZONE = 'America/New_York'
 
@@ -72,5 +82,34 @@ void describe('weeksWithItems', () => {
   })
   void it('leaves out weeks after the current one', () => {
     assert.deepStrictEqual(weeksWithItems(['2026-11-02'], '2026-10-26'), [{ start: '2026-10-26', count: 0 }])
+  })
+})
+
+void describe('family-portal week wording', () => {
+  void it('formats a day short, with the year when asked', () => {
+    assert.equal(formatDayShort('2026-11-02', 'en'), 'Nov 2')
+    assert.equal(formatDayShort('2026-11-02', 'en', true), 'Nov 2, 2026')
+  })
+  void it('formats a day in full', () => {
+    assert.equal(formatDayLong('2026-11-03', 'en'), 'Tuesday, November 3, 2026')
+  })
+  void it('spans Monday to Sunday, across a month end', () => {
+    assert.equal(formatWeekRange('2026-10-26', 'en'), 'Oct 26 – Nov 1')
+  })
+  void it('reads the day in UTC so the date never shifts', () => {
+    assert.equal(formatDayShort('2026-03-08', 'en'), 'Mar 8')
+    assert.equal(formatDayShort('2027-01-01', 'en'), 'Jan 1')
+  })
+  void it('speaks the portal language', () => {
+    assert.notEqual(formatDayShort('2026-11-02', 'es'), 'Nov 2')
+    assert.notEqual(formatDayShort('2026-11-02', 'vi'), 'Nov 2')
+    assert.match(formatDayLong('2026-11-03', 'es'), /martes/)
+  })
+  void it('falls back to English for an unknown language tag', () => {
+    assert.equal(formatDayShort('2026-11-02', 'not a tag!'), 'Nov 2')
+  })
+  void it('hands back anything that is not a real date', () => {
+    assert.equal(formatDayShort('2026-02-30', 'en'), '2026-02-30')
+    assert.equal(formatWeekRange('Oct 26', 'en'), 'Oct 26')
   })
 })

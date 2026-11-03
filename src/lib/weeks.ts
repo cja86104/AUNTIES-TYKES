@@ -1,5 +1,6 @@
 /**
- * Weekly views for the admin console.
+ * Weekly views for the admin console, and for the family portal's Daily
+ * reports page (which shows the whole current week, not just today).
  *
  * The owner wants Announcements, Documents and Daily reports to start fresh
  * every Monday. Nothing is moved or deleted for that: every row stays in
@@ -94,6 +95,50 @@ export function shiftWeek(weekStart: string, weeks: number): string {
 export function weekEndOf(weekStart: string): string {
   const ms = parseDay(weekStart)
   return ms === null ? weekStart : formatDay(ms + 6 * DAY_MS)
+}
+
+const dayFormatters = new Map<string, Intl.DateTimeFormat>()
+
+/** A cached formatter for `locale`; an unknown language tag falls back to English. */
+function dayFormatter(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${locale}|${JSON.stringify(options)}`
+  const cached = dayFormatters.get(key)
+  if (cached) return cached
+  let made: Intl.DateTimeFormat
+  try {
+    made = new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' })
+  } catch {
+    made = new Intl.DateTimeFormat('en', { ...options, timeZone: 'UTC' })
+  }
+  dayFormatters.set(key, made)
+  return made
+}
+
+/**
+ * A calendar day (`yyyy-MM-dd`) as a short date in the portal's language:
+ * "Nov 2", "2 nov", "2 thg 11" — with the year when asked. The day is read in
+ * UTC so the date never shifts. Invalid input comes back unchanged.
+ */
+export function formatDayShort(day: string, locale: string, withYear = false): string {
+  const ms = parseDay(day)
+  if (ms === null) return day
+  const options: Intl.DateTimeFormatOptions = withYear
+    ? { month: 'short', day: 'numeric', year: 'numeric' }
+    : { month: 'short', day: 'numeric' }
+  return dayFormatter(locale, options).format(ms)
+}
+
+/** A calendar day in full in the portal's language: "Tuesday, November 3, 2026". */
+export function formatDayLong(day: string, locale: string): string {
+  const ms = parseDay(day)
+  if (ms === null) return day
+  return dayFormatter(locale, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(ms)
+}
+
+/** The Monday-to-Sunday span of a week in the portal's language: "Oct 26 – Nov 1". */
+export function formatWeekRange(weekStart: string, locale: string): string {
+  if (parseDay(weekStart) === null) return weekStart
+  return `${formatDayShort(weekStart, locale)} – ${formatDayShort(weekEndOf(weekStart), locale)}`
 }
 
 export interface WeekCount {

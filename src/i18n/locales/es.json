@@ -2,6 +2,15 @@
   "common": {
     "new": "Nuevo"
   },
+  "weeks": {
+    "thisWeek": "Esta semana",
+    "lastWeek": "La semana pasada",
+    "weekOf": "Semana del {{date}}",
+    "previous": "Semana anterior",
+    "next": "Semana siguiente",
+    "choose": "Elige una semana",
+    "backToThisWeek": "Volver a esta semana"
+  },
   "nav": {
     "dashboard": "Panel",
     "myChildren": "Mis hijos",
@@ -198,7 +207,7 @@
   "dailyReports": {
     "title": "Reportes diarios",
     "description": "Comidas, siestas, pañales, estado de ánimo y una nota del día — publicados antes de la salida.",
-    "searchPlaceholder": "Buscar reportes…",
+    "searchPlaceholder": "Buscar en todas las semanas…",
     "searchAria": "Buscar reportes diarios",
     "filterByDate": "Filtrar por fecha",
     "allChildren": "Todos los hijos",
@@ -207,8 +216,14 @@
     "reportCount_other": "{{count}} reportes",
     "noMatchTitle": "Ningún reporte coincide con esos filtros",
     "noReportsTitle": "Aún no hay reportes",
-    "noMatchDesc": "Prueba con otro hijo/a o borra la fecha para ver todo.",
-    "noReportsDesc": "Se publica un reporte completo antes de la salida cada día — vuelve a revisar esta tarde."
+    "noMatchDesc": "La búsqueda revisa todas las semanas. Prueba con otro hijo/a, otras palabras o borra la fecha.",
+    "noReportsDesc": "Se publica un reporte completo antes de la salida cada día — vuelve a revisar esta tarde.",
+    "searchingAll": "Buscando en todas las semanas · {{count}} encontrados",
+    "showingDate": "Mostrando el {{date}} · borra la fecha para ver por semana",
+    "freshWeekTitle": "Una semana nueva",
+    "freshWeekDesc": "Aún no hay reportes esta semana — se publica un reporte completo antes de la salida cada día. Las semanas anteriores están a un paso con la flecha, o la búsqueda encuentra cualquier reporte.",
+    "emptyWeekTitle": "No hay reportes esa semana",
+    "emptyWeekDesc": "Pasa a otra semana, busca o elige una fecha para encontrar un reporte."
   },
   "documents": {
     "title": "Documentos",

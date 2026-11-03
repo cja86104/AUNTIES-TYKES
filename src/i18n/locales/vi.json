@@ -2,6 +2,15 @@
   "common": {
     "new": "Mới"
   },
+  "weeks": {
+    "thisWeek": "Tuần này",
+    "lastWeek": "Tuần trước",
+    "weekOf": "Tuần từ {{date}}",
+    "previous": "Xem tuần trước",
+    "next": "Xem tuần sau",
+    "choose": "Chọn một tuần",
+    "backToThisWeek": "Về tuần này"
+  },
   "nav": {
     "dashboard": "Trang chủ",
     "myChildren": "Con của tôi",
@@ -198,7 +207,7 @@
   "dailyReports": {
     "title": "Báo cáo hằng ngày",
     "description": "Bữa ăn, giấc ngủ, tã, tâm trạng và một ghi chú trong ngày — đăng trước giờ đón.",
-    "searchPlaceholder": "Tìm báo cáo…",
+    "searchPlaceholder": "Tìm trong tất cả các tuần…",
     "searchAria": "Tìm báo cáo hằng ngày",
     "filterByDate": "Lọc theo ngày",
     "allChildren": "Tất cả các con",
@@ -207,8 +216,14 @@
     "reportCount_other": "{{count}} báo cáo",
     "noMatchTitle": "Không có báo cáo nào khớp với bộ lọc",
     "noReportsTitle": "Chưa có báo cáo nào",
-    "noMatchDesc": "Hãy thử chọn con khác hoặc xóa ngày để xem tất cả.",
-    "noReportsDesc": "Một báo cáo đầy đủ được đăng trước giờ đón mỗi ngày — hãy quay lại vào chiều nay."
+    "noMatchDesc": "Tìm kiếm xem qua mọi tuần. Hãy thử chọn con khác, từ khác hoặc xóa ngày.",
+    "noReportsDesc": "Một báo cáo đầy đủ được đăng trước giờ đón mỗi ngày — hãy quay lại vào chiều nay.",
+    "searchingAll": "Đang tìm trong tất cả các tuần · tìm thấy {{count}}",
+    "showingDate": "Đang xem {{date}} · xóa ngày để xem theo tuần",
+    "freshWeekTitle": "Một tuần mới",
+    "freshWeekDesc": "Tuần này chưa có báo cáo nào — một báo cáo đầy đủ được đăng trước giờ đón mỗi ngày. Các tuần trước chỉ cách một bước bằng mũi tên, hoặc tìm kiếm để thấy mọi báo cáo.",
+    "emptyWeekTitle": "Không có báo cáo trong tuần đó",
+    "emptyWeekDesc": "Chuyển sang tuần khác, tìm kiếm hoặc chọn một ngày để tìm báo cáo."
   },
   "documents": {
     "title": "Tài liệu",
