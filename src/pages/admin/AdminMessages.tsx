@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
-import { Megaphone, MessageSquare, Paperclip, Plus, Send, Users, Inbox, ArrowLeft, X, Search, CalendarDays, Trash2 } from 'lucide-react'
+import { Megaphone, MessageSquare, Paperclip, Plus, Send, Users, Inbox, ArrowLeft, X, Search, CalendarDays, Trash2, Pencil } from 'lucide-react'
 import PageTransition from '../../components/PageTransition'
 import {
   Avatar,
@@ -44,6 +44,7 @@ export default function AdminMessages() {
   const families = useStore((s) => s.families)
   const user = useStore((s) => s.user)
   const addAnnouncement = useStore((s) => s.addAnnouncement)
+  const updateAnnouncement = useStore((s) => s.updateAnnouncement)
   const deleteAnnouncement = useStore((s) => s.deleteAnnouncement)
   const sendThreadMessage = useStore((s) => s.sendThreadMessage)
   const startThread = useStore((s) => s.startThread)
@@ -57,6 +58,8 @@ export default function AdminMessages() {
   const [body, setBody] = useState('')
   const [audience, setAudience] = useState('all')
   const [errors, setErrors] = useState<AnnouncementErrors>({})
+  /** The posted announcement the form is rewriting; null when it is writing a new one. */
+  const [editing, setEditing] = useState<Announcement | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Announcement | null>(null)
   const [confirmDeleteThread, setConfirmDeleteThread] = useState<Thread | null>(null)
   const [attachment, setAttachment] = useState<UploadedFileMeta | null>(null)
@@ -191,6 +194,9 @@ export default function AdminMessages() {
   /** A file already sitting in storage that no announcement row points at yet. */
   const discardStagedAttachment = (meta: UploadedFileMeta | null) => {
     if (!meta) return
+    // The file an announcement being edited already has is not staged: it stays
+    // until the edit is saved without it (the store removes it then).
+    if (editing?.attachmentStoragePath === meta.storagePath) return
     void removeDocumentFile(meta.storagePath).catch(() => {
       /* best-effort cleanup; an orphaned object is harmless */
     })
@@ -207,6 +213,27 @@ export default function AdminMessages() {
     setAttachment(null)
     setUploading(false)
     setErrors({})
+    setEditing(null)
+  }
+
+  /** Opens the form filled in with a posted announcement, to rewrite it. */
+  const openEdit = (a: Announcement) => {
+    liveDraft.current += 1
+    setDraftId(liveDraft.current)
+    setEditing(a)
+    setTitle(a.title)
+    setBody(a.body)
+    // A family that has since been removed falls back to everyone rather than an empty choice.
+    setAudience(a.audience === 'all' || families.some((f) => f.id === a.audience) ? a.audience : 'all')
+    const fileName = a.attachmentFileName ?? 'Attachment'
+    setAttachment(
+      a.attachmentStoragePath
+        ? { title: fileName, fileName, storagePath: a.attachmentStoragePath, size: a.attachmentSize ?? 0 }
+        : null,
+    )
+    setUploading(false)
+    setErrors({})
+    setOpen(true)
   }
 
   const onAttachmentUploaded = (meta: UploadedFileMeta) => {
@@ -250,22 +277,35 @@ export default function AdminMessages() {
     setErrors(next)
     if (Object.keys(next).length) return
 
-    addAnnouncement({
+    const fields = {
       title: title.trim(),
       body: body.trim(),
       audience,
       attachmentFileName: attachment?.fileName,
       attachmentSize: attachment?.size,
       attachmentStoragePath: attachment?.storagePath,
-    })
+    }
+    const wasEditing = editing !== null
+    if (editing) updateAnnouncement(editing.id, fields)
+    else addAnnouncement(fields)
     resetAnnouncementForm()
-    // A new post belongs to this week; bring her back to it if she was looking at an older one.
+    // A new or edited post belongs to this week; bring her back to it if she was looking at an older one.
     setWeek(thisWeek)
     setAnnouncementQuery('')
-    pushToast({
-      title: 'Announcement posted',
-      description: audience === 'all' ? 'Every family can see it now.' : `Sent to ${familyName(audience)}.`,
-    })
+    pushToast(
+      wasEditing
+        ? {
+            title: 'Announcement updated',
+            description:
+              audience === 'all'
+                ? 'It moved to this week, and every family will see it marked New.'
+                : `It moved to this week, and ${familyName(audience)} will see it marked New.`,
+          }
+        : {
+            title: 'Announcement posted',
+            description: audience === 'all' ? 'Every family can see it now.' : `Sent to ${familyName(audience)}.`,
+          },
+    )
   }
 
   const doDeleteAnnouncement = () => {
@@ -511,6 +551,14 @@ export default function AdminMessages() {
                       <Badge tone={a.audience === 'all' ? 'blue' : 'violet'}>
                         <Users size={12} /> {a.audience === 'all' ? 'All families' : familyName(a.audience)}
                       </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openEdit(a)}
+                        aria-label={`Edit announcement ${a.title}`}
+                      >
+                        <Pencil size={15} />
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -845,15 +893,20 @@ export default function AdminMessages() {
         open={open}
         onClose={closeAnnouncementModal}
         wide
-        title="New announcement"
-        description="Markdown works here — use **bold**, lists, and short paragraphs."
+        title={editing ? 'Edit announcement' : 'New announcement'}
+        description={
+          editing
+            ? 'Saving moves it to this week and shows it as New to families again. Markdown works here.'
+            : 'Markdown works here — use **bold**, lists, and short paragraphs.'
+        }
         footer={
           <>
             <Button variant="ghost" onClick={closeAnnouncementModal}>
               Cancel
             </Button>
             <Button onClick={publish} disabled={uploading}>
-              <Megaphone size={16} /> {uploading ? 'Waiting for the upload…' : 'Post announcement'}
+              <Megaphone size={16} />{' '}
+              {uploading ? 'Waiting for the upload…' : editing ? 'Save changes' : 'Post announcement'}
             </Button>
           </>
         }

@@ -190,6 +190,11 @@ export interface StoreState extends DataSlice {
   markSectionSeen: (section: SectionName) => void
 
   addAnnouncement: (announcement: NewAnnouncement) => void
+  /**
+   * Rewrites a posted announcement. Saving re-stamps it to now, so it moves
+   * into this week and shows as New to families again.
+   */
+  updateAnnouncement: (id: string, changes: Omit<Announcement, 'id' | 'date'>) => void
   deleteAnnouncement: (id: string) => void
   sendThreadMessage: (threadId: string, message: NewThreadMessage) => void
   startThread: (thread: NewThread) => void
@@ -739,6 +744,29 @@ export const useStore = create<StoreState>()((set, get) => {
           return created ? persist.announcement(created) : Promise.resolve()
         },
       ),
+    updateAnnouncement: (id, changes) => {
+      const previousPath = get().announcements.find((a) => a.id === id)?.attachmentStoragePath
+      commit(
+        (s) => ({
+          announcements: s.announcements.map((a) => (a.id === id ? { ...changes, id, date: nowISO() } : a)),
+        }),
+        async (s) => {
+          const updated = s.announcements.find((a) => a.id === id)
+          if (!updated) return
+          await persist.announcement(updated)
+          if (!previousPath || previousPath === updated.attachmentStoragePath) return
+          // Row first, file second, as in deleteAnnouncement: once the row no
+          // longer points at the old file, no family can reach it.
+          await removeDocumentFile(previousPath).catch((error: unknown) => {
+            get().pushToast({
+              tone: 'error',
+              title: 'The announcement saved, its old file stayed',
+              description: error instanceof Error ? error.message : 'The replaced file could not be removed.',
+            })
+          })
+        },
+      )
+    },
     deleteAnnouncement: (id) => {
       const attachmentPath = get().announcements.find((a) => a.id === id)?.attachmentStoragePath
       commit(

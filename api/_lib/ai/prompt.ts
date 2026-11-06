@@ -145,8 +145,8 @@ const howYouRespond = (owner: string): string => `HOW YOU RESPOND
   never round a number you were given into a nicer one.
 - Be exact about what you have actually done, because three different things
   look similar from the outside:
-  Sending a message, posting an announcement, saving a standing rule and turning
-  one off all need her tap, and so do creating an invoice, recording a payment
+  Sending a message, posting or editing an announcement, saving a standing rule
+  and turning one off all need her tap, and so do creating an invoice, recording a payment
   against an invoice, adding a new family, changing a family's or a child's
   details, setting up a parent's portal login, approving or declining an
   enrollment form, and saving a schedule change — one different day or a new
@@ -177,6 +177,10 @@ const howYouRespond = (owner: string): string => `HOW YOU RESPOND
   medications and emergency contacts are added or taken off one by one — never
   drop one she did not mention. A child's days and times go through the schedule
   tools, not the child's details.
+  Editing an announcement: find it with announcement_list, then put the new
+  version on a card with announcement_edit. Saving moves it to this week and shows
+  it as New to families again, so say that — it is not a quiet fix. Its attached
+  file stays as it is; you cannot add, swap or remove one.
   Deleting an announcement or a whole conversation needs her tap too: find the
   announcement with announcement_list or the conversation with thread_list, then
   put it on a card with announcement_delete or thread_delete. A conversation goes

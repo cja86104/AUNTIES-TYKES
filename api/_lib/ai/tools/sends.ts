@@ -289,4 +289,168 @@ const announcementSend: ToolSpec = {
   },
 }
 
-export const sendTools: ToolSpec[] = [messageSend, announcementSend]
+/* ---------------------------- announcement.edit ---------------------------- */
+
+/**
+ * Rewrites an announcement already posted, mirroring `updateAnnouncement` in
+ * useStore.ts: saving re-stamps it to now, so it moves into this week and shows
+ * as New in the families' portals again. That is why this is a send — it puts
+ * the announcement in front of families a second time — and goes through her
+ * standing rules and the hourly ceiling like `announcement_send`.
+ *
+ * Anything she did not ask to change is kept. The attached file is never touched:
+ * Ro cannot upload, so a file stays exactly as it was.
+ */
+const announcementEdit: ToolSpec = {
+  name: 'announcement_edit',
+  tier: 'send',
+  description:
+    'Change ONE already-posted announcement and put it in front of the owner to save — ' +
+    'its title, its wording, or who it goes to. This does NOT change anything on its ' +
+    'own: she sees the new version and taps once. Saving moves it to this week and ' +
+    'shows it as New to families again, exactly like editing it on the Messages page. ' +
+    'Get the announcementId from announcement_list, and if more than one could be what ' +
+    'she meant, ask her which first. Pass only what she wants changed; anything left ' +
+    'out stays as it is. For a wording change, send the whole new wording, not just ' +
+    'the changed part. Any attached file stays as it is — you cannot add, swap or ' +
+    'remove one. State only what the records support.',
+  parameters: schema(
+    {
+      announcementId: { type: 'string', description: 'From announcement_list' },
+      title: { type: 'string', description: 'The new title, only if it changes' },
+      body: { type: 'string', description: 'The complete new wording, only if it changes' },
+      audience: {
+        type: 'string',
+        description: "Only if who it goes to changes: the literal 'all', or a single family id",
+      },
+    },
+    ['announcementId'],
+  ),
+  execute: async (args, ctx): Promise<ToolOutcome> => {
+    const announcementId = readString(args, 'announcementId')
+    if (announcementId === null) {
+      return { ok: false, error: 'Which announcement? Give the announcementId from announcement_list' }
+    }
+
+    const found = await ctx.caller.db
+      .from('announcements')
+      .select('id, title, body, audience_family_id, attachment_file_name')
+      .eq('id', announcementId)
+      .maybeSingle()
+    if (found.error !== null) return dbFailure('that announcement', found.error)
+    if (found.data === null) {
+      return {
+        ok: true,
+        data: {
+          changed: false,
+          reason: 'no announcement has that id — look it up with announcement_list',
+          announcementId,
+        },
+      }
+    }
+    const row = found.data
+    const currentAudience = row.audience_family_id ?? 'all'
+
+    const title = readBody(args, 'title', MAX_SUBJECT) ?? row.title
+    const body = readBody(args, 'body', MAX_BODY) ?? row.body
+    const audience = readString(args, 'audience') ?? currentAudience
+    // Same rules as the Messages page form.
+    if (title.trim() === '') return { ok: false, error: 'A title is required' }
+    if (body.length < MIN_BODY) return { ok: false, error: 'Write at least a sentence' }
+    if (title === row.title && body === row.body && audience === currentAudience) {
+      return {
+        ok: true,
+        data: {
+          changed: false,
+          reason: 'that is exactly what it already says, so there is nothing to change',
+          tellHer: 'Ask her what she wants it to say instead.',
+        },
+      }
+    }
+
+    let recipients: string[]
+    let audienceLabel: string
+    if (audience === 'all') {
+      const families = await ctx.caller.db.from('families').select('id, name').limit(500)
+      if (families.error !== null) return dbFailure('families', families.error)
+      if (families.data.length === 0) {
+        return { ok: true, data: { changed: false, reason: 'there are no families to announce to' } }
+      }
+      recipients = families.data.map((family) => family.name)
+      audienceLabel = `Every family (${String(families.data.length)})`
+    } else {
+      const family = await ctx.caller.db.from('families').select('id, name').eq('id', audience).maybeSingle()
+      if (family.error !== null) return dbFailure('that family', family.error)
+      if (family.data === null) {
+        return { ok: true, data: { changed: false, reason: 'no family has that id', audience } }
+      }
+      recipients = [family.data.name]
+      audienceLabel = `${family.data.name} only`
+    }
+
+    const blocking = await rulesBlocking(ctx, {
+      familyIds: audience === 'all' ? 'all' : [audience],
+      channel: 'announcement',
+    })
+    if (!blocking.ok) return { ok: false, error: blocking.error }
+    if (blocking.value.length > 0) {
+      return {
+        ok: true,
+        data: {
+          changed: false,
+          reason: 'one of her own standing rules covers someone this would reach',
+          blockedBy: blocking.value.map((rule) => rule.summary),
+          tellHer: 'Say which rule it is and let her decide. Do not offer to save it anyway.',
+        },
+      }
+    }
+
+    const payload = { announcementId: row.id, audience, title, body, recipientCount: recipients.length }
+    const key = `announcement.edit:${JSON.stringify(payload)}`
+    const existing = alreadyProposed(ctx, key)
+    if (existing !== undefined) return proposed(existing)
+
+    const logged = await propose(ctx, {
+      instruction: ctx.instruction,
+      tool: 'announcement.edit',
+      riskTier: 'send',
+      arguments: payload,
+      subject: {
+        familyId: audience === 'all' ? null : audience,
+        familyLabel: audience === 'all' ? 'every family' : recipients[0] ?? '',
+        targets: [row.id],
+      },
+      model: ctx.model,
+    })
+    if (!logged.ok) return { ok: false, error: logged.error }
+
+    const detail: { label: string; value: string }[] = [{ label: 'Goes to', value: audienceLabel }]
+    if (recipients.length > LARGE_AUDIENCE) {
+      detail.push({ label: 'That is', value: recipients.join(', ') })
+    }
+    if (title !== row.title) detail.push({ label: 'Title was', value: row.title })
+    detail.push({ label: 'Title', value: title })
+    detail.push({ label: 'Announcement', value: body })
+    if (row.attachment_file_name !== null && row.attachment_file_name !== '') {
+      detail.push({ label: 'Attached file', value: `${row.attachment_file_name} — stays as it is` })
+    }
+    detail.push({
+      label: 'What happens',
+      value:
+        'It moves to this week and shows as New in their parent portal again. No email goes out — this app does not send any.',
+    })
+
+    const preview: ActionPreview = {
+      id: logged.value,
+      kind: 'announcement.edit',
+      title: 'Edit an announcement',
+      summary: `${title} — to ${audienceLabel.toLowerCase()}`,
+      detail,
+      confirmLabel: 'Save the changes',
+    }
+    rememberProposal(ctx, key, preview)
+    return proposed(preview)
+  },
+}
+
+export const sendTools: ToolSpec[] = [messageSend, announcementSend, announcementEdit]

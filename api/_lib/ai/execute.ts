@@ -320,6 +320,128 @@ const sendAnnouncementExecutor: Executor = {
   },
 }
 
+/** What an announcement said before Ro edited it, kept in the audit row so Undo can put it back. */
+interface AnnouncementBefore {
+  title: string
+  body: string
+  audience_family_id: string | null
+  date: string
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readAnnouncementBefore(targets: unknown[]): AnnouncementBefore | null {
+  for (const value of targets) {
+    if (!isRecord(value)) continue
+    const { title, body, audience_family_id: audience, date } = value
+    if (
+      typeof title === 'string' &&
+      typeof body === 'string' &&
+      (audience === null || typeof audience === 'string') &&
+      typeof date === 'string'
+    ) {
+      return { title, body, audience_family_id: audience, date }
+    }
+  }
+  return null
+}
+
+/**
+ * Edits one announcement, mirroring `updateAnnouncement` in useStore.ts: the new
+ * wording and audience, re-stamped to now so it moves into this week and shows as
+ * New to families again. The attached file is left alone.
+ *
+ * Re-read at execution rather than trusted from the proposal — she may have
+ * edited or deleted it on the Messages page while the card waited — and what it
+ * said just before is recorded, so Undo puts back that exact version, its
+ * original date (and so its original week) included.
+ */
+const editAnnouncementExecutor: Executor = {
+  tool: 'announcement.edit',
+  sendTarget: (proposal): SendTarget | null => {
+    const audience = readString(proposal.arguments, 'audience')
+    if (audience === null) return null
+    return {
+      familyIds: audience === 'all' ? 'all' : [audience],
+      channel: 'announcement',
+    }
+  },
+  recipientCount: (proposal) => readInt(proposal.arguments, 'recipientCount', 1, 500, 1),
+  run: async (ctx, proposal) => {
+    const id = readString(proposal.arguments, 'announcementId')
+    const audience = readString(proposal.arguments, 'audience')
+    const title = readString(proposal.arguments, 'title')
+    const body = readString(proposal.arguments, 'body')
+    if (id === null || audience === null || title === null || body === null) {
+      return { ok: false, error: 'That edit is missing which announcement, its audience, title or wording' }
+    }
+
+    const existing = await ctx.caller.db
+      .from('announcements')
+      .select('id, title, body, audience_family_id, date')
+      .eq('id', id)
+      .maybeSingle()
+    if (existing.error !== null) {
+      return { ok: false, error: `Could not check that announcement: ${existing.error.message}` }
+    }
+    if (existing.data === null) {
+      return { ok: false, error: 'That announcement has been deleted, so there was nothing to change.' }
+    }
+    const before: AnnouncementBefore = {
+      title: existing.data.title,
+      body: existing.data.body,
+      audience_family_id: existing.data.audience_family_id,
+      date: existing.data.date,
+    }
+
+    const updated = await ctx.caller.db
+      .from('announcements')
+      .update({
+        title,
+        body,
+        // NULL is the app's 'all' audience — see fromAnnouncement in src/lib/db.ts.
+        audience_family_id: audience === 'all' ? null : audience,
+        date: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('id')
+    if (updated.error !== null) {
+      return { ok: false, error: `Could not save that announcement: ${updated.error.message}` }
+    }
+    if (updated.data.length === 0) {
+      return { ok: false, error: 'That announcement could not be changed, so it still says what it did.' }
+    }
+
+    const reach = readInt(proposal.arguments, 'recipientCount', 1, 500, 1)
+    return {
+      ok: true,
+      summary:
+        reach > 1
+          ? `Updated for ${String(reach)} families. It moved to this week and shows as New in their portals.`
+          : `Updated for ${proposal.familyLabel}. It moved to this week and shows as New in their portal.`,
+      targets: [id, before],
+      undoMs: UNDO_WINDOW_MS,
+    }
+  },
+  undo: async (ctx, targets) => {
+    const [id] = idsFrom(targets)
+    const before = readAnnouncementBefore(targets)
+    if (id === undefined || before === null) {
+      return { ok: false, error: 'I did not record enough about that edit to take it back' }
+    }
+    const restored = await ctx.caller.db.from('announcements').update(before).eq('id', id).select('id')
+    if (restored.error !== null) {
+      return { ok: false, error: `Could not put that announcement back: ${restored.error.message}` }
+    }
+    if (restored.data.length === 0) {
+      return { ok: false, error: 'That announcement has since been deleted, so there was nothing to put back.' }
+    }
+    return { ok: true, summary: 'Put back. It says what it did before, in its original week.' }
+  },
+}
+
 /** The private bucket announcement attachments live in; see migration 0011. */
 const ATTACHMENT_BUCKET = 'documents'
 
@@ -1557,6 +1679,7 @@ const executors: Executor[] = [
   retireRuleExecutor,
   sendMessageExecutor,
   sendAnnouncementExecutor,
+  editAnnouncementExecutor,
   deleteAnnouncementExecutor,
   deleteThreadExecutor,
   attendanceExecutor,

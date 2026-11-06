@@ -15,7 +15,7 @@
  */
 
 /** When the guide last changed. ISO timestamp, in the past. */
-export const RO_GUIDE_UPDATED_AT = '2026-11-03T14:35:00.000Z'
+export const RO_GUIDE_UPDATED_AT = '2026-11-06T15:37:00.000Z'
 
 export interface GuideTopic {
   /** Anchor id, and the key the page uses to pick an icon. */
@@ -99,8 +99,9 @@ export const CARD_STEPS: GuideStep[] = [
     title: 'Undo, for messages and announcements',
     body:
       'After a message or announcement goes out, an Undo button counts down for 5 minutes. ' +
-      'Tapping it takes it back out of the family\'s portal completely. Other actions have no ' +
-      'undo — that is why the card comes first.',
+      'Tapping it takes it back out of the family\'s portal completely. After Ro edits an ' +
+      'announcement, Undo puts back what it said before, in its original week. Other actions ' +
+      'have no undo — that is why the card comes first.',
   },
 ]
 
@@ -187,6 +188,7 @@ export const TOPICS: GuideTopic[] = [
       'Message the Brooks family that pickup is at 4 tomorrow.',
       'Reply to the Chens and tell them Friday works.',
       'Send an announcement to everyone: we are closed Monday for the holiday.',
+      'Change the holiday announcement to say we reopen Wednesday.',
       'Delete the announcement about the holiday closure.',
       'Delete the pickup conversation with the Brooks family.',
       'What messages came in last week?',
@@ -199,7 +201,8 @@ export const TOPICS: GuideTopic[] = [
       'Ro can search every week of conversations — subjects, family names and every message — and every announcement, including attached file names.',
       'Messages land in the family\'s parent portal. Nothing is emailed or texted — if someone needs to know right away, give them a call.',
       'You have 5 minutes to Undo after sending.',
-      'Ro can delete an announcement or a whole conversation, but only after you tap Delete on her card. An announcement disappears from every family\'s portal right away, along with any file attached to it. A conversation goes with every message in it, yours and theirs. Neither can be undone — Undo only covers sending.',
+      'Ro can edit an announcement you already posted — its title, wording, or who it goes to — after you tap Save the changes on her card. Just like editing it on the Messages page, it moves to this week and shows as New to families again. Any attached file stays as it is.',
+      'Ro can delete an announcement or a whole conversation, but only after you tap Delete on her card. An announcement disappears from every family\'s portal right away, along with any file attached to it. A conversation goes with every message in it, yours and theirs. Neither can be undone — Undo only covers sending and editing.',
       'If one of your standing instructions says not to contact a family, Ro will not send it and will tell you which instruction stopped it.',
       'For safety, Ro sends at most 20 times, or to 120 families, in any hour.',
     ],
